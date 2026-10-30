@@ -15,6 +15,11 @@ Re-reads the G-code (not the CAM's internal data) and checks:
   * tapered ball tools: points all over the cone, up to the shank, stay outside the part
   * uncut stock: past the X range roughing cut, the finishing and indexed tools (cone and
     shank included) never enter the stock
+  * the holder (0.7.0): the collet nut and spindle above each tool (stickout from the OP
+    comment, sizes from the job's rig) never enter the part, the uncut stock, or the
+    chuck / headstock / live centre / tailstock body - its own geometry code, not the CAM's
+  * tool changes: moves made at ncSender's safe Z (after a G53 Z) are left out of the
+    Y / keep-out checks; they're the route round the rotary
   * tenons (optional 4th argument, the CAM's tenon list as JSON): every move near a tenon
     is checked against that cylinder - ball centre >= R from it, flat cutter points no
     closer than the op's leave. Parting only has to stay out of the part of the tenon
@@ -73,8 +78,9 @@ def query(mesh, pts, chunk=2000):
 
 def parse(path):
     word = re.compile(r"([A-Z])(-?\d+\.?\d*)")
-    st = {"X": None, "Y": None, "Z": None, "A": 0.0, "mode": "G94", "op": None, "dia": None, "kind": None, "scale": 1.0}
+    st = {"X": None, "Y": None, "Z": None, "A": 0.0, "mode": "G94", "op": None, "dia": None, "kind": None, "scale": 1.0, "tc": False}
     tapers = {}
+    stickouts = {}
     moves = []  # (type, op, kind, dia, x0,z0,a0, x1,z1,a1, F or None, y)
     errors = []
     for n, raw in enumerate(open(path), 1):
@@ -83,6 +89,9 @@ def parse(path):
         if m:
             st["op"], st["dia"] = m.group(1), float(m.group(2)) * st["scale"]
             st["kind"] = "ball" if "ball" in m.group(3).lower() else "flat"
+            so = re.search(r"\[stickout ([\d.]+)\]", m.group(3))
+            if so:
+                stickouts[st["op"]] = float(so.group(1)) * st["scale"]
             tp = re.search(r"taper ([\d.]+)deg shank D([\d.]+)", m.group(3))
             if tp:
                 st["kind"] = "taper"
@@ -100,6 +109,13 @@ def parse(path):
             elif g == "21":
                 st["scale"] = 1.0
         motion = "G0" if "0" in codes else ("G1" if "1" in codes else None)
+        if "53" in codes:
+            # up to ncSender's safe Z (machine coordinates): what follows, until the program
+            # comes back down, is the route round the rotary to a tool change
+            st["tc"] = True
+            continue
+        if st["tc"] and "Z" in w:
+            st["tc"] = False
         prev = (st["X"], st["Z"], st["A"])
         y_prev = st["Y"]
         for ax in "XYZA":
@@ -114,9 +130,10 @@ def parse(path):
             moves.append(("G1", st["op"], st["kind"], st["dia"], *prev, st["X"], st["Z"], st["A"],
                           f, st["Y"], n, y_prev, st["mode"]))
         elif motion == "G0":
-            moves.append(("G0", st["op"], st["kind"], st["dia"], *prev, st["X"], st["Z"], st["A"],
+            moves.append(("G0", "tc" if st["tc"] else st["op"], st["kind"], st["dia"], *prev, st["X"], st["Z"], st["A"],
                           None, st["Y"], n, y_prev, st["mode"]))
     parse.tapers = tapers
+    parse.stickouts = stickouts
     return moves, errors
 
 
@@ -201,6 +218,109 @@ def tenon_report(feeds, tenons, cfg):
     return ok, out
 
 
+def fixture_list(cfg):
+    """The rotary from the job's rig, worked out here (not the CAM's code)."""
+    g = cfg.get("rig") or {}
+    cf, T = cfg["chuck_face_x"], cfg["tailstock_x"]
+    ch, hd, ce, tl = g.get("chuck", {}), g.get("head", {}), g.get("centre", {}), g.get("tail", {})
+    out = []
+    if ch.get("dia", 0) > 0 and ch.get("len", 0) > 0:
+        out.append(("chuck", "round", cf - ch["len"], cf, lambda x, r=ch["dia"] / 2: r))
+    if hd.get("len", 0) > 0 and hd.get("width", 0) > 0:
+        x1 = cf - ch.get("len", 0)
+        out.append(("headstock", "box", x1 - hd["len"], x1, hd["width"] / 2, hd.get("top", 0)))
+    if ce.get("dia", 0) > 0 and ce.get("len", 0) > 0:
+        out.append(("live centre", "round", T, T + ce["len"], lambda x, r=ce["dia"] / 2, L=ce["len"]: r * (x - T) / L))
+    if tl.get("len", 0) > 0 and tl.get("width", 0) > 0:
+        x0 = T + ce.get("len", 0)
+        out.append(("tailstock", "box", x0, x0 + tl["len"], tl["width"] / 2, tl.get("top", 0)))
+    return out
+
+
+def holder_report(moves, mesh, cfg, sw):
+    """Collet nut and spindle (vertical cylinders above the tool) against the rotary, the
+    part and the stock left uncut past what roughing cut. Points over each holder part's
+    bottom face and up its side, at sampled tool positions, must be outside all of them."""
+    g = cfg.get("rig") or {}
+    nut, sp = g.get("nut", {}), g.get("spindle", {})
+    s = cfg["a_sign"]
+    fx = fixture_list(cfg)
+    R_st = cfg["stock_radius"]
+    lines, bad_total = [], 0
+    rng = np.random.default_rng(7)
+    ang = np.linspace(0, 2 * np.pi, 20, endpoint=False)
+    for op in ("corners", "rough", "finish", "index", "parting"):
+        so = parse.stickouts.get(op)
+        ms = [m for m in moves if m[1] == op and m[4] is not None]
+        if not ms or not so:
+            continue
+        parts = [("collet nut", nut.get("dia", 0) / 2, so, so + nut.get("len", 0))]
+        if sp.get("dia", 0) > 0:
+            parts.append(("spindle", sp["dia"] / 2, so + nut.get("len", 0), so + nut.get("len", 0) + 60))
+        pick = rng.choice(len(ms), size=min(2500, len(ms)), replace=False)
+        hits, worst, where = 0, 0.0, None
+        for name, rc, h0, h1 in parts:
+            if rc <= 0:
+                continue
+            # bottom face (polar grid) and side (rings) of the cylinder, relative to the tip
+            pts = [(0.0, 0.0, h0)] + [(rr * math.cos(t), rr * math.sin(t), h0) for rr in (rc / 3, 2 * rc / 3, rc) for t in ang]
+            pts += [(rc * math.cos(t), rc * math.sin(t), h) for h in np.linspace(h0, h1, 5)[1:] for t in ang]
+            pts = np.array(pts)
+            P = []
+            for i in pick:
+                _, _, _, _, x0, z0, a0, x1, z1, a1, F, y1, n, y0, mode = ms[i]
+                P.append((x1, y1 or 0.0, z1, a1, n))
+            for (x, y, z, a, n) in P:
+                q = pts + np.array([x, y, z])
+                # the rotary: machine frame, doesn't turn
+                for f in fx:
+                    if f[1] == "box":
+                        _, _, xa, xb, w, top = f
+                        inside = (q[:, 0] > xa) & (q[:, 0] < xb) & (np.abs(q[:, 1]) < w) & (q[:, 2] < top)
+                        pen = (top - q[inside, 2]).max() if inside.any() else 0.0
+                    else:
+                        _, _, xa, xb, rf = f
+                        sel = (q[:, 0] > xa) & (q[:, 0] < xb)
+                        if not sel.any():
+                            continue
+                        rad = np.hypot(q[sel, 1], q[sel, 2])
+                        lim = np.array([rf(xx) for xx in q[sel, 0]])
+                        inside = rad < lim
+                        pen = (lim - rad)[inside].max() if inside.any() else 0.0
+                    if pen > TOL:
+                        hits += 1
+                        if pen > worst:
+                            worst, where = pen, f"{name} into the {f[0]}, line {n}, X{x:.1f}"
+                # the part and the uncut stock: the part's frame
+                qm = to_model(q, a, s)
+                rad = np.hypot(qm[:, 1], qm[:, 2])
+                if sw is not None:
+                    st_in = ((qm[:, 0] < sw[0] - 0.05) | (qm[:, 0] > sw[1] + 0.05)) & (qm[:, 0] > cfg["chuck_face_x"]) & (qm[:, 0] < cfg["tailstock_x"]) & (rad < R_st - 0.05)
+                    if st_in.any():
+                        hits += 1
+                        pen = float((R_st - rad[st_in]).max())
+                        if pen > worst:
+                            worst, where = pen, f"{name} into the uncut stock, line {n}, X{x:.1f}"
+                near = rad < mesh_rmax(mesh) + 0.5
+                if near.any():
+                    d, ins = query(mesh, qm[near])
+                    deep = ins & (d > TOL)
+                    if deep.any():
+                        hits += 1
+                        pen = float(d[deep].max())
+                        if pen > worst:
+                            worst, where = pen, f"{name} into the part, line {n}, X{x:.1f}"
+        bad_total += hits
+        lines.append(f"holder {op}: {len(pick)} tool positions (stickout {so:.2f}), collisions: {hits}" + (f", worst {worst:.3f} mm ({where})" if hits else ""))
+    return bad_total == 0, lines
+
+
+def mesh_rmax(mesh):
+    if not hasattr(mesh_rmax, "v"):
+        mesh_rmax.v = float(np.hypot(mesh.vertices[:, 1], mesh.vertices[:, 2]).max())
+    return mesh_rmax.v
+
+
 def main():
     nc, stl, cfg_path = sys.argv[1], sys.argv[2], sys.argv[3]
     cfg = json.load(open(cfg_path))
@@ -213,7 +333,7 @@ def main():
 
     # --- G93 / Y / rates / keep-outs -------------------------------------------------
     # only the corners and indexed ops (A locked, tool offset in Y) may leave the centreline
-    y_bad = sum(1 for m in moves if m[1] not in ("corners", "index") and m[11] not in (None, 0.0))
+    y_bad = sum(1 for m in moves if m[1] not in ("corners", "index", "tc") and m[11] not in (None, 0.0))
     rate_bad = {"A": 0, "X": 0, "Z": 0}
     worst = {"A": 0.0, "X": 0.0, "Z": 0.0}
     t_total = 0.0
@@ -379,6 +499,11 @@ def main():
                         break
             stock_ok &= hits == 0
             print(f"{op}: moves near the uncut stock (roughing cut X{sw_lo:.2f}..{sw_hi:.2f}): {len(near)}, running into it: {hits}")
+    sw = None
+    if rm:
+        sw = (sw_lo, sw_hi)
+    holder_ok, hlines = holder_report(moves, mesh, cfg, sw)
+    print("\n".join(hlines))
     tenon_ok = True
     if len(sys.argv) > 4:
         tenons = json.load(open(sys.argv[4]))
@@ -386,7 +511,7 @@ def main():
             print("tenons: " + ", ".join(f"{t['side']} D{2 * t['r']:.2f} X{t['x0']:.2f}..{t['x1']:.2f} (in the part to X{t['in1'] if t['side'] == 'chuck' else t['in0']:.2f})" for t in tenons))
             tenon_ok, lines = tenon_report(feeds, tenons, cfg)
             print("\n".join(lines))
-    ok = (tenon_ok and stock_ok and not errors and y_bad == 0 and sum(rate_bad.values()) == 0 and keep_bad == 0
+    ok = (tenon_ok and stock_ok and holder_ok and not errors and y_bad == 0 and sum(rate_bad.values()) == 0 and keep_bad == 0
           and all(v[1] == 0 for v in report.values())
           and report.get("rough", (0, 0, 0))[2] == 0 and report.get("corners", (0, 0, 0))[2] == 0)
     print("RESULT:", "PASS" if ok else "FAIL")
