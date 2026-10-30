@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ncSender stand-in</title>
+<style>
+  /* ncSender theme variables (theme.css, light + dark) */
+  :root { --color-bg:#f7f9fc; --color-surface:#ffffff; --color-surface-muted:#eef2f6; --color-text-primary:#1e2a32; --color-text-secondary:#5e6b75; --color-border:rgba(20,20,20,.08); --color-accent:#1abc9c; --radius-small:6px; --radius-medium:16px; --gap-sm:8px; --gap-md:16px; }
+  :root[data-theme=dark] { --color-bg:#111720; --color-surface:#1a222e; --color-surface-muted:#202a38; --color-text-primary:#e6ecf2; --color-text-secondary:#93a2b4; --color-border:rgba(255,255,255,.04); }
+  [hidden] { display:none !important; }
+  body { margin:0; background:var(--color-bg); color:var(--color-text-primary); font-family:system-ui,sans-serif; }
+  /* PluginDialog.vue (scoped styles, copied) */
+  .plugin-dialog-backdrop { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.5); display:flex; justify-content:center; align-items:center; z-index:9999; }
+  .plugin-dialog-container { background:var(--color-surface); border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,.25),0 0 0 1px rgba(255,255,255,.1); width:auto; min-width:320px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; }
+  .plugin-dialog { display:flex; flex-direction:column; height:100%; overflow:hidden; }
+  .plugin-dialog-header { display:flex; justify-content:space-between; align-items:center; padding:var(--gap-md); border-bottom:1px solid var(--color-border); flex-shrink:0; }
+  .plugin-dialog-header h3 { margin:0; font-size:1.25rem; font-weight:700; }
+  .plugin-dialog-content { flex:1; overflow-y:auto; display:flex; flex-direction:column; color:var(--color-text-primary); }
+  .plugin-dialog-content button { background:var(--color-accent); color:white; border:none; padding:var(--gap-sm) var(--gap-md); border-radius:var(--radius-small); cursor:pointer; font-weight:500; transition:opacity .2s ease; }
+  .plugin-dialog-content button:hover { opacity:.9; }
+</style>
+</head>
+<body>
+<button id="open">Tools &rsaquo; Rotary CAM</button>
+<div class="plugin-dialog-backdrop" id="dlg" hidden>
+  <div class="plugin-dialog-container"><div class="plugin-dialog">
+    <div class="plugin-dialog-header"><h3 id="title"></h3><button id="close">&times;</button></div>
+    <div class="plugin-dialog-content" id="content"></div>
+  </div></div>
+</div>
+<script>
+  if (location.hash === '#dark') document.documentElement.dataset.theme = 'dark';
+  window.ncSender = { getApiBaseUrl: function () { return ''; } };
+  window.__closed = 0;
+  function closeDialog() { document.getElementById('dlg').hidden = true; document.getElementById('content').innerHTML = ''; window.__closed++; }
+  document.getElementById('close').onclick = closeDialog;
+  // @click.self="handleBackdropClick"
+  document.getElementById('dlg').addEventListener('click', function (e) { if (e.target === e.currentTarget) closeDialog(); });
+  window.addEventListener('message', function (e) { if (e.data && e.data.type === 'close-plugin-dialog') closeDialog(); });
+  window.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !document.getElementById('dlg').hidden) closeDialog(); });
+  async function openDialog() {
+    const r = await fetch('/api/plugins/tool-menu-items/execute', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pluginId: 'com.cncdocs.rotary-cam', label: 'Rotary CAM' }) });
+    const d = await r.json();
+    document.getElementById('title').textContent = d.title;
+    const el = document.getElementById('content');
+    el.innerHTML = d.content;                     // v-html
+    document.getElementById('dlg').hidden = false;
+    // PluginDialog.vue executeScripts(): clone each script so it runs
+    el.querySelectorAll('script').forEach(function (old) {
+      const s = document.createElement('script');
+      Array.from(old.attributes).forEach(function (a) { s.setAttribute(a.name, a.value); });
+      s.textContent = old.textContent;
+      old.parentNode.replaceChild(s, old);
+    });
+  }
+  document.getElementById('open').onclick = openDialog;
+</script>
+</body>
+</html>

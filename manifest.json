@@ -1,0 +1,26 @@
+{
+  "id": "com.cncdocs.rotary-cam",
+  "name": "Rotary CAM",
+  "version": "0.5.0",
+  "minAppVersion": "2.0.88",
+  "configUi": "config.html",
+  "author": "Stefan",
+  "description": "Simultaneous 4th-axis rotary CAM: open an STL or STEP part, knock the corners off square stock, rough it in spiral layers, finish it with a continuous ball-mill spiral around the A axis, clean up what the rotary passes can't reach (under overhangs, tight creases) with indexed 3+1 passes, and neck the ends for parting, with tenons on the axis holding the part to the stock. Simulate the G-code against the stock before you run it. Uses your Tool Library and controller rates, posts grblHAL G-code and loads it straight into ncSender. Rotary axis parallel to X, chuck on the left.",
+  "category": "gcode-generator",
+  "repository": "https://github.com/stmoha/ncsender-plugin-rotary-cam",
+  "icon": "icon.png",
+  "platforms": {
+    "v2": "2.0.88",
+    "pro-v2": "2.0.149"
+  },
+  "events": [],
+  "permissions": [],
+  "toolMenu": [
+    {
+      "id": "open-config",
+      "label": "Rotary CAM",
+      "icon": "icon.png",
+      "clientOnly": true
+    }
+  ]
+}

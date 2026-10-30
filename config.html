@@ -1,0 +1,41 @@
+<!-- Rotary CAM - ncSender plugin dialog.
+     Opened from Tools > Rotary CAM. The server fills in the port, the saved
+     settings and the menu label; the UI itself lives in lib/rotary-ui.js and
+     the CAM engine in lib/ (loaded on demand). -->
+<div id="rcam-root"><div style="padding:40px;text-align:center;color:var(--color-text-secondary,#5e6b75)">Loading Rotary CAM&hellip;</div></div>
+<script type="application/json" id="rcam-initial">__INITIAL_CONFIG__</script>
+<script>
+(function () {
+  var PLUGIN = 'com.cncdocs.rotary-cam';
+  var BUILD = '0.5.0-mvvcur8c';
+  var root = document.getElementById('rcam-root');
+  // From Settings > Plugins the page is shown without the server's tokens filled in
+  var isDialog = '__TOOL_MENU_LABEL__' !== ('__TOOL' + '_MENU_LABEL__');
+  if (!isDialog) {
+    root.innerHTML = '<p style="margin:0">Open <b>Tools &rsaquo; Rotary CAM</b> to turn an STL or STEP part into simultaneous 4th-axis G-code. Job settings are saved from there.</p>';
+    return;
+  }
+  var port = parseInt('__SERVER_PORT__', 10) || 8090;
+  var base = '';
+  try { if (window.ncSender && typeof window.ncSender.getApiBaseUrl === 'function') base = window.ncSender.getApiBaseUrl(port) || ''; } catch (e) {}
+  var file = function (name) { return base + '/api/plugins/' + PLUGIN + '/icon?file=' + encodeURIComponent(name) + '&b=' + encodeURIComponent(BUILD); };
+  var initial = {};
+  try { initial = JSON.parse(document.getElementById('rcam-initial').textContent) || {}; } catch (e) {}
+  var host = { base: base, file: file, initial: initial };
+  var start = function () { window.RotaryCam.mount(root, host); };
+  var fail = function (err) {
+    root.innerHTML = '<div style="padding:30px;color:#d64545">Rotary CAM could not start: ' + String(err && err.message || err).replace(/</g, '&lt;') + '</div>';
+  };
+  if (window.RotaryCam && window.RotaryCam.build === BUILD && window.RotaryCamCore && window.RotaryCamSim && window.RotaryCamViewer) { try { start(); } catch (e) { fail(e); } return; }
+  var text = function (n) { return fetch(file(n)).then(function (r) { if (!r.ok) throw new Error(n + ': ' + r.status); return r.text(); }); };
+  Promise.all([text('lib/cam-core.js'), text('lib/cam-sim.js'), text('lib/rotary-viewer.js'), text('lib/rotary-ui.js')]).then(function (code) {
+    if (window.RotaryCam && window.RotaryCam.cache) window.RotaryCam.cache = {};
+    code.forEach(function (c) {
+      var s = document.createElement('script');
+      s.textContent = c;
+      document.head.appendChild(s);
+    });
+    start();
+  }).catch(fail);
+})();
+</script>

@@ -1,0 +1,2 @@
+{ "stock": { "shape": "square", "width": 44 }, "model": { "axis": "z", "centre": "bbox", "part_start_x": 15 }, "finish": { "tool_dia": 3.175 }, "parting": { "enabled": true, "neck_dia": 6 }, "chuck_clearance": 5,
+  "tenons": { "enabled": false } }

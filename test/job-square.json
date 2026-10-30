@@ -1,0 +1,1 @@
+{ "stock": { "shape": "square", "width": 40 }, "model": { "axis": "x", "centre": "origin", "part_start_x": 15 }, "finish": { "tool_dia": 3.175 } }
