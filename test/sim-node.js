@@ -30,6 +30,8 @@ let left = 0, cells = 0, sum = 0;
 for (let i = 0; i < sim.r.length; i++) if (sim.pr[i] > 0) { cells++; const d = sim.r[i] - sim.pr[i]; if (d > 0.5) left++; sum += Math.max(0, d); }
 const tc = sim.tenonCheck(0.1);
 console.log(`tenons ${tc.sides.join(' + ') || 'none'}: cells cut into >0.1 mm: ${tc.count}${tc.count ? ' (deepest ' + tc.worst.toFixed(3) + ' at X' + tc.x.toFixed(1) + ', ' + tc.side + ')' : ''}`);
+const hc = sim.holderCheck();
+console.log(`holder hits: ${hc.count}${hc.count ? ' worst ' + hc.worst.toFixed(2) + ' mm (' + hc.comp + ' into the ' + hc.what + ', ' + hc.op + ', line ' + hc.line + ', X' + hc.x.toFixed(1) + '), first at line ' + hc.first : ''}`);
 console.log(`rapids that cut stock: ${rapids.length}${rapids.length ? ' first at line ' + rapids[0][0] + ' (' + rapids[0][1].toFixed(2) + ' mm)' : ''}`);
 console.log(`over the part: ${cells} cells, ${(100 * left / cells).toFixed(1)}% with more than 0.5 mm left, mean left ${(sum / cells).toFixed(3)} mm`);
 // scrub back and forth

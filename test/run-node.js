@@ -81,6 +81,7 @@ const OCL = require('../lib/ocl.js');
       } }))); }
       console.log(`index check: ${bad} points below a fresh drop, worst ${worst.toFixed(3)} mm, from ${JSON.stringify(srcs)}`);
     }
+    if (ix.holder) console.log(`indexed: holder keeps it off ${ix.holder.volume.toFixed(0)} mm3 (needs up to ${ix.holder.need.toFixed(1)} mm more stickout)`);
     console.log(`indexed: A ${ix.angles.map((g) => g.a).join(', ') || '-'}; reaches ${ix.removed.toFixed(0)} of ${ix.target.toFixed(0)} mm3; missed ${JSON.stringify(ix.missed.map((m) => [m.x0, m.x1, +m.volume.toFixed(1)]))}; ${((Date.now() - t2) / 1000).toFixed(1)} s`);
     fs.writeFileSync(outFile + '.left.json', JSON.stringify({ n: left.n, x: Array.from(left.x), y: Array.from(left.y), z: Array.from(left.z), w: Array.from(left.w), target: Array.from(left.target), alive: Array.from(ix.alive) }));
     delete ix.alive;
