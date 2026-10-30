@@ -56,6 +56,9 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.check('#rc-index-auto'); await page.waitForTimeout(300);
 
     for (const [s, id] of [['rough', '11'], ['finish', '13'], ['index', '13']]) { await openSec(s); await page.selectOption(`#rc-${s}-tool`, id); }
+    // a long-reach 1/8 ball: this walkthrough is about Indexed, not about the collet nut
+    // (with the library's 22 mm stickout the nut keeps it off much of the jaw's underside)
+    await openSec('index'); await typeIn('#rc-index-stickout', (40 / U).toFixed(metric ? 2 : 4));
     await openSec('finish'); await typeIn('#rc-finish-pitch', (0.4 / U).toFixed(metric ? 2 : 4));
     await page.click('#rcam-root .rc-gen');
     const stages = new Set();

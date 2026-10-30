@@ -237,6 +237,16 @@ def fixture_list(cfg):
     return out
 
 
+def stock_contains(cfg, p):
+    """Inside the stock as it was before any cutting (its real shape), part frame."""
+    st_ = cfg.get("stock", {}) or {}
+    if st_.get("shape") == "square":
+        return (np.abs(p[:, 1]) < st_["width"] / 2 - 0.05) & (np.abs(p[:, 2]) < st_["width"] / 2 - 0.05)
+    if st_.get("shape") == "rect":
+        return (np.abs(p[:, 1]) < st_["width"] / 2 - 0.05) & (np.abs(p[:, 2]) < st_["height"] / 2 - 0.05)
+    return np.hypot(p[:, 1], p[:, 2]) < cfg["stock_radius"] - 0.05
+
+
 def holder_report(moves, mesh, cfg, sw):
     """Collet nut and spindle (vertical cylinders above the tool) against the rotary, the
     part and the stock left uncut past what roughing cut. Points over each holder part's
@@ -295,9 +305,10 @@ def holder_report(moves, mesh, cfg, sw):
                 qm = to_model(q, a, s)
                 rad = np.hypot(qm[:, 1], qm[:, 2])
                 if sw is not None:
-                    st_in = ((qm[:, 0] < sw[0] - 0.05) | (qm[:, 0] > sw[1] + 0.05)) & (qm[:, 0] > cfg["chuck_face_x"]) & (qm[:, 0] < cfg["tailstock_x"]) & (rad < R_st - 0.05)
+                    st_in = ((qm[:, 0] < sw[0] - 0.05) | (qm[:, 0] > sw[1] + 0.05)) & (qm[:, 0] > cfg["chuck_face_x"]) & (qm[:, 0] < cfg["tailstock_x"]) & stock_contains(cfg, qm)
                     if st_in.any():
                         hits += 1
+                        # how deep: the most the stock's outline reaches above the holder's bottom, roughly
                         pen = float((R_st - rad[st_in]).max())
                         if pen > worst:
                             worst, where = pen, f"{name} into the uncut stock, line {n}, X{x:.1f}"

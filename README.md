@@ -123,7 +123,8 @@ wrong mirrors anything asymmetric.
    would cut between X14 and X20: any lower and the collet nut would hit the chuck. Give
    the tool at least 38 mm stickout, or move the part further from the jaws*). Rapids
    travel high enough for the holder too. Indexed checks every pass against what's
-   actually left and says how much only a longer stickout would reach.
+   actually left (and the uncut stock past it), picks its angles where the nut and spindle
+   fit, and says how much only a longer stickout would reach.
 10. **Tool changes:** ncSender's Manual Tool Changer lifts to Safe Z and goes in straight
    lines to the tool change position and the tool setter, and back to where the M6 was.
    A straight line can pass over the rotary, and a long tool at Safe Z may not clear the

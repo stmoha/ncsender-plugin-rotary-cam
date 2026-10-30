@@ -5,7 +5,7 @@
 - **Tool changes go round the rotary:** before each M6 the program goes up to ncSender's Safe Z and round the chuck, headstock and tailstock to the tool change position, changes the tool there, and comes back the same way. It reads where everything is from ncSender: the rotary from the controller's G54 (the work zero is the jaw face on the axis), the tool change position and tool setter from the Manual Tool Changer, Safe Z from Settings (or type them in). It flags ncSender's own move to the tool setter if that crosses the rotary
 - The 3D view draws the rotary at its real size, the tool with its nut and spindle, and the tool change, tool setter and the way round to them
 - **Simulate** checks the collet nut and spindle against the stock and the rotary for every move
-- Indexed checks its holder against what's actually left, and says how much only a longer stickout would reach
+- Indexed checks its holder against what's actually left, picks angles where the nut and spindle fit, and says how much only a longer stickout would reach
 - New parts start 25 mm from the jaws (was 15), so a 35 mm collet nut clears a 100 mm chuck
 
 **Since 0.2.0**
