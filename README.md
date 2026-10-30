@@ -5,14 +5,17 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.6.0).** Air-cut the first program on a new setup.
+**Prototype (0.7.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
 - A rotates about X. Chuck on the left (−X), tailstock on the right (+X).
 - **Work zero: X0 = chuck jaw face, Y0 and Z0 = rotary centreline.** Z in the program is
   the tool-tip radius, so Z0 must be the axis, not the top of the stock.
-- Y stays at 0 the whole job.
+- Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
+- With **Tool changes › Go round the rotary** on (the default once ncSender says where things
+  are), start the job with the spindle over the rotary, where you set X0 Y0: the program
+  goes up to ncSender's Safe Z and over the part before its first tool change.
 
 Check the A direction once: mark the top of the stock and jog A+90. Set
 *A+90 moves the top of the stock to* to wherever the mark went (−Y or +Y). Getting this
@@ -98,16 +101,53 @@ wrong mirrors anything asymmetric.
    view pick which tool and toolpath to show, each in its own colour.
 7. **Simulate** plays the program itself, line by line, against a model of the stock: play,
    pause, drag to any point, and 1× to 1000× speed, with the current line and operation
-   shown. The whole program is checked first: rapids that cut into the stock, and anywhere
-   the stock ends up below the part (red), and any cut into a tenon. The result shows
+   shown. The whole program is checked first: rapids that cut into the stock, anywhere
+   the stock ends up below the part (red), any cut into a tenon, and the collet nut or
+   spindle running into the stock or the chuck, headstock, live centre or tailstock. The
+   tool shows with its nut and spindle. The result shows
    under the view. From the start of Indexed the view shows the part inside a see-through
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
-9. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
+9. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
+   headstock behind it, the live centre and the tailstock body (lengths, widths, how high
+   they stand above the axis), the collet nut (diameter, length) and the spindle's
+   diameter. Each operation's tool has a **Stickout**: how far it sticks out of the nut
+   (from the Tool Library's stickout when it has one, otherwise its flutes plus a little).
+   The 3D view draws all of it at size, the tool with its nut and spindle.
+   Every operation keeps the whole tool, the nut and the spindle off the chuck, headstock,
+   live centre and tailstock, and keeps the nut and spindle off the part, its tenons and
+   the stock past what roughing cut, by **Keep the holder clear by** (2 mm). Where an
+   operation would have to go lower than that allows, it stays up instead and says so,
+   with the stickout that would let it reach (*Finishing stays up to 10 mm off what it
+   would cut between X14 and X20: any lower and the collet nut would hit the chuck. Give
+   the tool at least 38 mm stickout, or move the part further from the jaws*). Rapids
+   travel high enough for the holder too. Indexed checks every pass against what's
+   actually left and says how much only a longer stickout would reach.
+10. **Tool changes:** ncSender's Manual Tool Changer lifts to Safe Z and goes in straight
+   lines to the tool change position and the tool setter, and back to where the M6 was.
+   A straight line can pass over the rotary, and a long tool at Safe Z may not clear the
+   chuck or tailstock. With **Go round the rotary** on, before each M6 the program goes up
+   to Safe Z (`G53 G0 Z`) and round the rotary's footprint (grown by the spindle's radius;
+   it never assumes the tool clears it) to the tool change position, issues the M6 there,
+   and comes back the same way. ncSender's own moves are then only between the change
+   position and the tool setter; if that line passes over the rotary it says so, since it
+   can't steer that one. It needs to know where things are, in machine coordinates, and
+   reads them from ncSender each time the dialog opens and before each Generate:
+   - **Rotary zero:** the active work offset (G54) from the controller. The work zero is the
+     jaw face on the axis, so that is where the rotary is.
+   - **Tool change position and tool setter:** the Manual Tool Changer's settings.
+   - **Safe Z:** ncSender's Settings.
+   - Type any of them in instead (another tool changer, ncSender not connected); a typed
+     value is kept until **Read from ncSender**. The machine's travel limits keep the way
+     round inside the machine.
+   The 3D view (Fit setup) shows the tool change and tool setter, and the way round once
+   generated.
+11. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
    the part, every setting, the tools, and the G-code and toolpaths if they were generated,
-   ready to simulate or load without calculating again. (If ncSender's units or the
-   machine's axis rates differ from when it was saved, it says so and you generate again.
+   ready to simulate or load without calculating again. The rotary, spindle and tool change
+   settings stay this machine's. (If ncSender's units, the axis rates, or the rotary,
+   spindle or tool change differ from when it was saved, it says so and you generate again.
    A tool that's no longer in your Tool Library as saved keeps the project's own settings.)
 
 ### Project files (`.rcam`)
@@ -165,9 +205,19 @@ These are included unmodified; their licences are in `licenses/`.
 ## Known gaps
 
 - A turns continuously (hundreds of turns). If A has soft limits, check `$133`.
-- No holder collision check (the tool always points at the axis, so it rarely matters on
-  convex-ish parts, but deep narrow coves can still catch the holder). Indexed keeps the
-  shank (taken as the cutter's diameter) clear of the part, not the holder.
+- The holder is the collet nut and the spindle as two plain cylinders, the rotary as a
+  cylinder (chuck), a cone (live centre) and two boxes (headstock, tailstock body). The
+  rotary passes check the holder against the part turned all the way round (it does turn
+  under it), which is right for spirals and on the safe side elsewhere.
+- Tool change routes never pass over the rotary, however high Safe Z is: on a machine
+  where the tool clears it they're a little longer than they need to be. ncSender's own
+  move between the tool change position and the tool setter can't be steered (it's
+  flagged when it crosses the rotary). The program's first move, from wherever the spindle
+  is to over the part, is a straight line at Safe Z.
+- ncSender Pro's Keepout Zone is one rectangle in X and Y, and nothing may pass over it at
+  any height. Set around the headstock and chuck, it keeps jogs and ncSender's tool change
+  moves out of them and doesn't get in this program's way; it can't cover the tailstock as
+  well. Rotary CAM doesn't rely on it.
 - The simulation keeps the stock as one radius per X and angle, so a pocket under an
   overhang only shows through Indexed's yellow blocks.
 - Tapered balls take about three times as long to calculate as plain balls: OpenCAMLib's
@@ -192,6 +242,8 @@ python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits
 node test/e2e-v8.cjs test/chin_test.step out/            # scale, Indexed angles in 3D, projects
+node test/e2e-v9.cjs test/chin_test.step out/            # rotary, spindle, stickout, tool changes round the rotary
+node test/route-test.js                                  # the tool change router
 node test/project-test.js test/horn.stl                  # .rcam round trip (and a stock unzip reads it)
 node test/shot-reach.cjs part.step out.png 90 iso        # screenshot of an Indexed angle's reach shading
 python3 test/index_check.py out.nc out.nc.left.json job.json   # how much of what finishing left the indexed G-code cuts

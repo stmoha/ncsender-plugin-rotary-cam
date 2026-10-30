@@ -151,24 +151,36 @@ export function create(container, opts = {}) {
     disposeTree(machine); machine.clear();
     disposeTree(stockGroup); stockGroup.clear();
     setup = s;
-    const R = s.stockR, chuckR = Math.max(R * 1.5 + 6, 30), x0 = s.chuckX;
-    const jawLen = 14, bodyLen = 34;
-    machine.add(xCylinder(chuckR, chuckR, x0 - jawLen - bodyLen, x0 - jawLen, mats.metal, 64));
-    machine.add(xCylinder(chuckR * 0.8, chuckR * 0.8, x0 - jawLen - bodyLen - 22, x0 - jawLen - bodyLen, mats.metalDark, 48));
-    // three jaws on the stock's largest radius
+    const R = s.stockR, x0 = s.chuckX, fx = s.fixtures || [];
+    const F = (name) => fx.find((f) => f.name === name);
+    // the rotary at its real size (Rotary & spindle settings)
+    const ch = F('chuck') || { x0: x0 - 48, x1: x0, r: Math.max(R * 1.5 + 6, 30) };
+    const chuckR = ch.r, jawLen = Math.min(14, (ch.x1 - ch.x0) / 3), bodyLen = ch.x1 - ch.x0 - jawLen;
+    machine.add(xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, mats.metal, 64));
+    // three jaws from the stock out to the chuck's full diameter
     const jawR = s.stockShape === 'round' ? R : Math.min(R, Math.max(s.stockHalf[0], s.stockHalf[1]));
     for (let k = 0; k < 3; k++) {
       const a = k * 120 * DEG + 90 * DEG;
-      const h = Math.max(10, chuckR - jawR - 2);
+      const h = Math.max(4, chuckR - jawR);
       const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, Math.max(8, R * 0.55), h), mats.metalDark);
-      jaw.position.set(x0 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
+      jaw.position.set(ch.x1 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
       jaw.rotation.x = a - 90 * DEG;
       machine.add(jaw);
     }
-    const xt = s.tailX, coneL = Math.max(14, R * 0.8), coneR = Math.max(6, R * 0.45);
-    machine.add(xCylinder(0.01, coneR, xt, xt + coneL, mats.metal, 32));
-    machine.add(xCylinder(coneR * 1.25, coneR * 1.25, xt + coneL, xt + coneL + 30, mats.metalDark, 32));
-    machine.add(xCylinder(chuckR * 0.75, chuckR * 0.75, xt + coneL + 30, xt + coneL + 75, mats.metal, 48));
+    const box = (f, mat) => {
+      const lo = -Math.max(f.top, chuckR) - 10, g = new THREE.BoxGeometry(f.x1 - f.x0, 2 * f.w, f.top - lo);
+      g.translate((f.x0 + f.x1) / 2, 0, (f.top + lo) / 2);
+      const m = new THREE.Mesh(g, mat);
+      machine.add(m);
+      machine.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), mats.stockEdge));
+    };
+    const hd = F('headstock');
+    if (hd) box(hd, mats.metalDark);
+    const xt = s.tailX, ce = F('live centre') || { x0: xt, x1: xt + Math.max(14, R * 0.8), r: Math.max(6, R * 0.45) };
+    const coneL = ce.x1 - ce.x0, coneR = ce.r;
+    machine.add(xCylinder(0.01, coneR, ce.x0, ce.x1, mats.metal, 32));
+    const tl = F('tailstock');
+    if (tl) box(tl, mats.metal);
     // stock: turns with the part
     const sx0 = x0 - jawLen, sx1 = xt;
     if (s.stockShape === 'round') {
@@ -189,7 +201,7 @@ export function create(container, opts = {}) {
     const kR = R + 1.5;
     if (s.chuckClear > 0) machine.add(xCylinder(kR, kR, x0, x0 + s.chuckClear, mats.keep, 48, true));
     if (s.tailClear > 0) machine.add(xCylinder(kR, kR, xt - s.tailClear, xt, mats.keep, 48, true));
-    const axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x0 - jawLen - bodyLen - 30, 0, 0), new THREE.Vector3(xt + coneL + 90, 0, 0)]), mats.axis);
+    const axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(ch.x0 - 30, 0, 0), new THREE.Vector3(xt + coneL + 90, 0, 0)]), mats.axis);
     axis.computeLineDistances();
     machine.add(axis);
     // A+ arrow
@@ -221,15 +233,16 @@ export function create(container, opts = {}) {
       lab.scale.set(6 * lab.userData.aspect, 6, 1);
       tri.add(lab);
     });
-    tri.position.set(x0 - jawLen - bodyLen - 26, -chuckR - 8, -chuckR);
+    tri.position.set((hd ? hd.x0 : ch.x0) - 26, -chuckR - 8, -chuckR);
     machine.add(tri);
+    const ls = Math.max(6, chuckR * 0.16);
     const lc = textSprite('chuck · X0 at the jaw face', theme.muted, 28);
-    lc.position.set(x0 - jawLen - bodyLen / 2, 0, chuckR + 9);
-    lc.scale.set(6 * lc.userData.aspect, 6, 1);
+    lc.position.set(ch.x0 + bodyLen / 2, 0, chuckR + 9);
+    lc.scale.set(ls * lc.userData.aspect, ls, 1);
     machine.add(lc);
     const lt = textSprite('tailstock', theme.muted, 28);
-    lt.position.set(xt + coneL + 50, 0, chuckR * 0.75 + 9);
-    lt.scale.set(6 * lt.userData.aspect, 6, 1);
+    lt.position.set(tl ? (tl.x0 + tl.x1) / 2 : xt + coneL + 50, 0, (tl ? tl.top : chuckR * 0.75) + 9);
+    lt.scale.set(ls * lt.userData.aspect, ls, 1);
     machine.add(lt);
     buildTool();
     requestRender();
@@ -240,13 +253,23 @@ export function create(container, opts = {}) {
     if (tool) { machine.remove(tool); disposeTree(tool); tool = null; }
     const t = setup && setup.tools && setup.tools[op];
     if (!t || !(t.dia > 0)) return;
-    tool = makeTool(t, op);
+    tool = makeTool(Object.assign({ stickout: setup.stickout && setup.stickout[op] }, t), op);
     tool.position.set(setup.toolX != null ? setup.toolX : (setup.chuckX + setup.tailX) / 2, 0, setup.stockR + setup.clear);
     tool.visible = !simOn && !(op === 'index' && idx.list.length);
     machine.add(tool);
   }
+  // the collet nut and spindle above a tool that sticks out `so` from the nut
+  function holder(tool, so) {
+    const g = (setup && setup.rig) || {}, nd = (g.nut && g.nut.dia) || 35, nl = (g.nut && g.nut.len) || 20, sd = (g.spindle && g.spindle.dia) || 80;
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(nd / 2, nd / 2, nl, 6), mats.metal);
+    nut.rotation.x = Math.PI / 2; nut.position.z = so + nl / 2;
+    tool.add(nut);
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(sd / 2, sd / 2, 90, 48), mats.metalDark);
+    sp.rotation.x = Math.PI / 2; sp.position.z = so + nl + 45;
+    tool.add(sp);
+  }
   function makeTool(t, which) {
-    const tr = t.dia / 2, len = t.len || 20, ball = !!t.ball;
+    const tr = t.dia / 2, len = t.len || 20, ball = !!t.ball, so = t.stickout > 0 ? t.stickout : len + 6;
     const tool = new THREE.Group();
     const flutes = mats[which + 'Tool'] || mats.finishTool;
     if (ball && t.taper > 0 && t.shank / 2 > tr) {
@@ -261,12 +284,12 @@ export function create(container, opts = {}) {
       const lathe = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), flutes);
       lathe.rotation.x = Math.PI / 2;
       tool.add(lathe);
-      const shank = new THREE.Mesh(new THREE.CylinderGeometry(rs, rs, 30, 32), mats.shank);
-      shank.rotation.x = Math.PI / 2; shank.position.z = top + 15;
-      tool.add(shank);
-      const nut = new THREE.Mesh(new THREE.CylinderGeometry(rs * 2.6 + 6, rs * 2.6 + 6, 16, 6), mats.metal);
-      nut.rotation.x = Math.PI / 2; nut.position.z = top + 38;
-      tool.add(nut);
+      if (so > top) {
+        const shank = new THREE.Mesh(new THREE.CylinderGeometry(rs, rs, so - top, 32), mats.shank);
+        shank.rotation.x = Math.PI / 2; shank.position.z = (top + so) / 2;
+        tool.add(shank);
+      }
+      holder(tool, so);
       return tool;
     }
     if (ball) {
@@ -274,16 +297,16 @@ export function create(container, opts = {}) {
       b.rotation.x = Math.PI / 2; b.position.z = tr;
       tool.add(b);
     }
-    const base = ball ? tr : 0;
-    const flute = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, len - base, 32, 1, false), flutes);
-    flute.rotation.x = Math.PI / 2; flute.position.z = base + (len - base) / 2;
+    const base = ball ? tr : 0, fl = Math.min(len, so);
+    const flute = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, Math.max(0.1, fl - base), 32, 1, false), flutes);
+    flute.rotation.x = Math.PI / 2; flute.position.z = base + (fl - base) / 2;
     tool.add(flute);
-    const shank = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, 30, 32), mats.shank);
-    shank.rotation.x = Math.PI / 2; shank.position.z = len + 15;
-    tool.add(shank);
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(tr * 2.6 + 6, tr * 2.6 + 6, 16, 6), mats.metal);
-    nut.rotation.x = Math.PI / 2; nut.position.z = len + 38;
-    tool.add(nut);
+    if (so > fl) {
+      const shank = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, so - fl, 32), mats.shank);
+      shank.rotation.x = Math.PI / 2; shank.position.z = (fl + so) / 2;
+      tool.add(shank);
+    }
+    holder(tool, so);
     return tool;
   }
 
@@ -426,6 +449,7 @@ export function create(container, opts = {}) {
     if (tool) tool.visible = !simOn && !(op === 'index' && idx.list.length);
     if (simTool) simTool.visible = simOn;
     idxGroup.visible = !simOn;
+    tcGroup.visible = !simOn;
     if (lvMesh) lvMesh.visible = !simOn;
     reach.intensity = simOn ? 0 : (idx.opts.pick >= 0 && idx.list[idx.opts.pick] ? REACH : 0);
     lightsForReach(!simOn && reach.intensity > 0);
@@ -435,7 +459,7 @@ export function create(container, opts = {}) {
   }
   // the tool doing the cutting at this moment, in machine coordinates
   function simToolAt(t, which, x, y, z) {
-    const key = t ? which + ':' + t.dia + ':' + t.ball + ':' + (t.taper || 0) + ':' + (t.shank || 0) : '';
+    const key = t ? which + ':' + t.dia + ':' + t.ball + ':' + (t.taper || 0) + ':' + (t.shank || 0) + ':' + (t.stickout || 0) : '';
     if (key !== simToolKey) {
       if (simTool) { scene.remove(simTool); disposeTree(simTool); simTool = null; }
       simToolKey = key;
@@ -455,7 +479,7 @@ export function create(container, opts = {}) {
   const dirOf = (a) => a * aSign * DEG;
   const REACH = 3.4;
   function ghostTool(t, on) {
-    const g = makeTool(t, 'index');
+    const g = makeTool(Object.assign({ stickout: setup && setup.stickout && setup.stickout.index }, t), 'index');
     g.traverse((o) => { if (o.isMesh) { o.material = on ? mats.ghostOn : mats.ghost; o.renderOrder = 6; o.userData.idxGhost = true; } });
     return g;
   }
@@ -547,6 +571,43 @@ export function create(container, opts = {}) {
     return ((w * aSign) % 360 + 360) % 360;
   }
 
+  // ---------------- tool changes: where the change position and tool setter are, and the
+  // way the program goes round the rotary to the change position (work coordinates)
+  const tcGroup = new THREE.Group(); scene.add(tcGroup);
+  let tcData = null;
+  function setToolChanges(d) {
+    tcData = d;
+    disposeTree(tcGroup); tcGroup.clear();
+    if (!d || !d.change) { requestRender(); return; }
+    const fx = (setup && setup.fixtures) || [], hTop = Math.max(40, ...fx.map((f) => (f.kind === 'box' ? f.top : f.r))) + 25;
+    const mark = (q, label, col) => {
+      const g = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, hTop, 16), new THREE.MeshStandardMaterial({ color: new THREE.Color(col), roughness: 0.5 }));
+      post.rotation.x = Math.PI / 2; post.position.z = hTop / 2 - 20;
+      g.add(post);
+      const lab = textSprite(label, col, 28);
+      lab.position.set(0, 0, hTop + 8); lab.scale.set(13 * lab.userData.aspect, 13, 1);
+      g.add(lab);
+      g.position.set(q.x, q.y, 0);
+      tcGroup.add(g);
+    };
+    mark(d.change, 'tool change', '#a855f7');
+    if (d.setter) mark(d.setter, 'tool setter', '#64748b');
+    const mat = new THREE.LineDashedMaterial({ color: new THREE.Color('#a855f7'), dashSize: 6, gapSize: 4, transparent: true, opacity: 0.9 });
+    (d.paths || []).slice(0, 1).forEach((path) => {
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(path.map(([x, y]) => new THREE.Vector3(x, y, hTop - 20))), mat);
+      ln.computeLineDistances();
+      tcGroup.add(ln);
+    });
+    if (d.setter) {
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(d.change.x, d.change.y, hTop - 20), new THREE.Vector3(d.setter.x, d.setter.y, hTop - 20)]), new THREE.LineDashedMaterial({ color: new THREE.Color(d.setterHits ? '#d64545' : '#64748b'), dashSize: 3, gapSize: 4 }));
+      ln.computeLineDistances();
+      tcGroup.add(ln);
+    }
+    tcGroup.visible = !simOn;
+    requestRender();
+  }
+
   // ---------------- camera
   function frame(whole) {
     const b = new THREE.Box3();
@@ -558,11 +619,14 @@ export function create(container, opts = {}) {
       return b;
     }
     if (setup) {
-      const R = Math.max(setup.stockR * 1.5 + 6, 30);
-      b.expandByPoint(new THREE.Vector3(setup.chuckX - 75, -R, -R));
-      b.expandByPoint(new THREE.Vector3(setup.tailX + Math.max(14, setup.stockR * 0.8) + 75, R, R));
+      const fx = setup.fixtures || [], R = Math.max(setup.stockR * 1.5 + 6, 30, ...fx.map((f) => (f.kind === 'box' ? Math.max(f.w, f.top) : f.r)));
+      const xa = Math.min(setup.chuckX - 75, ...fx.map((f) => f.x0)), xb = Math.max(setup.tailX + 75, ...fx.map((f) => f.x1));
+      b.expandByPoint(new THREE.Vector3(xa, -R, -R));
+      b.expandByPoint(new THREE.Vector3(xb, R, R));
     }
     if (bounds) b.union(bounds);
+    // the whole setup takes in the tool change and tool setter too
+    if (tcData && tcData.change) [tcData.change, tcData.setter].forEach((q) => { if (q) b.expandByPoint(new THREE.Vector3(q.x, q.y, 0)); });
     if (b.isEmpty()) b.set(new THREE.Vector3(-50, -50, -50), new THREE.Vector3(250, 50, 50));
     return b;
   }
@@ -671,7 +735,11 @@ export function create(container, opts = {}) {
     setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons,
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
     simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost,
-    setIndexAngles, setLeftover,
+    setIndexAngles, setLeftover, setToolChanges,
+    toolChangeShown() { return !!(tcData && tcData.change && tcGroup.children.length); },
+    toolChangeRoutes() { return tcData && tcData.paths ? tcData.paths.length : 0; },
+    fixtures() { return (setup && setup.fixtures || []).map((f) => Object.assign({}, f)); },
+    toolHolder() { return tool ? { stickout: setup && setup.stickout && setup.stickout[op], parts: tool.children.length } : null; },
     indexAngleCount() { return idx.ghosts.length; },
     indexReach() { return reach.intensity > 0; },
     leftoverCount() { return lvMesh && lvMesh.visible ? lvMesh.count : 0; },

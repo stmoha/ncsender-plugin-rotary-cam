@@ -17,13 +17,18 @@ const log = [];
 const LIBRARY = [
   { id: 11, toolId: 11, toolNumber: 1, name: '1/4" Flat End Mill', type: 'flat', diameter: 6.35, dimensions: { flute_length: 25 } },
   { id: 12, toolId: 12, toolNumber: 2, name: '1/4" Ball End Mill', type: 'ball', diameter: 6.35, dimensions: { flute_length: 22 } },
-  { id: 13, toolId: 13, toolNumber: 3, name: '1/8" Ball End Mill', type: 'ball', diameter: 3.175, dimensions: { flute_length: 12 } },
+  { id: 13, toolId: 13, toolNumber: 3, name: '1/8" Ball End Mill', type: 'ball', diameter: 3.175, dimensions: { flute_length: 12, stickout: 22 } },
   { id: 14, toolId: 14, toolNumber: null, name: '60° V-bit', type: 'v-bit', diameter: 12.7 },
   // a tapered ball the way it has to be entered today: as a V-bit, diameter = shank
   { id: 15, toolId: 15, toolNumber: 5, name: '1mm Tapered Ball 3.6° 1/8" shank', type: 'v-bit', diameter: 3.175, dimensions: { flute_length: 25 } }
 ];
 const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { value: '24000' }, 110: { value: '5000' }, 112: { value: '2500' }, 113: { value: '5400' }, 133: { value: '0' } } };
 
+// the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
+// ncsender-plugin-manualtoolchanger settings: parking = tool change position, toolSetter)
+let MACHINE = { connected: true, workspace: 'G54', g54: '-300.000,-200.000,-80.000,0.000', MPos: '-150.000,-200.000,-10.000', WCO: '-300.000,-200.000,-80.000', maxTravelX: 800, maxTravelY: 600, maxTravelZ: 130, homed: true };
+let MTC = { installed: true, enabled: true, settings: { parking: { x: -560, y: -380, z: 0 }, toolSetter: { x: -400, y: -100, z: -50 } } };
+let SAFEZ = -5;
 const json = (res, obj, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c).toString('utf8'))); });
 
@@ -55,11 +60,14 @@ http.createServer(async (req, res) => {
     return json(res, { title: b.label, content: html, options: { size: 'large' } });
   }
   if (p === `/api/plugins/${ID}/config-ui`) return json(res, { configUI: readFileSync(join(PLUGIN_DIR, 'config.html'), 'utf8') });
-  if (p === '/api/settings') return json(res, { unitsPreference: UNITS, safeZHeight: -5, tool: { numbering: 'slot' } });
+  if (p === '/api/settings') return json(res, { unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } });
+  if (p === '/api/plugins') return json(res, [{ id: ID, name: 'Rotary CAM', enabled: true }].concat(MTC.installed ? [{ id: 'com.ncsender.manualtoolchange', name: 'Manual Tool Changer', enabled: MTC.enabled }] : []));
+  if (p === '/api/plugins/com.ncsender.manualtoolchange/settings') { if (!MTC.installed) { res.writeHead(404); return res.end(); } return json(res, MTC.settings); }
+  if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
   if (p === '/__test/units' && req.method === 'POST') { UNITS = (await body(req)).trim(); return json(res, { units: UNITS }); }
   if (p === '/api/tools') return json(res, LIBRARY);
   if (p === '/api/firmware') return json(res, FIRMWARE);
-  if (p === '/api/server-state') return json(res, { machineState: { connected: true } });
+  if (p === '/api/server-state') return json(res, { machineState: MACHINE, senderStatus: 'idle' });
   if (p === '/api/gcode-files/file') {
     const path = url.searchParams.get('path');
     if (saved.has(path)) return json(res, { path, content: saved.get(path) });
