@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.5.0).** Air-cut the first program on a new setup.
+**Prototype (0.6.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -21,7 +21,8 @@ wrong mirrors anything asymmetric.
 ## Using it
 
 1. **Tools › Rotary CAM** opens a full-window view of the rotary setup: chuck, jaws,
-   stock, tailstock and the rotary axis. Open or drop a `.stl`, `.step` or `.stp` file.
+   stock, tailstock and the rotary axis. **Open…** (or drop) a `.stl`, `.step` or `.stp`
+   part, or a Rotary CAM project (`.rcam`, below).
 2. **Place the part** with the buttons on the 3D view:
    - **Turning axis X / Y / Z:** which model axis lies along the rotary. A new file starts
      on its longest side.
@@ -31,6 +32,12 @@ wrong mirrors anything asymmetric.
    - **On axis:** what sits on the rotary centreline: the centre of the part, the centre
      of its chuck end (a chess piece's round base), the tailstock end, or the model origin.
    - **A slider:** turns the part and its stock the way the rotary will.
+   - **Scale** (Part placement): the part's size against the model as drawn (100%). A model
+     drawn in inches but read as millimetres needs 2540%. **Scale to fit the stock** picks
+     the largest size that fits the stock with 1 mm to spare all round and still leaves the
+     operations room before the tailstock; the message says which of the two set the size.
+     A part too big for the stock also offers **Scale the part to fit** beside **Fit the
+     stock to the part**.
    - Settings in the side panel update the 3D view as you type or use the arrow keys.
 3. **Stock & rotary:** round, square or rectangular stock, tailstock position, keep-away
    distances. If the part doesn't fit, it turns red and **Fit the stock to the part** sizes it.
@@ -70,6 +77,17 @@ wrong mirrors anything asymmetric.
      patch run its long way with linked passes. The tool always points across the rotary
      axis on this machine, so a pocket that only opens toward the chuck or tailstock can't
      be reached; the message after Generate says how much was reached and where the rest is.
+     With your own angles there's nothing to pick, so it doesn't try every angle first: each
+     one is checked just before it's planned, against what the angles before it left.
+     **Angles in 3D:** with Indexed showing (its button on the view, or any of its settings),
+     each angle shows as a see-through Indexed tool coming straight down onto the part the
+     way it will with A locked there; once generated, what the rotary passes leave shows as
+     yellow blocks. Click an angle's chip (A90°, under *A angles*) to turn the part to it:
+     its tool points straight down and the part goes light where that tool can see and dark
+     slate where it can't (the dark faces are out of its reach). Drag a tool around the axis
+     in the 3D view to change its angle (5° steps, Shift for 1°), ✕ removes one, and **+ A**
+     adds the angle the A slider is at: turn the part until the spot you want faces straight
+     up, then press it. Changing the angles the calculation picked makes them your own.
    - **Parting:** necks the stock down beside one or both ends of the part to a set
      diameter (spiralling in), ready to cut it free. Off until you tick it.
    Toolpaths reach the ends of the part: the cutter runs past an end until its contact
@@ -86,6 +104,26 @@ wrong mirrors anything asymmetric.
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
+9. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
+   the part, every setting, the tools, and the G-code and toolpaths if they were generated,
+   ready to simulate or load without calculating again. (If ncSender's units or the
+   machine's axis rates differ from when it was saved, it says so and you generate again.
+   A tool that's no longer in your Tool Library as saved keeps the project's own settings.)
+
+### Project files (`.rcam`)
+
+A `.rcam` is an ordinary ZIP archive; rename it `.zip` to look inside:
+
+| File | What it is |
+| --- | --- |
+| `project.json` | format and version, the Rotary CAM version that saved it, units, the part's name, every setting (the same job settings ncSender stores for the plugin), the tools each operation uses with their Tool Library entries |
+| `part.stl` | the part as Rotary CAM uses it, as drawn (before it's placed on the rotary), binary STL: opens in any CAD or slicer |
+| `source/<name>.step` | the STEP file it came from, when the part was opened from one |
+| `program.nc` | the G-code, when it's been generated |
+| `result.json`, `result.bin` | the toolpaths, previews and Indexed leftovers behind that G-code (typed arrays in the `.bin`) |
+
+Save project uses the browser's Save dialog where it has one (ncSender on this computer),
+otherwise it downloads the file.
 
 Every setting has a tooltip (hover it, or the **?** beside it).
 
@@ -153,6 +191,9 @@ node test/e2e-v5.cjs test/horn.stl out/                  # tenons
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits
+node test/e2e-v8.cjs test/chin_test.step out/            # scale, Indexed angles in 3D, projects
+node test/project-test.js test/horn.stl                  # .rcam round trip (and a stock unzip reads it)
+node test/shot-reach.cjs part.step out.png 90 iso        # screenshot of an Indexed angle's reach shading
 python3 test/index_check.py out.nc out.nc.left.json job.json   # how much of what finishing left the indexed G-code cuts
 node test/sim-node.js out.nc placed.stl job.json         # the simulator's checks in Node
 python3 test/dense_check.py out.nc part.stl job.json     # every finishing move, at three points along it
