@@ -48,6 +48,8 @@ export function create(container, opts = {}) {
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
+  renderer.shadowMap.enabled = true;     // only the Indexed reach light casts shadows
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none';
   container.appendChild(renderer.domElement);
 
@@ -61,7 +63,8 @@ export function create(container, opts = {}) {
   controls.screenSpacePanning = true;
   controls.target.set(100, 0, 0);
 
-  scene.add(new THREE.HemisphereLight(0xf2f6ff, 0x3a4250, 1.6));
+  const hemi = new THREE.HemisphereLight(0xf2f6ff, 0x3a4250, 1.6);
+  scene.add(hemi);
   const key = new THREE.DirectionalLight(0xffffff, 1.9);
   key.position.set(-0.4, -1, 1.3);
   scene.add(key);
@@ -80,6 +83,13 @@ export function create(container, opts = {}) {
   let partMesh = null, pathLines = {}, aSign = 1, aDeg = 0, op = 'finish', tool = null;
   let simMesh = null, simOn = false, simTool = null, simToolKey = '', ghost = false, ovMesh = null, ovData = null;
   let theme = { ink: '#1e2a32', muted: '#5e6b75', accent: '#1abc9c', dark: false };
+  const idxGroup = new THREE.Group(); partGroup.add(idxGroup);   // Indexed angles, fixed to the part
+  let idx = { list: [], opts: {}, ghosts: [], drag: null }, lvMesh = null;
+  const reach = new THREE.DirectionalLight(0xffd75e, 0);
+  reach.castShadow = true;
+  reach.shadow.mapSize.set(2048, 2048);
+  reach.shadow.bias = -0.0004;
+  partGroup.add(reach); partGroup.add(reach.target);
   let setup = null, bounds = null;
 
   const mats = {};
@@ -91,12 +101,17 @@ export function create(container, opts = {}) {
     mats.stock = new THREE.MeshStandardMaterial({ color: 0xd9b98c, transparent: true, opacity: theme.dark ? 0.12 : 0.16, roughness: 0.9, depthWrite: false, side: THREE.FrontSide });
     mats.stockEdge = new THREE.LineBasicMaterial({ color: 0xc49a5c, transparent: true, opacity: 0.7 });
     mats.keep = new THREE.MeshBasicMaterial({ color: 0xd64545, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide });
-    mats.part = new THREE.MeshStandardMaterial({ color: theme.dark ? 0x9db4d6 : 0x7f9bc4, metalness: 0.08, roughness: 0.55, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    mats.part = new THREE.MeshStandardMaterial({ color: theme.dark ? 0x9db4d6 : 0x7f9bc4, metalness: 0.08, roughness: 0.55, side: THREE.DoubleSide, shadowSide: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     mats.partBad = new THREE.MeshStandardMaterial({ color: 0xd66a5a, metalness: 0.05, roughness: 0.6, side: THREE.DoubleSide });
+    // Indexed reach: light where the picked angle's tool sees, dark slate where it can't
+    mats.partReach = new THREE.MeshStandardMaterial({ color: 0xeef0f2, metalness: 0.0, roughness: 0.7, side: THREE.DoubleSide, shadowSide: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     mats.shank = new THREE.MeshStandardMaterial({ color: 0xc7ccd2, metalness: 0.8, roughness: 0.25 });
     mats.sim = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.05, roughness: 0.75, side: THREE.DoubleSide });
     mats.simGhost = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.05, roughness: 0.75, side: THREE.DoubleSide, transparent: true, opacity: 0.16, depthWrite: false });
     mats.overlay = new THREE.MeshStandardMaterial({ color: new THREE.Color(OP_COLORS.index), roughness: 0.6, metalness: 0.05 });
+    mats.ghost = new THREE.MeshStandardMaterial({ color: new THREE.Color(OP_COLORS.index), transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.5 });
+    mats.ghostOn = new THREE.MeshStandardMaterial({ color: new THREE.Color(OP_COLORS.index), transparent: true, opacity: 0.85, roughness: 0.4, emissive: new THREE.Color(OP_COLORS.index), emissiveIntensity: 0.25 });
+    mats.ghostLine = new THREE.LineDashedMaterial({ color: new THREE.Color(OP_COLORS.index), dashSize: 2.5, gapSize: 2, transparent: true, opacity: 0.9 });
     mats.tenon = new THREE.MeshStandardMaterial({ color: new THREE.Color(TENON_COLOR), transparent: true, opacity: 0.5, roughness: 0.6, depthWrite: false, side: THREE.DoubleSide });
     mats.tenonEdge = new THREE.LineBasicMaterial({ color: new THREE.Color(TENON_COLOR), transparent: true, opacity: 0.95, depthTest: false });
     mats.axis = new THREE.LineDashedMaterial({ color: theme.dark ? 0xe6ecf2 : 0x1e2a32, dashSize: 4, gapSize: 3, transparent: true, opacity: 0.55 });
@@ -227,7 +242,7 @@ export function create(container, opts = {}) {
     if (!t || !(t.dia > 0)) return;
     tool = makeTool(t, op);
     tool.position.set(setup.toolX != null ? setup.toolX : (setup.chuckX + setup.tailX) / 2, 0, setup.stockR + setup.clear);
-    tool.visible = !simOn;
+    tool.visible = !simOn && !(op === 'index' && idx.list.length);
     machine.add(tool);
   }
   function makeTool(t, which) {
@@ -282,11 +297,16 @@ export function create(container, opts = {}) {
     geo = toCreasedNormals(geo, 35 * DEG);
     geo.computeBoundingBox();
     bounds = geo.boundingBox.clone();
-    partMesh = new THREE.Mesh(geo, opt.bad ? mats.partBad : mats.part);
+    partBad = !!opt.bad;
+    partMesh = new THREE.Mesh(geo, partMat());
+    partMesh.castShadow = partMesh.receiveShadow = true;
     partGroup.add(partMesh);
+    if (idx.list.length) buildIndex();
     requestRender();
   }
-  function setPartBad(bad) { if (partMesh) { partMesh.material = bad ? mats.partBad : mats.part; requestRender(); } }
+  let partBad = false;
+  const partMat = () => (reach.intensity > 0 ? mats.partReach : partBad ? mats.partBad : mats.part);
+  function setPartBad(bad) { partBad = !!bad; if (partMesh) { partMesh.material = partMat(); requestRender(); } }
 
   // tenons: [{ x0, x1, r, in0, in1 }]. The cylinder shows wherever it sticks out of the
   // part; a ring (seen through the part) marks how far it reaches into the part.
@@ -403,8 +423,13 @@ export function create(container, opts = {}) {
     if (partMesh) partMesh.visible = !simOn || ghost;
     stockGroup.visible = !simOn;
     tenonGroup.visible = !simOn;
-    if (tool) tool.visible = !simOn;
+    if (tool) tool.visible = !simOn && !(op === 'index' && idx.list.length);
     if (simTool) simTool.visible = simOn;
+    idxGroup.visible = !simOn;
+    if (lvMesh) lvMesh.visible = !simOn;
+    reach.intensity = simOn ? 0 : (idx.opts.pick >= 0 && idx.list[idx.opts.pick] ? REACH : 0);
+    lightsForReach(!simOn && reach.intensity > 0);
+    if (partMesh) partMesh.material = partMat();
     Object.keys(pathLines).forEach((k) => { pathLines[k].visible = k === op && !simOn; });
     requestRender();
   }
@@ -418,6 +443,108 @@ export function create(container, opts = {}) {
     }
     if (simTool) { simTool.visible = simOn; simTool.position.set(x, y, z); }
     requestRender();
+  }
+
+  // ---------------- Indexed angles
+  // A see-through Indexed tool at each A angle, coming straight down onto the part the way
+  // it will with A locked there. They're fixed to the part, so turning A turns them too;
+  // with the A slider at an angle, that angle's tool is the one pointing straight down.
+  // The picked angle lights the part from its tool's direction: what's in shadow, that
+  // tool can't see (and can't reach).
+  //   list: [{ a }] degrees; opts: { tool, x, rTip, pick, editable, colour }
+  const dirOf = (a) => a * aSign * DEG;
+  const REACH = 3.4;
+  function ghostTool(t, on) {
+    const g = makeTool(t, 'index');
+    g.traverse((o) => { if (o.isMesh) { o.material = on ? mats.ghostOn : mats.ghost; o.renderOrder = 6; o.userData.idxGhost = true; } });
+    return g;
+  }
+  function buildIndex() {
+    disposeTree(idxGroup); idxGroup.clear(); idx.ghosts = [];
+    const o = idx.opts, t = o.tool;
+    reach.intensity = 0;
+    if (!idx.list.length || !t || !(t.dia > 0)) { lightsForReach(false); if (tool) tool.visible = !simOn; requestRender(); return; }
+    const x = o.x != null ? o.x : bounds ? (bounds.min.x + bounds.max.x) / 2 : 100, rt = o.rTip || 25;
+    idx.list.forEach((e, i) => {
+      const on = i === o.pick, pivot = new THREE.Group();
+      pivot.position.set(x, 0, 0);
+      pivot.rotation.x = -dirOf(e.a);
+      const gt = ghostTool(t, on);
+      gt.position.set(0, 0, rt);
+      gt.traverse((m) => { if (m.isMesh) m.userData.idx = i; });
+      pivot.add(gt);
+      const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, rt)]), mats.ghostLine);
+      ln.computeLineDistances();
+      pivot.add(ln);
+      const lab = textSprite('A' + (Math.round(e.a * 10) / 10) + '\u00b0', OP_COLORS.index, 30);
+      const top = (t.len || 20) + 50;
+      lab.position.set(0, 0, rt + top + 8);
+      lab.scale.set(7 * lab.userData.aspect, 7, 1);
+      pivot.add(lab);
+      idx.ghosts.push({ pivot, label: lab, a: e.a });
+      idxGroup.add(pivot);
+    });
+    const p = o.pick >= 0 && idx.list[o.pick];
+    if (p) {
+      // light from the picked tool's direction, shadows sized to the part
+      const b = bounds || new THREE.Box3(new THREE.Vector3(0, -30, -30), new THREE.Vector3(200, 30, 30));
+      const ext = Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z) * 0.6 + 10, cx = (b.min.x + b.max.x) / 2, d = dirOf(p.a);
+      reach.position.set(cx, Math.sin(d) * ext * 3, Math.cos(d) * ext * 3);
+      reach.target.position.set(cx, 0, 0);
+      const cam = reach.shadow.camera;
+      cam.left = -ext; cam.right = ext; cam.top = ext; cam.bottom = -ext; cam.near = 0.5; cam.far = ext * 6;
+      cam.updateProjectionMatrix();
+      reach.shadow.normalBias = Math.max(0.02, ext / 2048 * 1.5);
+      reach.intensity = REACH;
+    }
+    lightsForReach(!!p);
+    if (partMesh) partMesh.material = partMat();
+    if (tool) tool.visible = !simOn && op !== 'index';
+    requestRender();
+  }
+  // with the reach light on, dim the others so its shadows show
+  function lightsForReach(on) {
+    hemi.intensity = on ? 0.55 : 1.6; key.intensity = on ? 0 : 1.9; rim.intensity = on ? 0 : 0.8; camLight.intensity = on ? 0.25 : 0.7;
+    hemi.color.set(on ? 0xb8c8ff : 0xf2f6ff);
+  }
+  function setIndexAngles(list, o = {}) {
+    idx.list = (list || []).map((e) => ({ a: Number(e.a) || 0 }));
+    idx.opts = o;
+    if (!idx.drag) buildIndex();
+  }
+  // what's left to clean before Indexed, as small blocks in the part frame (3D tab)
+  function setLeftover(ov) {
+    if (lvMesh) { partGroup.remove(lvMesh); lvMesh.geometry.dispose(); lvMesh.dispose(); lvMesh = null; }
+    if (ov && ov.n) {
+      const b = Math.max(0.2, ov.s * 0.9);
+      lvMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(b, b, b), mats.overlay, ov.n);
+      const m = new THREE.Matrix4();
+      for (let i = 0; i < ov.n; i++) { m.makeTranslation(ov.x[i], ov.y[i], ov.z[i]); lvMesh.setMatrixAt(i, m); }
+      lvMesh.instanceMatrix.needsUpdate = true;
+      lvMesh.visible = !simOn;
+      partGroup.add(lvMesh);
+    }
+    requestRender();
+  }
+  // the A angle under the pointer: where its ray meets the cylinder the tool tips sit on
+  // (or, looking along the axis, the plane across it)
+  function angleAt(e) {
+    const r = renderer.domElement.getBoundingClientRect();
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const o = ray.ray.origin, d = ray.ray.direction, rc = idx.opts.rTip || 25, x = idx.opts.x != null ? idx.opts.x : 0;
+    let y = null, z = null;
+    const A = d.y * d.y + d.z * d.z, B = 2 * (o.y * d.y + o.z * d.z), C = o.y * o.y + o.z * o.z - rc * rc, disc = B * B - 4 * A * C;
+    if (Math.abs(d.x) < 0.45 && A > 1e-9 && disc >= 0) {
+      const s0 = (-B - Math.sqrt(disc)) / (2 * A);
+      y = o.y + s0 * d.y; z = o.z + s0 * d.z;
+    } else if (Math.abs(d.x) > 1e-6) {
+      const s1 = (x - o.x) / d.x;
+      y = o.y + s1 * d.y; z = o.z + s1 * d.z;
+    }
+    if (y === null || Math.hypot(y, z) < 1e-6) return null;
+    const w = Math.atan2(y, z) / DEG + aDeg * aSign;       // world angle back into the part's frame
+    return ((w * aSign) % 360 + 360) % 360;
   }
 
   // ---------------- camera
@@ -468,8 +595,65 @@ export function create(container, opts = {}) {
 
   // click (not drag) on the part -> point in the part's frame at A = 0
   let down = null;
-  renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+  function ghostUnder(e) {
+    if (!idx.ghosts.length || simOn) return -1;
+    const r = renderer.domElement.getBoundingClientRect(), ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const hit = ray.intersectObject(idxGroup, true).find((h) => h.object.userData.idxGhost);
+    return hit ? hit.object.userData.idx : -1;
+  }
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    down = [e.clientX, e.clientY];
+    const i = ghostUnder(e);
+    if (i < 0) return;
+    // a press on an angle's tool picks it; dragging it (when editable) turns it about the axis
+    idx.drag = { i, moved: false, a: idx.list[i].a, startA: angleAt(e) };
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+  }, true);
+  renderer.domElement.addEventListener('pointermove', (e) => {
+    const g = idx.drag;
+    if (!g) {
+      if (idx.ghosts.length && !simOn && e.buttons === 0) renderer.domElement.style.cursor = ghostUnder(e) >= 0 ? (idx.opts.editable ? 'grab' : 'pointer') : '';
+      return;
+    }
+    if (!idx.opts.editable || g.startA === null) return;
+    if (!g.moved && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 4) return;
+    const now = angleAt(e);
+    if (now === null) return;
+    g.moved = true;
+    renderer.domElement.style.cursor = 'grabbing';
+    const step = e.shiftKey ? 1 : 5;
+    let a = Math.round((idx.list[g.i].a + ((now - g.startA + 540) % 360 - 180)) / step) * step;
+    a = ((a % 360) + 360) % 360;
+    g.a = a;
+    const gh = idx.ghosts[g.i];
+    gh.pivot.rotation.x = -dirOf(a);
+    gh.pivot.remove(gh.label); gh.label.material.map.dispose(); gh.label.material.dispose();
+    gh.label = textSprite('A' + a + '\u00b0', OP_COLORS.index, 30);
+    gh.label.position.set(0, 0, (idx.opts.rTip || 25) + (idx.opts.tool.len || 20) + 58);
+    gh.label.scale.set(7 * gh.label.userData.aspect, 7, 1);
+    gh.pivot.add(gh.label);
+    if (idx.opts.pick === g.i) { const d = dirOf(a), ext = reach.shadow.camera.right; reach.position.set(reach.target.position.x, Math.sin(d) * ext * 3, Math.cos(d) * ext * 3); }
+    if (opts.onIndexDrag) opts.onIndexDrag(g.i, a, false);
+    requestRender();
+  });
+  const endDrag = (e) => {
+    const g = idx.drag;
+    if (!g) return false;
+    idx.drag = null;
+    controls.enabled = true;
+    renderer.domElement.style.cursor = '';
+    try { renderer.domElement.releasePointerCapture(e.pointerId); } catch (err) {}
+    if (g.moved) { idx.list[g.i].a = g.a; if (opts.onIndexDrag) opts.onIndexDrag(g.i, g.a, true); }
+    else if (opts.onIndexPick) opts.onIndexPick(g.i);
+    down = null;
+    return true;
+  };
+  renderer.domElement.addEventListener('pointercancel', endDrag);
   renderer.domElement.addEventListener('pointerup', (e) => {
+    if (endDrag(e)) return;
     if (!down || !partMesh || !opts.onPick) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
     const r = renderer.domElement.getBoundingClientRect();
@@ -482,11 +666,24 @@ export function create(container, opts = {}) {
   });
 
   return {
-    setTheme(t) { theme = Object.assign(theme, t); makeMats(); if (setup) buildMachine(setup); setTenons(tenonList); if (partMesh) partMesh.material = mats.part; Object.keys(pathLines).forEach((k) => { pathLines[k].material = mats[k] || mats.finish; }); requestRender(); },
+    setTheme(t) { theme = Object.assign(theme, t); makeMats(); if (setup) buildMachine(setup); setTenons(tenonList); if (partMesh) partMesh.material = partMat(); if (idx.list.length) buildIndex(); Object.keys(pathLines).forEach((k) => { pathLines[k].material = mats[k] || mats.finish; }); requestRender(); },
     setSetup(s) { aSign = s.aSign || 1; buildMachine(s); setA(aDeg); },
     setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons,
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
     simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost,
+    setIndexAngles, setLeftover,
+    indexAngleCount() { return idx.ghosts.length; },
+    indexReach() { return reach.intensity > 0; },
+    leftoverCount() { return lvMesh && lvMesh.visible ? lvMesh.count : 0; },
+    // where an angle's tool shows on screen (tests drive the drag with it)
+    indexScreen(i, along = 0.5, radius = null) {
+      const gh = idx.ghosts[i];
+      if (!gh) return null;
+      const v = new THREE.Vector3(0, 0, radius !== null ? radius : (idx.opts.rTip || 25) + ((idx.opts.tool && idx.opts.tool.len) || 20) * along);
+      gh.pivot.localToWorld(v); v.project(camera);
+      const r = renderer.domElement.getBoundingClientRect();
+      return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height };
+    },
     overlayCount() { return ovMesh && ovMesh.visible ? ovMesh.count : 0; },
     hasPart() { return !!partMesh; },
     snapshot() { renderer.render(scene, camera); return renderer.domElement.toDataURL('image/png'); },

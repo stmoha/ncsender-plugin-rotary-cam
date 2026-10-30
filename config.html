@@ -26,9 +26,9 @@
   var fail = function (err) {
     root.innerHTML = '<div style="padding:30px;color:#d64545">Rotary CAM could not start: ' + String(err && err.message || err).replace(/</g, '&lt;') + '</div>';
   };
-  if (window.RotaryCam && window.RotaryCam.build === BUILD && window.RotaryCamCore && window.RotaryCamSim && window.RotaryCamViewer) { try { start(); } catch (e) { fail(e); } return; }
+  if (window.RotaryCam && window.RotaryCam.build === BUILD && window.RotaryCamCore && window.RotaryCamSim && window.RotaryCamViewer && window.RotaryCamProject) { try { start(); } catch (e) { fail(e); } return; }
   var text = function (n) { return fetch(file(n)).then(function (r) { if (!r.ok) throw new Error(n + ': ' + r.status); return r.text(); }); };
-  Promise.all([text('lib/cam-core.js'), text('lib/cam-sim.js'), text('lib/rotary-viewer.js'), text('lib/rotary-ui.js')]).then(function (code) {
+  Promise.all([text('lib/cam-core.js'), text('lib/cam-sim.js'), text('lib/rcam-project.js'), text('lib/rotary-viewer.js'), text('lib/rotary-ui.js')]).then(function (code) {
     if (window.RotaryCam && window.RotaryCam.cache) window.RotaryCam.cache = {};
     code.forEach(function (c) {
       var s = document.createElement('script');
