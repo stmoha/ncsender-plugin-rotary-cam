@@ -5,13 +5,15 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.7.1).** Air-cut the first program on a new setup.
+**Prototype (0.8.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
 - A rotates about X. Chuck on the left (−X), tailstock on the right (+X).
 - **Work zero: X0 = chuck jaw face, Y0 and Z0 = rotary centreline.** Z in the program is
-  the tool-tip radius, so Z0 must be the axis, not the top of the stock.
+  the tool-tip radius, so Z0 must be the axis, not the top of the stock. The 3D view marks
+  it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Work zero —
+  from a corner of the rotary** sets it from a corner you can touch off (below).
 - Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
 - With **Tool changes › Go round the rotary** on (the default once ncSender says where things
   are), start the job with the spindle over the rotary, where you set X0 Y0: the program
@@ -23,8 +25,9 @@ wrong mirrors anything asymmetric.
 
 ## Using it
 
-1. **Tools › Rotary CAM** opens a full-window view of the rotary setup: chuck, jaws,
-   stock, tailstock and the rotary axis. **Open…** (or drop) a `.stl`, `.step` or `.stp`
+1. **Tools › Rotary CAM** opens a full-window view of the rotary setup: chuck (4 jaws, or
+   3), stock, tailstock, the rotary axis and the G-code zero. The collet nut and spindle go
+   see-through when they'd hide the part (looking down from the top, say). **Open…** (or drop) a `.stl`, `.step` or `.stp`
    part, or a Rotary CAM project (`.rcam`, below).
 2. **Place the part** with the buttons on the 3D view:
    - **Turning axis X / Y / Z:** which model axis lies along the rotary. A new file starts
@@ -37,8 +40,11 @@ wrong mirrors anything asymmetric.
    - **A slider:** turns the part and its stock the way the rotary will.
    - **Scale** (Part placement): the part's size against the model as drawn (100%). A model
      drawn in inches but read as millimetres needs 2540%. **Scale to fit the stock** picks
-     the largest size that fits the stock with 1 mm to spare all round and still leaves the
-     operations room before the tailstock; the message says which of the two set the size.
+     the largest size that fits the stock with 1 mm to spare all round and fits between
+     where the part starts and the tailstock, leaving the tailstock end tenon's length (or
+     the tools' room) and the keep-away; the message says what set the size and where each
+     end is. With a chuck end tenon length set, the part starts no closer to the jaws than
+     that plus their keep-away.
      A part too big for the stock also offers **Scale the part to fit** beside **Fit the
      stock to the part**.
    - Settings in the side panel update the 3D view as you type or use the arrow keys.
@@ -52,6 +58,11 @@ wrong mirrors anything asymmetric.
    - **Same at both ends** (default, Ø1/2" × 1/4" deep): untick it to give each end its own
      diameter and depth, for example a thin tenon into a small nose and a bigger one into
      the base.
+   - **Length out of the part:** how long each tenon is between the part and the rest of
+     the stock, which stays full size. Empty (*auto*) is just the room the tools need to
+     reach the end of the part; set it for a longer stub to saw through. Roughing takes the
+     whole length down to the tenon's diameter. A long one at the chuck end brings the
+     collet nut near the chuck: it stays up there and says so if it would hit.
    - Reach the tenon past any thin or off-centre spot near the end (a chess knight's nose);
      otherwise only that spot holds the part. The tenons show green in the 3D view, the
      side profile and the simulation.
@@ -109,7 +120,25 @@ wrong mirrors anything asymmetric.
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
-9. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
+9. **Work zero — from a corner of the rotary:** for setting the zero after the rotary goes
+   back on the table. Measure once, in machine coordinates, how far the work zero (jaw
+   face, on the axis) is from a corner you can touch off, such as the top front corner of
+   the headstock housing: **X, Y and Z, corner to the zero** (the zero minus the corner;
+   for that corner X and Y are positive and Z negative). These are measured, separate from
+   the headstock's keep-out box, which can stay generous. Then each time:
+   1. Zero X, Y and Z on that corner with a touch block or 3D probe.
+   2. Press **Move zero to the rotary axis**. It shows where the work offset goes, and on
+      **Move it** sends `G10 L2` to add the offsets to the active work offset (G54 to G59),
+      in mm for that one line and back to whatever units the controller was in, the way
+      ncSender's own probe routines do. It checks the move landed and updates the rotary
+      zero used for tool changes.
+   It won't move it twice (it knows where it put it), or while the machine is running.
+   Editing any of the three shows the corner in 3D, with arrows for the way to probe each
+   face and the X, Y and Z legs to the zero dimensioned. **Remember axis** and **Remember
+   corner** work the offsets out for you: zero on the axis the usual way and press
+   Remember axis, then zero on the corner and press Remember corner. Changing them doesn't
+   touch the toolpaths.
+10. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
    headstock behind it (housing, motor and drive), the live centre and the tailstock (body,
    lock lever and handwheel), the collet nut (diameter, length) and the spindle's diameter.
    The headstock and tailstock needn't be centred on the axis: each has a length along X,
@@ -135,7 +164,7 @@ wrong mirrors anything asymmetric.
    travel high enough for the holder too. Indexed checks every pass against what's
    actually left (and the uncut stock past it), picks its angles where the nut and spindle
    fit, and says how much only a longer stickout would reach.
-10. **Tool changes:** ncSender's Manual Tool Changer lifts to Safe Z and goes in straight
+11. **Tool changes:** ncSender's Manual Tool Changer lifts to Safe Z and goes in straight
    lines to the tool change position and the tool setter, and back to where the M6 was.
    A straight line can pass over the rotary, and a long tool at Safe Z may not clear the
    chuck or tailstock. With **Go round the rotary** on, before each M6 the program goes up
@@ -154,7 +183,7 @@ wrong mirrors anything asymmetric.
      round inside the machine.
    The 3D view (Fit setup) shows the tool change and tool setter, and the way round once
    generated.
-11. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
+12. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
    the part, every setting, the tools, and the G-code and toolpaths if they were generated,
    ready to simulate or load without calculating again. The rotary, spindle and tool change
    settings stay this machine's. (If ncSender's units, the axis rates, or the rotary,
@@ -249,6 +278,8 @@ node test/e2e-v3.cjs test/knight_test.step out/          # browser walkthrough (
 node test/e2e-v4.cjs test/knight_test.step out/          # corners, parting, simulation
 python3 test/make_horn.py test/horn.stl                  # test part whose end curls off the axis
 node test/e2e-v5.cjs test/horn.stl out/                  # tenons
+node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code zero, jaws, see-through spindle, tenon length
+node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits

@@ -1,12 +1,16 @@
-## Rotary CAM 0.7.1 (beta)
+## Rotary CAM 0.8.0 (beta)
 
-**New in 0.7.1**
-- **See what each setting is:** click into or hover over a Rotary & spindle setting and the 3D view lights up that part of the setup in the accent colour, with a dimension line and the value showing what the number measures (chuck diameter across the jaws, headstock reach to the back from the axis, stickout from the nut to the tip, and so on). If it's off the screen the view swings round to it. It works the same for the stock, keep-aways, retract height, each tool's stickout and diameter, the part's start and placement, and the tool change, tool setter and rotary zero
-- **Headstock and tailstock off-centre:** each now has a reach to the front (−Y) and to the back (+Y) from the axis, plus its top above the axis, so the one box at each end grows only on the side that needs it: a stepper and belt drive behind and above the chuck, or a tailstock lock lever out the back, are covered without doubling the keep-out on the other side. Collision checks, Simulate and the way round for tool changes all use it
-- The Rotary & spindle settings are grouped: Chuck, Headstock, Live centre, Tailstock, Collet nut and spindle
-- 0.7.0 settings carry over (a width becomes half to the front, half to the back)
+**New in 0.8.0**
+- **Work zero from a corner of the rotary:** measure once how far the work zero (jaw face, on the axis) is from a corner you can touch off, such as the top front corner of the headstock. After that, zero X, Y and Z on the corner with a touch block or 3D probe and press **Move zero to the rotary axis**. It shows where the work offset will go, then adds the offsets with `G10 L2`, switching to mm for that one line and back afterwards, the same way ncSender's probe routines do. It won't add them twice or move the zero while the machine is running. **Remember axis** and **Remember corner** can work the offsets out for you. The offsets are measured, separate from the headstock's keep-out box
+- Editing the corner offsets shows the corner in 3D, with arrows for which way to probe each face and the X, Y and Z legs to the zero dimensioned
+- **G-code zero marked in 3D:** X0 Y0 Z0 at the jaw face on the rotary axis, drawn through the stock
+- **4-jaw chuck** (3 is still an option) whose jaws sit on the flats of square stock and turn with A
+- The headstock and tailstock housings are drawn silver
+- **The collet nut and spindle go see-through** when they would hide the part, such as looking down from the top
+- **Tenon length:** set how far each tenon runs out of the part (empty means just the room the tools need). Roughing takes the whole length down to size, and **Scale to fit** leaves it at each end; its message now says where each end lands and what set the size
 
 **Since 0.2.0**
+- 0.7.1: settings light up their part of the 3D setup with a dimension; headstock and tailstock reach front and back separately
 - 0.7.0: collet nut, spindle and the rotary checked in every operation, per-tool stickout, tool changes routed round the rotary using ncSender's G54 / Manual Tool Changer / Safe Z, Simulate checks the holder, holder-aware Indexed angles
 - 0.6.0: project files (.rcam), Indexed angles in 3D (see what each can reach, drag to change), scale / scale to fit the stock
 - 0.5.0: Indexed (3+1) cleanup of what the rotary passes miss, tapered ball bits, tenons, what's left to clean shown in the simulation

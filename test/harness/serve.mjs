@@ -26,9 +26,44 @@ const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { va
 
 // the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
 // ncsender-plugin-manualtoolchanger settings: parking = tool change position, toolSetter)
-let MACHINE = { connected: true, workspace: 'G54', g54: '-300.000,-200.000,-80.000,0.000', MPos: '-150.000,-200.000,-10.000', WCO: '-300.000,-200.000,-80.000', maxTravelX: 800, maxTravelY: 600, maxTravelZ: 130, homed: true };
+let MACHINE = { connected: true, status: 'Idle', workspace: 'G54', g54: '-300.000,-200.000,-80.000,0.000', g55: '0.000,0.000,0.000,0.000', MPos: '-150.000,-200.000,-10.000', WCO: '-300.000,-200.000,-80.000', maxTravelX: 800, maxTravelY: 600, maxTravelZ: 130, homed: true };
 let MTC = { installed: true, enabled: true, settings: { parking: { x: -560, y: -380, z: 0 }, toolSetter: { x: -400, y: -100, z: -50 } } };
 let SAFEZ = -5;
+// the controller's side of /api/send-command (ServerBuilder.cs): modal units, grblHAL named
+// parameters and expressions (as ncSender's own probe routines use them), G10 L2 work offsets
+// (kept in mm, the way $# reports them). noExpr: a controller without expressions.
+let CTRL = { metric: true, params: {}, noExpr: false };
+const COMMANDS = [];
+function runLine(line) {
+  const l = String(line).trim(), err = (e) => ({ status: 'error', errorMessage: e });
+  let m = l.match(/^#<(_?\w+)>\s*=\s*\[(.*)\]$/);
+  if (m) {
+    if (CTRL.noExpr) return err('error:3');
+    const expr = m[2].replace(/#<_metric>/g, CTRL.metric ? '1' : '0').replace(/#<(_?\w+)>/g, (q, n) => String(CTRL.params[n] ?? 0));
+    if (!/^[\d\s+\-*/.()]+$/.test(expr)) return err('error:bad expression');
+    CTRL.params[m[1]] = Function('return (' + expr + ')')();
+    return { status: 'success' };
+  }
+  m = l.match(/^G\[#<(_?\w+)>\]$/i);
+  if (m) {
+    if (CTRL.noExpr) return err('error:3');
+    const g = CTRL.params[m[1]];
+    if (g === 20) CTRL.metric = false; else if (g === 21) CTRL.metric = true; else return err('error:20');
+    return { status: 'success' };
+  }
+  const words = [...l.toUpperCase().matchAll(/([A-Z])\s*(-?[\d.]+)/g)].map((w) => [w[1], parseFloat(w[2])]);
+  const gs = words.filter((w) => w[0] === 'G').map((w) => w[1]), val = (c) => { const w = words.find((q) => q[0] === c); return w ? w[1] : undefined; };
+  if (gs.includes(21)) CTRL.metric = true;
+  if (gs.includes(20)) CTRL.metric = false;
+  if (gs.includes(10)) {
+    if (val('L') !== 2) return err('error:only L2 here');
+    const P = val('P') || 1, ws = 'g5' + (3 + P), f = CTRL.metric ? 1 : 25.4;
+    const cur = String(MACHINE[ws] || '0,0,0,0').split(',').map(Number);
+    ['X', 'Y', 'Z', 'A'].forEach((c, i) => { const v = val(c); if (v !== undefined) cur[i] = v * (c === 'A' ? 1 : f); });
+    MACHINE[ws] = cur.map((v) => v.toFixed(3)).join(',');
+  }
+  return { status: 'success' };
+}
 const json = (res, obj, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c).toString('utf8'))); });
 
@@ -63,7 +98,9 @@ http.createServer(async (req, res) => {
   if (p === '/api/settings') return json(res, { unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } });
   if (p === '/api/plugins') return json(res, [{ id: ID, name: 'Rotary CAM', enabled: true }].concat(MTC.installed ? [{ id: 'com.ncsender.manualtoolchange', name: 'Manual Tool Changer', enabled: MTC.enabled }] : []));
   if (p === '/api/plugins/com.ncsender.manualtoolchange/settings') { if (!MTC.installed) { res.writeHead(404); return res.end(); } return json(res, MTC.settings); }
-  if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
+  if (p === '/api/send-command' && req.method === 'POST') { const b = JSON.parse(await body(req)); COMMANDS.push(b.command); return json(res, Object.assign({ id: String(COMMANDS.length), command: b.command }, runLine(b.command))); }
+  if (p === '/__test/commands') return json(res, { commands: COMMANDS, metric: CTRL.metric, machine: MACHINE });
+  if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.ctrl) CTRL = Object.assign(CTRL, b.ctrl); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
   if (p === '/__test/units' && req.method === 'POST') { UNITS = (await body(req)).trim(); return json(res, { units: UNITS }); }
   if (p === '/api/tools') return json(res, LIBRARY);
   if (p === '/api/firmware') return json(res, FIRMWARE);

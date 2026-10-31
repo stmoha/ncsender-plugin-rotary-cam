@@ -32,6 +32,7 @@ function textSprite(text, color, size = 34) {
 // (sizeAttenuation off: scale is a share of the view, not millimetres)
 const PILL_H = 0.02;
 function pillSprite(text, bg, fg, size = 40) {
+  // (bg, fg: CSS colours)
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
   const font = `650 ${size}px system-ui, sans-serif`;
@@ -103,6 +104,7 @@ export function create(container, opts = {}) {
   const partGroup = new THREE.Group(); scene.add(partGroup);   // turns with A
   const stockGroup = new THREE.Group(); partGroup.add(stockGroup);
   const tenonGroup = new THREE.Group(); partGroup.add(tenonGroup);   // on the axis, so turning doesn't show
+  const jawGroup = new THREE.Group(); partGroup.add(jawGroup);       // the chuck's jaws turn with the stock they hold
   let tenonList = [];
   let partMesh = null, pathLines = {}, aSign = 1, aDeg = 0, op = 'finish', tool = null;
   let simMesh = null, simOn = false, simTool = null, simToolKey = '', ghost = false, ovMesh = null, ovData = null;
@@ -123,6 +125,9 @@ export function create(container, opts = {}) {
     const metal = theme.dark ? 0x7d8794 : 0x9aa3ad;
     mats.metal = new THREE.MeshStandardMaterial({ color: metal, metalness: 0.55, roughness: 0.42 });
     mats.metalDark = new THREE.MeshStandardMaterial({ color: theme.dark ? 0x4a525d : 0x5f6872, metalness: 0.6, roughness: 0.4 });
+    // the headstock and tailstock housings: matt aluminium (flat metallic faces have nothing
+    // to reflect here and come out nearly black)
+    mats.housing = new THREE.MeshStandardMaterial({ color: theme.dark ? 0x9aa3ad : 0xc4cbd3, metalness: 0.15, roughness: 0.55 });
     mats.stock = new THREE.MeshStandardMaterial({ color: 0xd9b98c, transparent: true, opacity: theme.dark ? 0.12 : 0.16, roughness: 0.9, depthWrite: false, side: THREE.FrontSide });
     mats.stockEdge = new THREE.LineBasicMaterial({ color: 0xc49a5c, transparent: true, opacity: 0.7 });
     mats.keep = new THREE.MeshBasicMaterial({ color: 0xd64545, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.DoubleSide });
@@ -156,9 +161,52 @@ export function create(container, opts = {}) {
     if (!alive) return;
     raf = requestAnimationFrame(loop);
     const moved = controls.update();
-    if (needsRender || moved) { needsRender = false; renderer.render(scene, camera); }
+    if (needsRender || moved) { needsRender = false; try { fadeHolders(); } catch (e) { /* never stop drawing */ } renderer.render(scene, camera); }
   };
   loop();
+
+  // The collet nut and spindle turn see-through when they hide the part (looking down from
+  // the top, say): how much of the part's outline on screen they cover, if they're nearer.
+  const fadeBox = new THREE.Box3(), fadeT = new THREE.Box3(), fv = new THREE.Vector3(), fv2 = new THREE.Vector3();
+  function screenRect(box) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      fv.set(x, y, z).project(camera);
+      x0 = Math.min(x0, fv.x); x1 = Math.max(x1, fv.x); y0 = Math.min(y0, fv.y); y1 = Math.max(y1, fv.y);
+    }
+    return [x0, x1, y0, y1];
+  }
+  const smooth = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function fadeHolders() {
+    const target = simOn ? simMesh : (partMesh || (refs.stock && refs.stock[0]));
+    scene.updateMatrixWorld(); camera.updateMatrixWorld();
+    for (const t of [tool, simTool]) {
+      if (!t) continue;
+      const parts = t.children.filter((c) => c.userData.fade);
+      if (!parts.length) continue;
+      let f = 0;
+      if (t.visible && target) {
+        fadeBox.makeEmpty(); parts.forEach((p) => fadeBox.expandByObject(p));
+        fadeT.makeEmpty(); fadeT.expandByObject(target);
+        if (!fadeT.isEmpty()) {
+          const a = screenRect(fadeBox), b = screenRect(fadeT);
+          const ix = Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0])), iy = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[2], b[2]));
+          const cover = ix * iy / Math.max(1e-9, (b[1] - b[0]) * (b[3] - b[2]));
+          const near = camera.position.distanceTo(fadeBox.getCenter(fv2)) < camera.position.distanceTo(fadeT.getCenter(fv));
+          if (near) f = smooth(0.1, 0.35, cover);
+        }
+      }
+      const op = 1 - 0.8 * f;
+      t.userData.opacity = op;
+      parts.forEach((p) => {
+        const m = p.material;
+        if (!m || m === mats.hl) return;
+        const tr = op < 0.995;
+        if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; }
+        m.opacity = tr ? op : 1;
+      });
+    }
+  }
 
   function resize() {
     const w = container.clientWidth, h = container.clientHeight;
@@ -177,8 +225,9 @@ export function create(container, opts = {}) {
   function buildMachine(s) {
     disposeTree(machine); machine.clear();
     disposeTree(stockGroup); stockGroup.clear();
+    disposeTree(jawGroup); jawGroup.clear();
     setup = s;
-    refs = { chuck: [], head: [], centre: [], tail: [], stock: [], keepChuck: [], keepTail: [] };
+    refs = { chuck: [], head: [], centre: [], tail: [], stock: [], keepChuck: [], keepTail: [], origin: [] };
     const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); return o; };
     const R = s.stockR, x0 = s.chuckX, fx = s.fixtures || [];
     const F = (name) => fx.find((f) => f.name === name);
@@ -186,15 +235,21 @@ export function create(container, opts = {}) {
     const ch = F('chuck') || { x0: x0 - 48, x1: x0, r: Math.max(R * 1.5 + 6, 30) };
     const chuckR = ch.r, jawLen = Math.min(14, (ch.x1 - ch.x0) / 3), bodyLen = ch.x1 - ch.x0 - jawLen;
     add('chuck', xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, mats.metal, 64));
-    // three jaws from the stock out to the chuck's full diameter
-    const jawR = s.stockShape === 'round' ? R : Math.min(R, Math.max(s.stockHalf[0], s.stockHalf[1]));
-    for (let k = 0; k < 3; k++) {
-      const a = k * 120 * DEG + 90 * DEG;
-      const h = Math.max(4, chuckR - jawR);
-      const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, Math.max(8, R * 0.55), h), mats.metalDark);
+    // the jaws, from the stock out to the chuck's full diameter. Four (the default) sit on the
+    // flats of square stock, at Y and Z with A at 0; three are 120 deg apart. They turn with A.
+    const four = !(s.rig && s.rig.chuck && String(s.rig.chuck.jaws) === '3');
+    const half = s.stockShape === 'round' || !s.stockHalf ? [R, R] : s.stockHalf;
+    for (let k = 0; k < (four ? 4 : 3); k++) {
+      const a = four ? k * 90 * DEG : k * 120 * DEG + 90 * DEG;
+      // how far out the stock's face is in this direction, and how wide that face is
+      const jawR = four ? (k % 2 ? half[1] : half[0]) : (s.stockShape === 'round' ? R : Math.min(R, Math.max(half[0], half[1])));
+      const face = four ? 2 * (k % 2 ? half[0] : half[1]) : 2 * R;
+      const h = Math.max(4, chuckR - jawR), w = Math.max(6, Math.min(R * 0.55, face * 0.7));
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, w, h), mats.metalDark);
       jaw.position.set(ch.x1 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
       jaw.rotation.x = a - 90 * DEG;
-      add('chuck', jaw);
+      jaw.userData.jaw = true;
+      refs.chuck.push(jaw); jawGroup.add(jaw);
     }
     // a box on the table, reaching y0 (toward you, -Y) to y1 (away, +Y) and up to `top`
     const box = (key, f, mat) => {
@@ -204,12 +259,12 @@ export function create(container, opts = {}) {
       machine.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), mats.stockEdge));
     };
     const hd = F('headstock');
-    if (hd) box('head', hd, mats.metalDark);
+    if (hd) box('head', hd, mats.housing);
     const xt = s.tailX, ce = F('live centre') || { x0: xt, x1: xt + Math.max(14, R * 0.8), r: Math.max(6, R * 0.45) };
     const coneL = ce.x1 - ce.x0, coneR = ce.r;
     add('centre', xCylinder(0.01, coneR, ce.x0, ce.x1, mats.metal, 32));
     const tl = F('tailstock');
-    if (tl) box('tail', tl, mats.metal);
+    if (tl) box('tail', tl, mats.housing);
     // stock: turns with the part
     const sx0 = x0 - jawLen, sx1 = xt;
     if (s.stockShape === 'round') {
@@ -251,21 +306,30 @@ export function create(container, opts = {}) {
     aLabel.position.set(ax, -arcR * 0.9 * aSign, arcR * 0.75);
     aLabel.scale.set(8 * aLabel.userData.aspect, 8, 1);
     machine.add(aLabel);
-    // axis triad below the chuck
-    const tri = new THREE.Group();
-    const L = Math.max(14, R * 0.8);
+    // the G-code's zero: X0 at the jaw face, Y0 Z0 on the axis. Drawn through everything,
+    // since it's inside the stock.
+    const org = new THREE.Group(), OL = Math.max(10, Math.min(18, R * 0.55));
+    org.position.set(x0, 0, 0);
     [[1, 0, 0, '#d64545', 'X'], [0, 1, 0, '#2fa36b', 'Y'], [0, 0, 1, '#2a78d6', 'Z']].forEach(([x, y, z, col, name]) => {
       const d = new THREE.Vector3(x, y, z);
-      tri.add(new THREE.ArrowHelper(d, new THREE.Vector3(), L, new THREE.Color(col).getHex(), 4, 2.4));
+      const ah = new THREE.ArrowHelper(d, new THREE.Vector3(), OL, new THREE.Color(col).getHex(), 3.4, 2.2);
+      ah.traverse((o) => { if (o.material) { o.material.depthTest = false; o.material.transparent = true; } o.renderOrder = 22; });
+      org.add(ah);
       const lab = textSprite(name, col);
-      lab.position.copy(d.clone().multiplyScalar(L + 5));
-      lab.scale.set(6 * lab.userData.aspect, 6, 1);
-      tri.add(lab);
+      lab.position.copy(d.clone().multiplyScalar(OL + 3.5));
+      lab.scale.set(4.5 * lab.userData.aspect, 4.5, 1);
+      lab.renderOrder = 23;
+      org.add(lab);
     });
-    tri.position.set((hd ? hd.x0 : ch.x0) - 26, -chuckR - 8, -chuckR);
-    machine.add(tri);
+    const od = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.ink), depthTest: false, transparent: true }));
+    od.renderOrder = 23; org.add(od);
+    const ol = pillSprite('G-code zero: X0 Y0 Z0', theme.dark ? '#e6ecf2' : '#1e2a32', theme.dark ? '#1e2a32' : '#ffffff');
+    ol.scale.multiplyScalar(0.8); ol.center.set(1.06, 1.3); ol.renderOrder = 24; ol.userData.origin = true;
+    org.add(ol);
+    org.userData.origin = true;
+    machine.add(org); refs.origin.push(org);
     const ls = Math.max(6, chuckR * 0.16);
-    const lc = textSprite('chuck · X0 at the jaw face', theme.muted, 28);
+    const lc = textSprite('chuck', theme.muted, 28);
     lc.position.set(ch.x0 + bodyLen / 2, 0, chuckR + 9);
     lc.scale.set(ls * lc.userData.aspect, ls, 1);
     machine.add(lc);
@@ -291,11 +355,11 @@ export function create(container, opts = {}) {
   // the collet nut and spindle above a tool that sticks out `so` from the nut
   function holder(tool, so) {
     const g = (setup && setup.rig) || {}, nd = (g.nut && g.nut.dia) || 35, nl = (g.nut && g.nut.len) || 20, sd = (g.spindle && g.spindle.dia) || 80;
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(nd / 2, nd / 2, nl, 6), mats.metal);
-    nut.rotation.x = Math.PI / 2; nut.position.z = so + nl / 2; nut.userData.part = 'nut';
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(nd / 2, nd / 2, nl, 6), mats.metal.clone());
+    nut.rotation.x = Math.PI / 2; nut.position.z = so + nl / 2; nut.userData.part = 'nut'; nut.userData.fade = true;
     tool.add(nut);
-    const sp = new THREE.Mesh(new THREE.CylinderGeometry(sd / 2, sd / 2, 90, 48), mats.metalDark);
-    sp.rotation.x = Math.PI / 2; sp.position.z = so + nl + 45; sp.userData.part = 'spindle';
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(sd / 2, sd / 2, 90, 48), mats.metalDark.clone());
+    sp.rotation.x = Math.PI / 2; sp.position.z = so + nl + 45; sp.userData.part = 'spindle'; sp.userData.fade = true;
     tool.add(sp);
     tool.userData.dims = { so, nd, nl, sd };
   }
@@ -371,7 +435,7 @@ export function create(container, opts = {}) {
     for (const t of tenonList) {
       if (!(t.r > 0) || !(t.x1 > t.x0)) continue;
       const c = xCylinder(t.r, t.r, t.x0, t.x1, mats.tenon, 64);
-      c.renderOrder = 4;
+      c.renderOrder = 4; c.userData.side = t.side;
       tenonGroup.add(c);
       for (const x of [t.side === 'chuck' ? t.in1 : t.in0]) {
         const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 64 }, (_, i) => new THREE.Vector3(x, t.r * Math.cos(i * 2 * Math.PI / 64), t.r * Math.sin(i * 2 * Math.PI / 64)))), mats.tenonEdge);
@@ -659,7 +723,7 @@ export function create(container, opts = {}) {
   function pill(text) { return pillSprite(text, '#' + dimColor().getHexString(), theme.dark ? '#0d1f1b' : '#ffffff'); }
   // extension lines f1 -> d1 and f2 -> d2 from the object, the dimension line d1 <-> d2 with
   // arrowheads, and the value in a pill on it. Drawn on top of everything.
-  function dimLine(group, f1, d1, d2, f2, text) {
+  function dimLine(group, f1, d1, d2, f2, text, o = {}) {
     const col = dimColor(), lm = new THREE.LineBasicMaterial({ color: col, depthTest: false, transparent: true });
     const a = V3(d1), b = V3(d2), seg = [];
     if (f1) seg.push(V3(f1), a);
@@ -675,26 +739,30 @@ export function create(container, opts = {}) {
       cone.renderOrder = 30; group.add(cone);
     }
     if (text) {
-      const lab = pill(text), mid = a.clone().add(b).multiplyScalar(0.5);
-      const off = f1 ? a.clone().sub(V3(f1)) : new THREE.Vector3(0, 0, 1);
-      if (off.lengthSq() < 1e-9) off.set(0, 0, 1);
-      off.normalize();
-      lab.position.copy(mid);
-      // sit beside the dimension line, on the side away from the part, whichever way the
-      // view turns: shift the pill on screen (through its anchor) just clear of the line
-      const sz = new THREE.Vector2(), p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
-      lab.onBeforeRender = (r, sc, cam) => {
-        r.getSize(sz);
-        p0.copy(mid).project(cam); p1.copy(mid).add(off).project(cam);
-        let ux = (p1.x - p0.x) * sz.x, uy = (p1.y - p0.y) * sz.y;
-        const ul = Math.hypot(ux, uy);
-        if (ul < 1e-6) { ux = 0; uy = 1; } else { ux /= ul; uy /= ul; }
-        const hPx = (lab.scale.y / Math.tan((cam.fov || 26) * DEG / 2)) * sz.y / 2, wPx = hPx * lab.scale.x / lab.scale.y;
-        const s = Math.abs(ux) * wPx / 2 + Math.abs(uy) * hPx / 2 + 5;
-        lab.center.set(0.5 - (ux * s) / wPx, 0.5 - (uy * s) / hPx);
-      };
+      const lab = o.muted ? pillSprite(text, theme.dark ? '#3a4652' : '#e3e8ee', theme.dark ? '#e6ecf2' : '#1e2a32') : pill(text), mid = a.clone().add(b).multiplyScalar(0.5);
+      beside(lab, mid, o.off ? V3(o.off) : f1 ? a.clone().sub(V3(f1)) : new THREE.Vector3(0, 0, 1));
       group.add(lab);
     }
+  }
+  // a label at `at`, just clear of it on screen toward `off` (a direction in the scene),
+  // whichever way the view turns: the pill is shifted through its anchor every frame
+  function beside(lab, at, off) {
+    off = off.clone(); if (off.lengthSq() < 1e-9) off.set(0, 0, 1);
+    off.normalize();
+    lab.position.copy(at);
+    const sz = new THREE.Vector2(), p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
+    lab.onBeforeRender = (r, sc, cam) => {
+      r.getSize(sz);
+      lab.parent.updateMatrixWorld();
+      p0.copy(at).applyMatrix4(lab.parent.matrixWorld).project(cam); p1.copy(at).add(off).applyMatrix4(lab.parent.matrixWorld).project(cam);
+      let ux = (p1.x - p0.x) * sz.x, uy = (p1.y - p0.y) * sz.y;
+      const ul = Math.hypot(ux, uy);
+      if (ul < 1e-6) { ux = 0; uy = 1; } else { ux /= ul; uy /= ul; }
+      const hPx = (lab.scale.y / Math.tan((cam.fov || 26) * DEG / 2)) * sz.y / 2, wPx = hPx * lab.scale.x / lab.scale.y;
+      const s = Math.abs(ux) * wPx / 2 + Math.abs(uy) * hPx / 2 + 5;
+      lab.center.set(0.5 - (ux * s) / wPx, 0.5 - (uy * s) / hPx);
+    };
+    return lab;
   }
   function dot(group, p, r) {
     const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 8), new THREE.MeshBasicMaterial({ color: dimColor(), depthTest: false, transparent: true }));
@@ -705,6 +773,7 @@ export function create(container, opts = {}) {
     return mats.hl;
   }
   function clearHighlight() {
+    (refs.origin || []).forEach((g) => g.children.forEach((c) => { if (c.userData.origin) c.visible = true; }));
     hl.swapped.forEach(([m, mat]) => { m.material = mat; });
     hl.swapped = [];
     disposeTree(hlGroup); hlGroup.clear();
@@ -723,6 +792,7 @@ export function create(container, opts = {}) {
     clearHighlight();
     const key = hl.key, text = hl.text;
     if (!key || !setup) { requestRender(); return false; }
+    (refs.origin || []).forEach((g) => g.children.forEach((c) => { if (c.userData.origin) c.visible = false; }));
     const fx = setup.fixtures || [], F = (n) => fx.find((f) => f.name === n);
     const ch = F('chuck'), hd = F('headstock'), ce = F('live centre'), tl = F('tailstock');
     const R = setup.stockR, cx = setup.chuckX, tx = setup.tailX, targets = [];
@@ -758,6 +828,53 @@ export function create(container, opts = {}) {
         dim([x, b.y0, 0], [x, b.y0 - 14, 0], [x, b.y0 - 14, b.top], [x, b.y0, b.top], text);
         dim([x, 0, 0], [x, b.y0 - 14, 0], [x, b.y0 - 14, 0], null, '');
         dot(hlGroup, [x, 0, 0], 2);
+        break;
+      }
+      case 'rig.chuck.jaws': box(ch, 'chuck'); break;
+      case 'rig.corner': case 'rig.corner.dx': case 'rig.corner.dy': case 'rig.corner.dz': {
+        // the corner you zero on and the legs from it to the G-code zero (measured, not the
+        // keep-out box): X to the jaw face, Y to the axis, Z to the axis
+        const T = text && typeof text === 'object' ? text : {}, c = (setup.rig && setup.rig.corner) || {};
+        const nv = (v) => (v === null || v === undefined || v === '' || !isFinite(Number(v)) ? null : Number(v));
+        const X = nv(c.dx) || 0, Y = nv(c.dy) || 0, Z = nv(c.dz) || 0, O = [cx, 0, 0];
+        dot(hlGroup, O, 2.2);
+        if (!X && !Y && !Z) {
+          const lab = pill('set the offsets to see the corner'); lab.center.set(0.5, -0.6); lab.position.set(cx, 0, 0); hlGroup.add(lab); n++; break;
+        }
+        const C = [cx - X, -Y, -Z], P1 = [cx, -Y, -Z], P2 = [cx, 0, -Z], on = (q) => k === 'rig.corner' || k === 'rig.corner.' + q;
+        if (Math.abs(X) > 0.01) dim(null, C, P1, null, T.x || '', { off: [0, 0, Math.sign(-Z) || 1], muted: !on('dx') });
+        if (Math.abs(Y) > 0.01) dim(null, P1, P2, null, T.y || '', { off: [1, 0, 0], muted: !on('dy') });
+        if (Math.abs(Z) > 0.01) dim(null, P2, O, null, T.z || '', { off: [0, -(Math.sign(Y) || 1), 0], muted: !on('dz') });
+        // straight from the corner to the zero, like a tape across
+        const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(C), V3(O)]), new THREE.LineDashedMaterial({ color: dimColor(), dashSize: 3, gapSize: 2.5, depthTest: false, transparent: true, opacity: 0.8 }));
+        ln.computeLineDistances(); ln.renderOrder = 30; hlGroup.add(ln);
+        // the corner, with the way to probe each face: X from the chuck side, Y and Z from
+        // outside the housing toward the axis
+        const cm = new THREE.Mesh(new THREE.SphereGeometry(2.4, 16, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), depthTest: false, transparent: true }));
+        cm.position.copy(V3(C)); cm.renderOrder = 31; hlGroup.add(cm);
+        const dirs = [];
+        if (Math.abs(X) > 0.01) dirs.push(new THREE.Vector3(-Math.sign(X), 0, 0));
+        if (Math.abs(Y) > 0.01) dirs.push(new THREE.Vector3(0, Math.sign(Y), 0));
+        if (Math.abs(Z) > 0.01) dirs.push(new THREE.Vector3(0, 0, Math.sign(Z)));
+        dirs.forEach((d) => {
+          const ah = new THREE.ArrowHelper(d, V3(C).addScaledVector(d, -17), 14, new THREE.Color(theme.accent).getHex(), 4.5, 3);
+          ah.traverse((m) => { if (m.material) { m.material.depthTest = false; m.material.transparent = true; } m.renderOrder = 31; });
+          hlGroup.add(ah);
+        });
+        // its label out past the corner, away from the legs
+        hlGroup.add(beside(pill('touch off this corner'), V3(C), V3(C).sub(V3(O)).add(new THREE.Vector3(0, 0, 0.3 * Math.hypot(X, Y, Z)))));
+        n++; break;
+      }
+      case 'tenons.chuck.dia': case 'tenons.chuck.depth': case 'tenons.chuck.len':
+      case 'tenons.tailstock.dia': case 'tenons.tailstock.depth': case 'tenons.tailstock.len': {
+        const want = /chuck/.test(k) ? 'chuck' : 'tailstock';
+        const t = tenonList.find((q) => q.side === want) || tenonList[0];
+        if (!t) break;
+        tenonGroup.children.forEach((m) => { if (m.isMesh && m.userData.side === t.side) targets.push(m); });
+        const r = t.r, zb = -Math.max(r, R) - 10;
+        if (/\.dia$/.test(k)) { const x = t.side === 'chuck' ? t.x0 + 2 : t.x1 - 2; dim([x, 0, r], [x, -R - 10, r], [x, -R - 10, -r], [x, 0, -r], text); }
+        else if (/\.depth$/.test(k)) dim([t.in0, 0, -r], [t.in0, 0, zb], [t.in1, 0, zb], [t.in1, 0, -r], text);
+        else { const a = t.side === 'chuck' ? t.x0 : t.in1, b = t.side === 'chuck' ? t.in0 : t.x1; dim([a, 0, -r], [a, 0, zb], [b, 0, zb], [b, 0, -r], text); }
         break;
       }
       case 'rig.centre.dia': if (box(ce, 'centre')) dim([ce.x1, 0, ce.r], [ce.x1, -ce.r - 14, ce.r], [ce.x1, -ce.r - 14, -ce.r], [ce.x1, 0, -ce.r], text); break;
@@ -968,6 +1085,32 @@ export function create(container, opts = {}) {
     toolChangeShown() { return !!(tcData && tcData.change && tcGroup.children.length); },
     toolChangeRoutes() { return tcData && tcData.paths ? tcData.paths.length : 0; },
     fixtures() { return (setup && setup.fixtures || []).map((f) => Object.assign({}, f)); },
+    origin() {
+      const o = refs.origin && refs.origin[0];
+      if (!o) return null;
+      o.updateMatrixWorld(true);
+      const p = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
+      let onTop = true; o.traverse((m) => { if (m.material && m.material.depthTest !== false) onTop = false; });
+      return { x: p.x, y: p.y, z: p.z, onTop, label: o.children.some((c) => c.userData.origin) };
+    },
+    jaws() {
+      partGroup.updateMatrixWorld(true);
+      return jawGroup.children.map((j) => { const p = new THREE.Vector3().setFromMatrixPosition(j.matrixWorld); return { x: p.x, y: p.y, z: p.z }; });
+    },
+    headColor() { const h = refs.head && refs.head[0]; return h ? '#' + h.material.color.getHexString() : null; },
+    chuckColor() { const c = refs.chuck && refs.chuck[0]; return c ? '#' + c.material.color.getHexString() : null; },
+    // how light the headstock comes out on screen (0..1), from the rendered pixels
+    headShade() {
+      const h = refs.head && refs.head[0];
+      if (!h) return null;
+      renderer.render(scene, camera);
+      const b = new THREE.Box3().setFromObject(h), c = b.getCenter(new THREE.Vector3()), p = c.clone().project(camera);
+      const gl = renderer.getContext(), w = gl.drawingBufferWidth, hh = gl.drawingBufferHeight;
+      const px = Math.round((p.x + 1) / 2 * w), py = Math.round((p.y + 1) / 2 * hh), out = new Uint8Array(4);
+      gl.readPixels(px, py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out);
+      return (0.299 * out[0] + 0.587 * out[1] + 0.114 * out[2]) / 255;
+    },
+    holderOpacity() { requestRender(); fadeHolders(); return { tool: tool ? tool.userData.opacity : null, sim: simTool ? simTool.userData.opacity : null }; },
     toolHolder() { return tool ? { stickout: setup && setup.stickout && setup.stickout[op], parts: tool.children.length } : null; },
     indexAngleCount() { return idx.ghosts.length; },
     indexReach() { return reach.intensity > 0; },

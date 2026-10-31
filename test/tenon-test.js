@@ -1,0 +1,52 @@
+// node test/tenon-test.js: tenon length (tenonList, roughRange, fitScale) and the corner zero
+const core = require('../lib/cam-core.js');
+let fails = 0;
+const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const near = (a, b, t = 1e-6) => Math.abs(a - b) <= t;
+const fresh = (o) => core.prepareJob(core.deepMerge(core.DEFAULTS, o || {}));
+const raw = core.cylinderTris(0, 100, 10, 32);               // a 100 mm long, 20 mm bar along X
+
+let job = fresh();
+let mb = core.placeMesh(raw, job.model);
+ok(near(mb.min[0], 25) && near(mb.max[0], 125), 'part placed from X25 to X125');
+let ts = core.tenonList(job, mb), reach = 25 - ts[0].x0;
+ok(ts.length === 2 && reach > 6 && reach < 8, 'auto tenons reach just the tools’ room past the part (' + reach.toFixed(2) + ' mm)');
+ok(core.tenonLen(job, 'chuck') === 0 && core.tenonLen(job, 'tailstock') === 0, 'empty length is auto (0)');
+const autoRR = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
+
+job = fresh({ tenons: { chuck: { len: 15 }, tailstock: { len: 15 } } });
+ts = core.tenonList(job, mb);
+ok(near(ts[0].x0, 10) && near(ts[1].x1, 140), 'a 15 mm tenon runs X10..X25 and X125..X140');
+let rr = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
+ok(near(rr[0], 25 - 15 + 3.175) && near(rr[1], 125 + 15 - 3.175), 'roughing reaches the whole tenon (' + rr.map((v) => v.toFixed(3)).join('..') + ', auto was ' + autoRR.map((v) => v.toFixed(3)).join('..') + ')');
+
+job = fresh({ tenons: { same: true, chuck: { len: 15 } } });
+ok(core.tenonLen(job, 'tailstock') === 15, 'Same at both ends: the chuck end’s length is used at the tailstock too');
+job = fresh({ tenons: { ends: 'chuck', chuck: { len: 15 } } });
+ok(core.tenonLen(job, 'tailstock') === 0, 'no tailstock tenon: no length there');
+job = fresh({ tenons: { chuck: { len: 40 } } });
+rr = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
+ok(near(rr[0], 0 + 5 + 3.175), 'a tenon longer than the room stops at the jaws’ keep-away');
+
+// scale to fit leaves the tenon lengths
+job = fresh({ stock: { dia: 80 } });
+let f = core.fitScale(job, raw);
+ok(f.by === 'length' && f.endBy === 'tools' && !f.startMoved, 'auto: fits to the tools’ room before the tailstock (scale ' + f.scale + ')');
+job = fresh({ stock: { dia: 60 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
+f = core.fitScale(job, raw);
+ok(f.endBy === 'tenon' && near(f.end, 245 - 8 - 30) && f.startMoved && near(f.start, 35), 'tenons 30 mm: fits from X35 (moved out from 25) to X207');
+ok(near(f.scale, Math.floor((207 - 35) / 100 * 1000) / 1000), 'scale ' + f.scale + ' = (207 - 35) / 100');
+job = fresh({ stock: { dia: 60 }, model: { part_start_x: 50 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
+f = core.fitScale(job, raw);
+ok(!f.startMoved && near(f.start, 50), 'a part already further out stays where it is');
+ok(core.check(fresh({ tenons: { chuck: { len: -2 } } }), mb).some((p) => /length out of the part/.test(p)), 'a negative tenon length is flagged');
+
+// corner zero: the offsets from Stefan's sheet (inches), added to the work offset on the corner
+const IN = 25.4, corner = { x: -43.0984 * IN, y: -43.7339 * IN, z: -0.9649 * IN };
+job = fresh({ rig: { corner: { dx: 4.6023 * IN, dy: 1.4142 * IN, dz: -1.3826 * IN } } });
+const cz = core.cornerZero(job, corner);
+ok(near(cz.to.x, -38.4961 * IN, 1e-6) && near(cz.to.y, -42.3197 * IN, 1e-6) && near(cz.to.z, -2.3475 * IN, 1e-6), 'corner + offsets lands on his axis point (X-38.4961 Y-42.3197 Z-2.3475 in)');
+ok(core.cornerZero(fresh(), corner) === null, 'no offsets set: nothing to move');
+ok(fresh().rig.chuck.jaws === 4, 'chucks have 4 jaws unless set to 3');
+console.log(fails ? fails + ' FAILED' : 'ALL PASS');
+process.exit(fails ? 1 : 0);
