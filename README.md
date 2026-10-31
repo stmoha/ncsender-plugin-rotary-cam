@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.7.0).** Air-cut the first program on a new setup.
+**Prototype (0.7.1).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -110,9 +110,19 @@ wrong mirrors anything asymmetric.
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
 9. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
-   headstock behind it, the live centre and the tailstock body (lengths, widths, how high
-   they stand above the axis), the collet nut (diameter, length) and the spindle's
-   diameter. Each operation's tool has a **Stickout**: how far it sticks out of the nut
+   headstock behind it (housing, motor and drive), the live centre and the tailstock (body,
+   lock lever and handwheel), the collet nut (diameter, length) and the spindle's diameter.
+   The headstock and tailstock needn't be centred on the axis: each has a length along X,
+   a **Reach to the front (−Y)** and a **Reach to the back (+Y)** from the axis, and a
+   **Top** above the axis. Each end is kept out as one box, so make it just big enough to
+   take in the motor and pulley, or the lever and handwheel, without modelling each piece;
+   setting the front and back separately means a motor behind the chuck or a lever out the
+   back grows the box only on that side, not both. (0.7.0's single width carries over
+   as half to each side.) Click into or hover over any setting and the 3D view lights up
+   the part of the setup it's about, with a dimension line showing what the number
+   measures; if that part is off the screen the view swings round to it. The same goes for
+   the stock, the keep-aways, retract height, each tool's stickout and diameter, the part's
+   start and placement, and the tool change, tool setter and rotary zero. Each operation's tool has a **Stickout**: how far it sticks out of the nut
    (from the Tool Library's stickout when it has one, otherwise its flutes plus a little).
    The 3D view draws all of it at size, the tool with its nut and spindle.
    Every operation keeps the whole tool, the nut and the spindle off the chuck, headstock,

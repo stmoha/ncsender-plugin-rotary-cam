@@ -226,14 +226,23 @@ def fixture_list(cfg):
     out = []
     if ch.get("dia", 0) > 0 and ch.get("len", 0) > 0:
         out.append(("chuck", "round", cf - ch["len"], cf, lambda x, r=ch["dia"] / 2: r))
-    if hd.get("len", 0) > 0 and hd.get("width", 0) > 0:
+    def sides(b):
+        # front: toward you (-Y), back: away (+Y); before 0.7.1 one width, centred
+        if "front" in b or "back" in b:
+            return -b.get("front", 0), b.get("back", 0)
+        return -b.get("width", 0) / 2, b.get("width", 0) / 2
+    if hd.get("len", 0) > 0:
         x1 = cf - ch.get("len", 0)
-        out.append(("headstock", "box", x1 - hd["len"], x1, hd["width"] / 2, hd.get("top", 0)))
+        y0, y1 = sides(hd)
+        if y1 > y0:
+            out.append(("headstock", "box", x1 - hd["len"], x1, (y0, y1), hd.get("top", 0)))
     if ce.get("dia", 0) > 0 and ce.get("len", 0) > 0:
         out.append(("live centre", "round", T, T + ce["len"], lambda x, r=ce["dia"] / 2, L=ce["len"]: r * (x - T) / L))
-    if tl.get("len", 0) > 0 and tl.get("width", 0) > 0:
+    if tl.get("len", 0) > 0:
         x0 = T + ce.get("len", 0)
-        out.append(("tailstock", "box", x0, x0 + tl["len"], tl["width"] / 2, tl.get("top", 0)))
+        y0, y1 = sides(tl)
+        if y1 > y0:
+            out.append(("tailstock", "box", x0, x0 + tl["len"], (y0, y1), tl.get("top", 0)))
     return out
 
 
@@ -285,8 +294,8 @@ def holder_report(moves, mesh, cfg, sw):
                 # the rotary: machine frame, doesn't turn
                 for f in fx:
                     if f[1] == "box":
-                        _, _, xa, xb, w, top = f
-                        inside = (q[:, 0] > xa) & (q[:, 0] < xb) & (np.abs(q[:, 1]) < w) & (q[:, 2] < top)
+                        _, _, xa, xb, (ya, yb), top = f
+                        inside = (q[:, 0] > xa) & (q[:, 0] < xb) & (q[:, 1] > ya) & (q[:, 1] < yb) & (q[:, 2] < top)
                         pen = (top - q[inside, 2]).max() if inside.any() else 0.0
                     else:
                         _, _, xa, xb, rf = f
