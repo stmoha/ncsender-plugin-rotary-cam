@@ -69,7 +69,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest
     await page.selectOption('#rcam-root .rc-centre', 'origin'); await page.waitForTimeout(300);
     await openSec('stock'); await typeIn('#rc-stock-dia-round', D(44));
     let b = await box();
-    ok(/^Stock Ø/.test(b.l1) && /jaws to centre/.test(b.l1) && /Part needs at least Ø/.test(b.l2) && /Z room/.test(b.l2) && b.red === 0, `the header shows the stock, the least the part needs and the Z room: "${b.l1}" / "${b.l2}"`);
+    ok(/^Stock Ø.* long, .* in the jaws$/.test(b.l1) && /Part needs at least Ø/.test(b.l2) && /Z allows .* stickout/.test(b.l2) && b.red === 0, `the header shows the stock, the least the part needs and how far tools may stick out: "${b.l1}" / "${b.l2}"`);
     await shot('stock-overview');
     await typeIn('#rc-stock-dia-round', D(30));
     b = await box();
@@ -85,10 +85,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest
     const ztop = await page.evaluate(() => window.RotaryCam.__state.job.rig.tc.ztop);
     ok(Math.abs(ztop - 20) < 1e-6, 'Read from ncSender: the top of Z is 20 mm above the axis (work offset Z-20, T1 in)');
     b = await box();
-    ok(b.red >= 1 && /Z room/.test(b.l2), 'the header shows the Z room in red: ' + b.l2);
+    ok(b.red >= 1 && /Z allows/.test(b.l2), 'the header shows the stickout Z allows, in red: ' + b.l2);
     for (const [s, id] of [['rough', '11'], ['finish', '12']]) { await openSec(s); await page.selectOption(`#rc-${s}-tool`, id); }
     const blocked = await page.evaluate(() => ({ probs: window.RotaryCam.__state.problems, off: document.querySelector('#rcam-root .rc-gen').disabled, shown: [...document.querySelectorAll('#rcam-root .rc-msg.rc-err')].map((e) => e.textContent).join(' ') }));
-    ok(blocked.off && blocked.probs.some((p) => /^Z travel: Roughing/.test(p) && /can.t clear the stock/.test(p)) && /Z travel/.test(blocked.shown), 'Generate is off, and it says why: ' + (blocked.probs.find((p) => /Z travel/.test(p)) || '(none)').slice(0, 170));
+    ok(blocked.off && blocked.probs.filter((p) => /^Z travel: /.test(p)).length === 1 && blocked.probs.some((p) => /^Z travel: .*stick out at most/.test(p) && /\nToo long: .*Roughing T1/.test(p)) && /Z travel/.test(blocked.shown), 'Generate is off, and it says why, once: ' + (blocked.probs.find((p) => /Z travel/.test(p)) || '(none)').split('\n').slice(0, 2).join(' / ').slice(0, 220));
     let r;
     await page.mouse.move(vp[0] - 30, vp[1] / 2);     // (a setting under the pointer would show instead)
     await page.focus('#rc-rig-tc-ztop'); await page.waitForTimeout(300);

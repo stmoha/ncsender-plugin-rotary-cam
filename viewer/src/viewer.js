@@ -198,14 +198,53 @@ export function create(container, opts = {}) {
       }
       const op = 1 - 0.8 * f;
       t.userData.opacity = op;
-      parts.forEach((p) => {
-        const m = p.material;
-        if (!m || m === mats.hl) return;
-        const tr = op < 0.995;
-        if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; }
-        m.opacity = tr ? op : 1;
-      });
+      parts.forEach((p) => setOpacity(p.material, op));
     }
+    // the chuck end and the tailstock end: how much of the part they hide, sighting along
+    // lines from the eye to points through it (looking down the axis from the end, say)
+    if (!sides) return;
+    const pts = target ? samplePoints(target) : [];
+    for (const side of ['head', 'tail']) {
+      const objs = sides[side].filter((o) => o.isMesh && o.visible !== false);
+      let f = 0;
+      if (pts.length && objs.length) {
+        let hid = 0;
+        for (const p of pts) {
+          fv.copy(p).sub(camera.position);
+          const d = fv.length();
+          ray.set(camera.position, fv.normalize()); ray.far = d;
+          if (ray.intersectObjects(objs, false).length) hid++;
+        }
+        f = smooth(0.08, 0.3, hid / pts.length);
+      }
+      const op = 1 - 0.75 * f;
+      sides.opacity[side] = op;
+      sides[side].forEach((o) => setOpacity(o.material, op));
+    }
+  }
+  const ray = new THREE.Raycaster();
+  let sides = null;
+  function setOpacity(m, op) {
+    if (!m || m === mats.hl) return;
+    const tr = op < 0.995;
+    if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; }
+    m.opacity = tr ? op : 1;
+  }
+  // points through the part (or the stock): along it, on the axis and out toward its sides
+  const samp = [];
+  function samplePoints(obj) {
+    fadeT.makeEmpty(); fadeT.expandByObject(obj);
+    if (fadeT.isEmpty()) return [];
+    const b = fadeT, cy = (b.min.y + b.max.y) / 2, cz = (b.min.z + b.max.z) / 2, hy = (b.max.y - b.min.y) * 0.35, hz = (b.max.z - b.min.z) * 0.35;
+    let n = 0;
+    for (let i = 0; i < 5; i++) {
+      const x = b.min.x + (b.max.x - b.min.x) * (0.1 + 0.2 * i);
+      for (const [y, z] of [[cy, cz], [cy + hy, cz], [cy - hy, cz], [cy, cz + hz], [cy, cz - hz]]) {
+        if (!samp[n]) samp[n] = new THREE.Vector3();
+        samp[n++].set(x, y, z);
+      }
+    }
+    return samp.slice(0, n);
   }
 
   function resize() {
@@ -228,13 +267,20 @@ export function create(container, opts = {}) {
     disposeTree(jawGroup); jawGroup.clear();
     setup = s;
     refs = { chuck: [], head: [], centre: [], tail: [], stock: [], keepChuck: [], keepTail: [], origin: [] };
-    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); return o; };
+    // the chuck end and the tailstock end each fade when they hide the part, so each piece
+    // gets its own material (the housings and the jaws share theirs otherwise)
+    sides = { head: [], tail: [], opacity: { head: 1, tail: 1 } };
+    const own = (side, m) => { const c = m.clone(); c.userData.fadeSide = side; return c; };
+    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); const sd = key === 'chuck' || key === 'head' ? 'head' : key === 'centre' || key === 'tail' ? 'tail' : null; if (sd && o.isMesh) sides[sd].push(o); return o; };
     const R = s.stockR, x0 = s.chuckX, fx = s.fixtures || [];
     const F = (name) => fx.find((f) => f.name === name);
     // the rotary at its real size (Rotary & spindle settings)
     const ch = F('chuck') || { x0: x0 - 48, x1: x0, r: Math.max(R * 1.5 + 6, 30) };
     const chuckR = ch.r, jawLen = Math.min(14, (ch.x1 - ch.x0) / 3), bodyLen = ch.x1 - ch.x0 - jawLen;
-    add('chuck', xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, mats.metal, 64));
+    // silver like the headstock and tailstock (matt: metallic faces look dark); the jaws, the
+    // live centre's cone and the collet nut are the darker metal
+    add('chuck', xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, own('head', mats.housing), 64));
+    const jawMat = own('head', mats.metalDark);
     // the jaws, from the stock out to the chuck's full diameter. Four (the default) sit on the
     // flats of square stock, at Y and Z with A at 0; three are 120 deg apart. They turn with A.
     const four = !(s.rig && s.rig.chuck && String(s.rig.chuck.jaws) === '3');
@@ -245,28 +291,32 @@ export function create(container, opts = {}) {
       const jawR = four ? (k % 2 ? half[1] : half[0]) : (s.stockShape === 'round' ? R : Math.min(R, Math.max(half[0], half[1])));
       const face = four ? 2 * (k % 2 ? half[0] : half[1]) : 2 * R;
       const h = Math.max(4, chuckR - jawR), w = Math.max(6, Math.min(R * 0.55, face * 0.7));
-      const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, w, h), mats.metalDark);
+      const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, w, h), jawMat);
       jaw.position.set(ch.x1 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
       jaw.rotation.x = a - 90 * DEG;
       jaw.userData.jaw = true;
-      refs.chuck.push(jaw); jawGroup.add(jaw);
+      refs.chuck.push(jaw); jawGroup.add(jaw); sides.head.push(jaw);
     }
     // a box on the table, reaching y0 (toward you, -Y) to y1 (away, +Y) and up to `top`
-    const box = (key, f, mat) => {
+    const box = (key, f, side) => {
       const lo = -Math.max(f.top, chuckR) - 10, g = new THREE.BoxGeometry(f.x1 - f.x0, f.y1 - f.y0, f.top - lo);
       g.translate((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2, (f.top + lo) / 2);
-      add(key, new THREE.Mesh(g, mat));
-      machine.add(new THREE.LineSegments(new THREE.EdgesGeometry(g), mats.stockEdge));
+      add(key, new THREE.Mesh(g, own(side, mats.housing)));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), own(side, mats.stockEdge));
+      machine.add(edges); sides[side].push(edges);
     };
     const hd = F('headstock');
-    if (hd) box('head', hd, mats.housing);
+    if (hd) box('head', hd, 'head');
     const xt = s.tailX, ce = F('live centre') || { x0: xt, x1: xt + Math.max(14, R * 0.8), r: Math.max(6, R * 0.45) };
     const coneL = ce.x1 - ce.x0, coneR = ce.r;
-    add('centre', xCylinder(0.01, coneR, ce.x0, ce.x1, mats.metal, 32));
+    add('centre', xCylinder(0.01, coneR, ce.x0, ce.x1, own('tail', mats.metalDark), 32));
+    // behind the cone, its round body back to the tailstock (silver, like the housings)
+    const cb = fx.find((f) => f.name === 'live centre' && f.part === 'body');
+    if (cb) add('centre', xCylinder(cb.r, cb.r, cb.x0, cb.x1, own('tail', mats.housing), 48));
     const tl = F('tailstock');
-    if (tl) box('tail', tl, mats.housing);
+    if (tl) box('tail', tl, 'tail');
     // stock: turns with the part
-    const sx0 = x0 - jawLen, sx1 = xt;
+    const sx0 = x0 - (s.clamp > 0 ? s.clamp : 0), sx1 = xt;     // into the jaws by the clamping distance
     if (s.stockShape === 'round') {
       const stock = xCylinder(R, R, sx0, sx1, mats.stock, 72, true);
       stock.renderOrder = 2;
@@ -355,10 +405,10 @@ export function create(container, opts = {}) {
   // the collet nut and spindle above a tool that sticks out `so` from the nut
   function holder(tool, so) {
     const g = (setup && setup.rig) || {}, nd = (g.nut && g.nut.dia) || 35, nl = (g.nut && g.nut.len) || 20, sd = (g.spindle && g.spindle.dia) || 80;
-    const nut = new THREE.Mesh(new THREE.CylinderGeometry(nd / 2, nd / 2, nl, 6), mats.metal.clone());
+    const nut = new THREE.Mesh(new THREE.CylinderGeometry(nd / 2, nd / 2, nl, 6), mats.metalDark.clone());
     nut.rotation.x = Math.PI / 2; nut.position.z = so + nl / 2; nut.userData.part = 'nut'; nut.userData.fade = true;
     tool.add(nut);
-    const sp = new THREE.Mesh(new THREE.CylinderGeometry(sd / 2, sd / 2, 90, 48), mats.metalDark.clone());
+    const sp = new THREE.Mesh(new THREE.CylinderGeometry(sd / 2, sd / 2, 90, 48), mats.housing.clone());
     sp.rotation.x = Math.PI / 2; sp.position.z = so + nl + 45; sp.userData.part = 'spindle'; sp.userData.fade = true;
     tool.add(sp);
     tool.userData.dims = { so, nd, nl, sd };
@@ -890,7 +940,25 @@ export function create(container, opts = {}) {
       }
       case 'rig.centre.dia': if (box(ce, 'centre')) dim([ce.x1, 0, ce.r], [ce.x1, -ce.r - 14, ce.r], [ce.x1, -ce.r - 14, -ce.r], [ce.x1, 0, -ce.r], text); break;
       case 'rig.centre.len': if (box(ce, 'centre')) dim([ce.x0, 0, 0], [ce.x0, 0, ce.r + 14], [ce.x1, 0, ce.r + 14], [ce.x1, 0, ce.r], text); break;
-      case 'tailstock_x': targets.push(...refs.centre); dim([cx, 0, 0], [cx, 0, -R - 16], [tx, 0, -R - 16], [tx, 0, 0], text); break;
+      case 'rig.centre.total': {
+        if (!box(ce, 'centre')) break;
+        const cb = fx.find((f) => f.name === 'live centre' && f.part === 'body'), x1 = cb ? cb.x1 : ce.x1;
+        dim([ce.x0, 0, 0], [ce.x0, 0, ce.r + 22], [x1, 0, ce.r + 22], [x1, 0, ce.r], text);
+        break;
+      }
+      case 'tailstock_x': {
+        // the whole stock: from its end in the jaws to the live centre
+        targets.push(...refs.stock, ...refs.centre);
+        const x0 = cx - (setup.clamp || 0);
+        dim([x0, 0, -R], [x0, 0, -R - 16], [tx, 0, -R - 16], [tx, 0, -R], text);
+        break;
+      }
+      case 'stock.clamp': {
+        targets.push(...refs.stock);
+        const c = setup.clamp || 0;
+        dim([cx - c, 0, -R], [cx - c, 0, -R - 8], [cx, 0, -R - 8], [cx, 0, -R], text);
+        break;
+      }
       case 'chuck_clearance': targets.push(...refs.keepChuck); dim([cx, 0, -R], [cx, 0, -R - 10], [cx + setup.chuckClear, 0, -R - 10], [cx + setup.chuckClear, 0, -R], text); break;
       case 'tailstock_clearance': targets.push(...refs.keepTail); dim([tx - setup.tailClear, 0, -R], [tx - setup.tailClear, 0, -R - 10], [tx, 0, -R - 10], [tx, 0, -R], text); break;
       case 'model.part_start_x': if (bounds) { if (partMesh) targets.push(partMesh); dim([cx, 0, 0], [cx, 0, -R - 24], [bounds.min.x, 0, -R - 24], [bounds.min.x, 0, 0], text); } break;
@@ -1110,6 +1178,13 @@ export function create(container, opts = {}) {
     },
     headColor() { const h = refs.head && refs.head[0]; return h ? '#' + h.material.color.getHexString() : null; },
     chuckColor() { const c = refs.chuck && refs.chuck[0]; return c ? '#' + c.material.color.getHexString() : null; },
+    // what each part of the setup is drawn in
+    colors() {
+      const hex = (m) => (m && m.material ? '#' + m.material.color.getHexString() : null);
+      const part = (p) => (tool ? tool.children.find((c) => c.userData.part === p) : null);
+      return { chuck: hex(refs.chuck && refs.chuck[0]), jaw: hex(jawGroup.children[0]), head: hex(refs.head && refs.head[0]), tail: hex(refs.tail && refs.tail[0]), centre: hex(refs.centre && refs.centre[0]), spindle: hex(part('spindle')), nut: hex(part('nut')) };
+    },
+    stockSpan() { const st = refs.stock && refs.stock[0]; if (!st) return null; const b = new THREE.Box3().setFromObject(st); return { x0: b.min.x, x1: b.max.x }; },
     // how light the headstock comes out on screen (0..1), from the rendered pixels
     headShade() {
       const h = refs.head && refs.head[0];
@@ -1122,6 +1197,10 @@ export function create(container, opts = {}) {
       return (0.299 * out[0] + 0.587 * out[1] + 0.114 * out[2]) / 255;
     },
     holderOpacity() { requestRender(); fadeHolders(); return { tool: tool ? tool.userData.opacity : null, sim: simTool ? simTool.userData.opacity : null }; },
+    // how see-through the chuck end and the tailstock end are drawn now (1: solid)
+    endsOpacity() { fadeHolders(); return sides ? Object.assign({}, sides.opacity) : null; },
+    // look along a direction (as if orbited there), at the part or the whole setup
+    lookFrom(d, whole) { fitBox(frame(!!whole), new THREE.Vector3(...d).normalize()); },
     toolHolder() { return tool ? { stickout: setup && setup.stickout && setup.stickout[op], parts: tool.children.length } : null; },
     indexAngleCount() { return idx.ghosts.length; },
     indexReach() { return reach.intensity > 0; },

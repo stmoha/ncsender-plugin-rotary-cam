@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.3).** Air-cut the first program on a new setup.
+**Prototype (0.9.4).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -53,8 +53,13 @@ wrong mirrors anything asymmetric.
      A part too big for the stock also offers **Scale the part to fit** beside **Fit the
      stock to the part**.
    - Settings in the side panel update the 3D view as you type or use the arrow keys.
-3. **Stock & rotary:** round, square or rectangular stock, tailstock position, keep-away
-   distances. If the part doesn't fit, it turns red and **Fit the stock to the part** sizes it.
+3. **Stock & rotary:** round, square or rectangular stock, its **Stock length** (the whole
+   piece, the end in the jaws included) and **Clamping distance** (how far it goes into the
+   jaws past the jaw face, 1/2" to start), keep-away distances. The live centre is at the
+   stock length less the clamping distance from the jaw face; changing the clamping
+   distance keeps the stock length, so the centre moves. The 3D stock goes into the jaws by
+   the clamping distance. If the part doesn't fit, it turns red and **Fit the stock to the
+   part** sizes it.
 4. **Tenons** (on by default): a solid round stub on the rotary axis at each end of the
    part, so it stays joined to the stock while it's carved. Each one reaches a set depth
    into the part and runs out to the uncut stock past the end. Nothing cuts into a tenon
@@ -154,8 +159,14 @@ wrong mirrors anything asymmetric.
    Remember axis, then zero on the corner and press Remember corner. Changing them doesn't
    touch the toolpaths.
 10. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
-   headstock behind it (housing, motor and drive), the live centre and the tailstock (body,
-   lock lever and handwheel), the collet nut (diameter, length) and the spindle's diameter.
+   headstock behind it (housing, motor and drive), the live centre (its diameter, the
+   length of its cone, and its **Total length** back to the tailstock body: the cone, then
+   a round body at its diameter; empty, the cone goes straight into the body), the
+   tailstock (body, lock lever and handwheel), the collet nut (diameter, length) and the
+   spindle's diameter. In 3D the chuck, headstock, tailstock, live centre body and spindle
+   are silver, the jaws, the live centre's cone and the collet nut dark gray. The chuck end
+   or the tailstock end turns see-through when it's between you and the part (looking
+   down the axis from either end, say), the way the collet nut and spindle do from the top.
    The headstock and tailstock needn't be centred on the axis: each has a length along X,
    a **Reach to the front (−Y)** and a **Reach to the back (+Y)** from the axis, and a
    **Top** above the axis. Each end is kept out as one box, so make it just big enough to
@@ -196,6 +207,9 @@ wrong mirrors anything asymmetric.
    - **Top of Z above the axis:** how far above the rotary axis the tool tip is with Z at
      the top of its travel (machine Z0), from the work offset with the tool in the spindle,
      and the bottom of the travel from $132.
+   - **Stickout of the tool in the spindle:** the tool whose length is in that work offset.
+     Empty (*auto*), it's the stickout set here (or in the Tool Library) for the tool
+     ncSender says is in, or else the first operation's tool; set it when that's wrong.
    - Type any of them in instead (another tool changer, ncSender not connected); a typed
      value is kept until **Read from ncSender**. The machine's travel limits keep the way
      round inside the machine.
@@ -205,9 +219,20 @@ wrong mirrors anything asymmetric.
    offset when it's loaded, and flags anything above machine Z0. Rotary CAM keeps every
    move inside it: a tool that sticks out further than the one in the spindle has that much
    less room (its tip sits lower at the top of Z), so each operation gets its own limit.
-   - If a tool can't get its tip above the stock without leaving the travel, Generate is
-     off and the message says by how much (a shorter stickout, zeroed again, or smaller
-     stock fixes it).
+   - The spindle nose sits the top of Z plus the spindle tool's stickout above the axis, so
+     with this stock a tool can stick out so far and no further: the header shows it (*Z
+     allows 1.667 in stickout*). If any tool sticks out more, Generate is off and one
+     message says how far tools may stick out, which are too long and by how much, which
+     tool it took to be in the spindle (and why), and how to check it on the machine: jog
+     Z to the top, ncSender's Z reads the top of Z and the tip is that far above the axis.
+     The tool in the spindle when the program is loaded has to be short enough too, since
+     ncSender checks the whole program with it. A shorter stickout (zero Z again with it
+     in), or smaller stock, fixes it.
+   - One tool number is one tool in one holder: a stickout or flute length set for one
+     operation goes to every operation with that tool, and a tool picked from the Tool
+     Library that another operation already uses comes in as set there. Two stickouts for
+     one number (from older settings) stop Generate with a button for each; the same
+     number for a different size or kind of tool does too.
    - It needs Z zeroed on the rotary axis and the machine homed. With Z0 still at the top of
      the travel (not zeroed on the axis yet), or the machine not homed, it isn't checked:
      the header says *zero Z on the rotary axis first* or *home the machine first*, Generate
@@ -336,6 +361,7 @@ node test/ztravel-test.js                                  # programs kept insid
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
+node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits
