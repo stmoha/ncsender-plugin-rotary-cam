@@ -70,6 +70,8 @@ fs.mkdirSync(outDir, { recursive: true });
     await openSec('index');
     await page.check('#rcam-root details[data-sec=index] summary input[type=checkbox]');
     await page.waitForTimeout(300);
+    // (listing the angles is the default from 0.9.0: this part is about picking them)
+    await page.check('#rc-index-auto'); await page.waitForTimeout(300);
     await page.click('#rcam-root .rc-op[data-op=index]'); await page.waitForTimeout(300);
     let s3 = await st();
     ok(s3.ghosts === 0 && await page.$('[data-idx-add]'), 'Pick the angles, nothing generated yet: no angles shown, + A offered');

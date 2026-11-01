@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.8.0).** Air-cut the first program on a new setup.
+**Prototype (0.9.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -84,15 +84,25 @@ wrong mirrors anything asymmetric.
    - **Indexed** (off until you tick it): finishes what the rotary passes couldn't reach.
      It plays the program to the end of finishing to see what's left on the part:
      material hidden under the part from every line through the axis (under a chin or a
-     jaw), and, if you want, creases the finishing ball was too big for. It then tries A
-     every 15° and picks the fewest angles that reach the most of it (or uses your own
-     list), locks A at each one and runs 3-axis passes over just those patches: the tool
+     jaw), and, if you want, creases the finishing ball was too big for. It locks A at each
+     of the **A angles** you list (90, 270 to start with) and runs 3-axis passes over just
+     those patches: the tool
      offset in Y so it comes in beside the overhang, in layers where a lot is left, each
      patch run its long way with linked passes. The tool always points across the rotary
      axis on this machine, so a pocket that only opens toward the chuck or tailstock can't
      be reached; the message after Generate says how much was reached and where the rest is.
-     With your own angles there's nothing to pick, so it doesn't try every angle first: each
-     one is checked just before it's planned, against what the angles before it left.
+     Each angle is checked just before it's planned, against what the angles before it left.
+     **Pick the angles for me** (off by default) tries A every 15° first and picks the fewest
+     angles that reach the most, at most *Most angles* of them. It takes much longer, since
+     all 24 are tried before any is planned (on a detailed part, minutes rather than seconds),
+     and says so when you tick it. It tries them on a coarser grid (0.6 mm, or half the
+     ball's radius) to rank them, then looks at the ones it picks as finely as listed angles.
+     **Speed:** a plain ball is dropped onto the part by Rotary CAM's own exact drop-cutter,
+     the same contact maths as OpenCAMLib (it agrees with it to well under a micron) with the
+     part kept in a grid for each angle, 8 to 15 times faster; a tapered ball still goes
+     through OpenCAMLib. The drops are shared out over all the workers, and the checks for
+     the collet nut and spindle only look where they're needed. On the chess knight that
+     took Indexed from over two minutes to around 20 seconds on one core.
      **Angles in 3D:** with Indexed showing (its button on the view, or any of its settings),
      each angle shows as a see-through Indexed tool coming straight down onto the part the
      way it will with A locked there; once generated, what the rotary passes leave shows as
@@ -280,6 +290,8 @@ python3 test/make_horn.py test/horn.stl                  # test part whose end c
 node test/e2e-v5.cjs test/horn.stl out/                  # tenons
 node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code zero, jaws, see-through spindle, tenon length
 node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
+node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
+node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits

@@ -1,15 +1,15 @@
-## Rotary CAM 0.8.0 (beta)
+## Rotary CAM 0.9.0 (beta)
 
-**New in 0.8.0**
-- **Work zero from a corner of the rotary:** measure once how far the work zero (jaw face, on the axis) is from a corner you can touch off, such as the top front corner of the headstock. After that, zero X, Y and Z on the corner with a touch block or 3D probe and press **Move zero to the rotary axis**. It shows where the work offset will go, then adds the offsets with `G10 L2`, switching to mm for that one line and back afterwards, the same way ncSender's probe routines do. It won't add them twice or move the zero while the machine is running. **Remember axis** and **Remember corner** can work the offsets out for you. The offsets are measured, separate from the headstock's keep-out box
-- Editing the corner offsets shows the corner in 3D, with arrows for which way to probe each face and the X, Y and Z legs to the zero dimensioned
-- **G-code zero marked in 3D:** X0 Y0 Z0 at the jaw face on the rotary axis, drawn through the stock
-- **4-jaw chuck** (3 is still an option) whose jaws sit on the flats of square stock and turn with A
-- The headstock and tailstock housings are drawn silver
-- **The collet nut and spindle go see-through** when they would hide the part, such as looking down from the top
-- **Tenon length:** set how far each tenon runs out of the part (empty means just the room the tools need). Roughing takes the whole length down to size, and **Scale to fit** leaves it at each end; its message now says where each end lands and what set the size
+**New in 0.9.0**
+- **Indexed is much faster.** On the chess knight, planning went from over two minutes to around 20 seconds on one core, and the drops are now shared across all the workers. Nothing it cuts got worse:
+  - Rotary CAM drops a plain ball with its own exact drop-cutter. It does the same contact maths as OpenCAMLib and agrees with it to well under a micron, but runs 8 to 15 times faster. Tapered balls still use OpenCAMLib
+  - Every Indexed drop is split across all the workers, not just one, and the program comes out the same move for move
+  - The collet nut and spindle clearance is only worked out where it's used, and the "what's still above here" lookup only searches where material can be. Both give exactly the same answers as before
+  - **Pick the angles for me** tries the 24 angles on a coarser grid to rank them, then looks finely at the ones it picks. The angles chosen can differ slightly; on the test parts it reached as much or slightly more
+- **You list the Indexed angles by default** (90, 270 to start), like in Fusion. **Pick the angles for me** is still there; when you tick it, it warns that it takes much longer. Settings that had it on only because it was the old default switch to listed angles; tick it again and it stays on
 
 **Since 0.2.0**
+- 0.8.0: work zero from a corner of the rotary (Move zero to the rotary axis), G-code zero marked in 3D, 4-jaw chuck, see-through spindle, tenon length
 - 0.7.1: settings light up their part of the 3D setup with a dimension; headstock and tailstock reach front and back separately
 - 0.7.0: collet nut, spindle and the rotary checked in every operation, per-tool stickout, tool changes routed round the rotary using ncSender's G54 / Manual Tool Changer / Safe Z, Simulate checks the holder, holder-aware Indexed angles
 - 0.6.0: project files (.rcam), Indexed angles in 3D (see what each can reach, drag to change), scale / scale to fit the stock
