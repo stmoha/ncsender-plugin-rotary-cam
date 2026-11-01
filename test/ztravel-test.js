@@ -104,6 +104,16 @@ function zs(gcode) {
   let r = await program({});
   const free = Math.max(...r.z);
   // inches, but the controller would scale A in G20: the program is in mm, A in degrees as ever
+  // dust collection: off unless asked; on after the spindle, off before tool changes and the end
+  const lines = (g) => g.split('\n').map((l) => l.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+  ok(!/\bM[789]\b/.test(r.prog.gcode), 'dust collection off by default: no M7, M8 or M9');
+  const rd = await program({ dust: 'm8', finish: { tool_number: 2 } }), L8 = lines(rd.prog.gcode);
+  const i3 = L8.findIndex((l) => /^M3\b/.test(l)), i8 = L8.indexOf('M8'), m5s = L8.map((l, i) => (l === 'M5' ? i : -1)).filter((i) => i >= 0), m9s = L8.map((l, i) => (l === 'M9' ? i : -1)).filter((i) => i >= 0);
+  ok(i8 > i3 && L8[i8 - 1] === 'G4 P3' && m5s.length === 2 && m9s.length === 2 && m5s.every((i) => L8[i - 1] === 'M9') && L8.filter((l) => l === 'M8').length === 2 && L8.lastIndexOf('M8') < L8.lastIndexOf('M5') && L8[L8.length - 1] === 'M30', 'M8: on after the spindle is up to speed in each operation, M9 just before every M5 (tool change, end)');
+  const ri = L8.findIndex((l, i) => i > i8 && /^M6\b/.test(l)), ra = L8.slice(0, ri).lastIndexOf('M9'), rm8 = L8.slice(0, ri).lastIndexOf('M8');
+  ok(ri > i8 && ra > rm8 && L8.slice(ra, ri).every((l) => !/^G1\b/.test(l)), 'the boot is up (M9) before the tool change, and nothing cuts between: ' + L8.slice(ra, ri + 1).join(' | '));
+  const r78 = await program({ dust: 'm7m8' });
+  ok(lines(r78.prog.gcode).join(' ').includes('G4 P3 M7 M8') && /\(Dust collection: M7 and M8 on while cutting/.test(r78.prog.gcode), 'M7 + M8: both, and the header says so');
   const aw = (g) => (g.match(/\bA-?[\d.]+/g) || []).slice(0, 400).join(' ');
   const rIn = await program({ units: 'in' }), rMm = await program({ units: 'in', program_mm: true });
   ok(/\nG20 /.test(rIn.prog.gcode) && /\nG21 /.test(rMm.prog.gcode) && !/\nG20 /.test(rMm.prog.gcode) && /\$376/.test(rMm.prog.gcode), 'inches with A not set as rotary: written in mm (G21), and says why');

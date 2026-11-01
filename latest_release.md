@@ -1,9 +1,11 @@
-## Rotary CAM 0.9.9 (beta)
+## Rotary CAM 0.10.0 (beta)
 
-**New in 0.9.9**
-- **The A+ arrow in 3D follows the A direction setting.** It used to point toward you whichever way was set, because the direction was flipped twice. It now points the way the top of the stock goes when A turns +: toward you (−Y) or away (+Y). Answering the Machine test redraws it straight away.
+**New in 0.10.0**
+- **Dust collection / dust boot** (Machine), **off by default**. *M8*, *M7* or *M7 + M8* switches it on after the spindle starts in each operation, and off (M9) before every tool change and at the end, so a dust boot like the AutoDustBoot is up while the tool changes and travels round the rotary. A lowered boot isn't in the collision checks, so a note reminds you to check it clears the chuck, jaws, tailstock and stock.
+- **A manual** (`MANUAL.md`, in the zip and next to the README). It covers setting up the controller (`$376`, calibrating `$103`, A rates and soft limits), which way A turns, the rotary and spindle sizes, Z travel and zero. It ends with a checklist before the first carve and a table of symptoms and their causes.
 
 **Since 0.2.0**
+- 0.9.9: the A+ arrow in 3D follows the A direction setting
 - 0.9.8: which way A turns is a Machine setting, with a Turn A +90° test
 - 0.9.7: a program with Indexed asks which way A turns (wrong, Indexed cuts the opposite side)
 - 0.9.6: progress you can follow, more cores, inch programs only with A set as rotary ($376), a note on calibrating A

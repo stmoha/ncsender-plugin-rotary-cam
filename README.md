@@ -5,7 +5,9 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.9).** Air-cut the first program on a new setup.
+**New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
+
+**Prototype (0.10.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -281,6 +283,12 @@ press *Toward me* or *Away from me*; **Turn it back** jogs it −90°. Until it'
 the Machine section says so, and a program with Indexed asks too. Picking the other way
 from what the toolpaths were made with drops them to generate again.
 
+**Dust collection / dust boot** (Machine): off unless you turn it on. *M8*, *M7* or *M7 + M8*
+switches it on after the spindle starts in each operation and off (M9) before every tool
+change and at the end, so a dust boot is up while the tool changes and travels round the
+rotary. A lowered dust boot isn't in the collision checks: check it clears the chuck, jaws,
+tailstock and stock.
+
 **Units:** Rotary CAM follows ncSender's units setting. In inches every field is in
 inches (in, in/min) and the program is posted in G20; in millimetres, G21. **But:** in an
 inch program grblHAL multiplies every axis word by 25.4, A included, unless that axis is
@@ -378,7 +386,7 @@ node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code 
 node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
-node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared
+node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads

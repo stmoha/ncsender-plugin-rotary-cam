@@ -58,6 +58,15 @@ fs.mkdirSync(outDir, { recursive: true });
     const a1 = (r.gcode || '').match(/\bA-?[\d.]+/g) || [];
     ok(r.gcode && /\nG20 G90/.test(r.gcode) && !r.warns.some((w) => /millimetres/.test(w)), '$376=1: an inch program (G20), nothing to say');
     ok(a0.length > 100 && a0.slice(0, 500).join() === a1.slice(0, 500).join(), `A is in degrees either way (${a0.length} A words, the same)`);
+    // ---- dust collection: off unless turned on; on, M8 while cutting and M9 before tool changes
+    ok(!/\bM[789]\b/.test(r.gcode) && await page.$eval('#rc-dust', (e) => e.value) === 'off', 'dust collection is off by default: no M7/M8/M9 in the program');
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=machine]'); d.open = true; });
+    await page.selectOption('#rc-dust', 'm8'); await page.waitForTimeout(400);
+    r = await generate();
+    const dl = (r.gcode || '').split('\n');
+    ok(dl.filter((l) => l === 'M8').length >= 1 && dl.filter((l) => l === 'M9').length >= 1 && dl[dl.length - 1 - [...dl].reverse().findIndex((l) => l === 'M30')] === 'M30' && r.warns.some((w) => /^Dust collection is on \(M8.*isn.t in the collision checks/.test(w)), `M8: ${dl.filter((l) => l === 'M8').length} on, ${dl.filter((l) => l === 'M9').length} off, with a note to check the boot clears the rotary`);
+    await page.selectOption('#rc-dust', 'off'); await page.waitForTimeout(400);
+
     // ---- which way A turns: a setting under Machine, with a test turn
     const where = await page.evaluate(() => { const el = document.querySelector('#rcam-root [data-k=a_sign]'); return el && el.closest('details').getAttribute('data-sec'); });
     ok(where === 'machine', 'A+90 turns the top of the stock: under Machine now (' + where + ')');
