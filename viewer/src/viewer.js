@@ -338,11 +338,12 @@ export function create(container, opts = {}) {
     const axis = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(ch.x0 - 30, 0, 0), new THREE.Vector3(xt + coneL + 90, 0, 0)]), mats.axis);
     axis.computeLineDistances();
     machine.add(axis);
-    // A+ arrow
+    // A+ arrow over the top, from back (+Y) to front (-Y); the head at the end the top of the
+    // stock goes to when A turns +: the front with aSign +1, the back with -1
     const arcR = R + 7, ax = xt - Math.max(12, s.tailClear + 6);
     const arcPts = [];
     for (let i = 0; i <= 40; i++) {
-      const t = (-50 + i * 2.5) * DEG * aSign;
+      const t = (-50 + i * 2.5) * DEG;
       arcPts.push(new THREE.Vector3(ax, -Math.sin(t) * arcR, Math.cos(t) * arcR));
     }
     machine.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(aSign > 0 ? arcPts : arcPts.slice().reverse()), new THREE.LineBasicMaterial({ color: new THREE.Color(theme.accent) })));
@@ -351,7 +352,7 @@ export function create(container, opts = {}) {
     const head = new THREE.Mesh(new THREE.ConeGeometry(2.2, 6, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent) }));
     head.position.copy(end);
     head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(prev).normalize());
-    machine.add(head);
+    machine.add(head); refs.aHead = head;
     const aLabel = textSprite('A+', theme.accent);
     aLabel.position.set(ax, -arcR * 0.9 * aSign, arcR * 0.75);
     aLabel.scale.set(8 * aLabel.userData.aspect, 8, 1);
@@ -1198,6 +1199,8 @@ export function create(container, opts = {}) {
     },
     holderOpacity() { requestRender(); fadeHolders(); return { tool: tool ? tool.userData.opacity : null, sim: simTool ? simTool.userData.opacity : null }; },
     // how see-through the chuck end and the tailstock end are drawn now (1: solid)
+    // which way the A+ arrow points at its head (its Y: -Y toward you, +Y away)
+    aArrow() { const h = refs.aHead; return h ? { y: h.position.y, dir: new THREE.Vector3(0, 1, 0).applyQuaternion(h.quaternion).y } : null; },
     endsOpacity() { fadeHolders(); return sides ? Object.assign({}, sides.opacity) : null; },
     // look along a direction (as if orbited there), at the part or the whole setup
     lookFrom(d, whole) { fitBox(frame(!!whole), new THREE.Vector3(...d).normalize()); },

@@ -1,10 +1,10 @@
-## Rotary CAM 0.9.8 (beta)
+## Rotary CAM 0.9.9 (beta)
 
-**New in 0.9.8**
-- **Which way A turns is now a Machine setting, with a test.** "A+90 turns the top of the stock" (toward you −Y, or away +Y) moved from Stock & rotary to Machine. **Turn A +90°** jogs A a quarter turn: raise Z clear first, watch which way the top of the stock goes, then press *Toward me* or *Away from me*. The jog is in degrees whatever the units, and won't run while the machine is busy. **Turn it back** jogs A −90°. Until you've checked it, the Machine section says so.
-- A program with Indexed still asks after Generate if the direction hasn't been checked. Picking the other way from what the toolpaths were made with drops them so you generate again.
+**New in 0.9.9**
+- **The A+ arrow in 3D follows the A direction setting.** It used to point toward you whichever way was set, because the direction was flipped twice. It now points the way the top of the stock goes when A turns +: toward you (−Y) or away (+Y). Answering the Machine test redraws it straight away.
 
 **Since 0.2.0**
+- 0.9.8: which way A turns is a Machine setting, with a Turn A +90° test
 - 0.9.7: a program with Indexed asks which way A turns (wrong, Indexed cuts the opposite side)
 - 0.9.6: progress you can follow, more cores, inch programs only with A set as rotary ($376), a note on calibrating A
 - 0.9.5: the Z travel limit holds still while you shorten stickouts; what's left once every tool fits

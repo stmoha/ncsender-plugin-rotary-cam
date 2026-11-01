@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.8).** Air-cut the first program on a new setup.
+**Prototype (0.9.9).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
