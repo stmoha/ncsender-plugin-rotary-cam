@@ -831,6 +831,17 @@ export function create(container, opts = {}) {
         break;
       }
       case 'rig.chuck.jaws': box(ch, 'chuck'); break;
+      case 'rig.tc.ztop': {
+        // how high the tool tip can go above the axis: a dimension up to a see-through ceiling
+        const zt = setup.rig && setup.rig.tc && Number(setup.rig.tc.ztop);
+        if (!isFinite(zt) || setup.rig.tc.ztop === null) break;
+        const x = tp ? tp.x : (cx + tx) / 2;
+        dim([x, -R - 6, 0], [x, -R - 18, 0], [x, -R - 18, zt], [x, -R - 6, zt], text);
+        const sheet = new THREE.Mesh(new THREE.PlaneGeometry(tx - cx + 80, 2 * R + 60), new THREE.MeshBasicMaterial({ color: dimColor(), transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide }));
+        sheet.position.set((cx + tx) / 2, 0, zt); sheet.renderOrder = 28; hlGroup.add(sheet);
+        if (tool) targets.push(...toolParts(() => true));
+        break;
+      }
       case 'rig.corner': case 'rig.corner.dx': case 'rig.corner.dy': case 'rig.corner.dz': {
         // the corner you zero on and the legs from it to the G-code zero (measured, not the
         // keep-out box): X to the jaw face, Y to the axis, Z to the axis

@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.0).** Air-cut the first program on a new setup.
+**Prototype (0.9.1).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -26,7 +26,12 @@ wrong mirrors anything asymmetric.
 ## Using it
 
 1. **Tools › Rotary CAM** opens a full-window view of the rotary setup: chuck (4 jaws, or
-   3), stock, tailstock, the rotary axis and the G-code zero. The collet nut and spindle go
+   3), stock, tailstock, the rotary axis and the G-code zero. The version shows under the
+   name, with a pulsing badge when ncSender finds a newer release (its card links to what's
+   new, opens ncSender's plugin settings, or updates it there and then). The header always
+   shows the stock: what's set, the least the part needs (across and from the jaws to the
+   centre), and the room Z has above the axis, in red when something's short; click it for
+   Stock & rotary. The collet nut and spindle go
    see-through when they'd hide the part (looking down from the top, say). **Open…** (or drop) a `.stl`, `.step` or `.stp`
    part, or a Rotary CAM project (`.rcam`, below).
 2. **Place the part** with the buttons on the 3D view:
@@ -188,11 +193,25 @@ wrong mirrors anything asymmetric.
      jaw face on the axis, so that is where the rotary is.
    - **Tool change position and tool setter:** the Manual Tool Changer's settings.
    - **Safe Z:** ncSender's Settings.
+   - **Top of Z above the axis:** how far above the rotary axis the tool tip is with Z at
+     the top of its travel (machine Z0), from the work offset with the tool in the spindle,
+     and the bottom of the travel from $132.
    - Type any of them in instead (another tool changer, ncSender not connected); a typed
      value is kept until **Read from ncSender**. The machine's travel limits keep the way
      round inside the machine.
    The 3D view (Fit setup) shows the tool change and tool setter, and the way round once
    generated.
+   **Z travel:** ncSender checks a program against the machine's Z travel using the work
+   offset when it's loaded, and flags anything above machine Z0. Rotary CAM keeps every
+   move inside it: a tool that sticks out further than the one in the spindle has that much
+   less room (its tip sits lower at the top of Z), so each operation gets its own limit.
+   - If a tool can't get its tip above the stock without leaving the travel, Generate is
+     off and the message says by how much (a shorter stickout, zeroed again, or smaller
+     stock fixes it).
+   - Rapids that wanted to go higher than the travel allows are kept at the top of Z; if
+     that still clears the stock, the message just says so. If the collet nut and spindle
+     needed more room than that, or a cut would go below the bottom of the travel, it's a
+     red *Danger* message.
 12. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
    the part, every setting, the tools, and the G-code and toolpaths if they were generated,
    ready to simulate or load without calculating again. The rotary, spindle and tool change
@@ -252,6 +271,17 @@ desktop browser connected to ncSender is much faster than a Raspberry Pi kiosk s
 
 These are included unmodified; their licences are in `licenses/`.
 
+## Settings
+
+Every change is saved to ncSender as you make it (a moment's pause while typing) and when
+Rotary CAM closes, so it's there on every computer that opens Rotary CAM on that ncSender,
+and after updates. Several computers can have it open at once: a save only writes what that
+window changed and keeps everyone else's changes (if two change the same setting, the later
+one stands), and a window opened again picks up what changed elsewhere. If ncSender can't
+be reached it keeps trying and says so. A stickout or flute length you type for a Tool
+Library tool is kept when Rotary CAM opens again; picking the tool again takes the
+library's values.
+
 ## Known gaps
 
 - A turns continuously (hundreds of turns). If A has soft limits, check `$133`.
@@ -292,6 +322,9 @@ node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code 
 node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
+node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared
+node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
+node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits

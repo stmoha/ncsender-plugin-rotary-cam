@@ -26,9 +26,13 @@ const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { va
 
 // the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
 // ncsender-plugin-manualtoolchanger settings: parking = tool change position, toolSetter)
-let MACHINE = { connected: true, status: 'Idle', workspace: 'G54', g54: '-300.000,-200.000,-80.000,0.000', g55: '0.000,0.000,0.000,0.000', MPos: '-150.000,-200.000,-10.000', WCO: '-300.000,-200.000,-80.000', maxTravelX: 800, maxTravelY: 600, maxTravelZ: 130, homed: true };
+let MACHINE = { connected: true, status: 'Idle', tool: 1, workspace: 'G54', g54: '-300.000,-200.000,-80.000,0.000', g55: '0.000,0.000,0.000,0.000', MPos: '-150.000,-200.000,-10.000', WCO: '-300.000,-200.000,-80.000', maxTravelX: 800, maxTravelY: 600, maxTravelZ: 130, homed: true };
 let MTC = { installed: true, enabled: true, settings: { parking: { x: -560, y: -380, z: 0 }, toolSetter: { x: -400, y: -100, z: -50 } } };
 let SAFEZ = -5;
+// PluginManager.CheckUpdateAsync: the newest GitHub release of the manifest's repository
+const MANIFEST = JSON.parse(readFileSync(join(PLUGIN_DIR, 'manifest.json'), 'utf8'));
+let UPDATE = { currentVersion: MANIFEST.version, latestVersion: MANIFEST.version, updateAvailable: false, releaseUrl: '', downloadUrl: '' };
+let UPDATED = 0;
 // the controller's side of /api/send-command (ServerBuilder.cs): modal units, grblHAL named
 // parameters and expressions (as ncSender's own probe routines use them), G10 L2 work offsets
 // (kept in mm, the way $# reports them). noExpr: a controller without expressions.
@@ -98,6 +102,10 @@ http.createServer(async (req, res) => {
   if (p === '/api/settings') return json(res, { unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } });
   if (p === '/api/plugins') return json(res, [{ id: ID, name: 'Rotary CAM', enabled: true }].concat(MTC.installed ? [{ id: 'com.ncsender.manualtoolchange', name: 'Manual Tool Changer', enabled: MTC.enabled }] : []));
   if (p === '/api/plugins/com.ncsender.manualtoolchange/settings') { if (!MTC.installed) { res.writeHead(404); return res.end(); } return json(res, MTC.settings); }
+  if (p === `/api/plugins/${ID}/check-update`) return json(res, UPDATE);
+  if (p === `/api/plugins/${ID}/update` && req.method === 'POST') { UPDATED++; return json(res, { success: true }); }
+  if (p === '/__test/update' && req.method === 'POST') { UPDATE = Object.assign(UPDATE, JSON.parse(await body(req))); return json(res, { UPDATE, UPDATED }); }
+  if (p === '/__test/updated') return json(res, { UPDATED });
   if (p === '/api/send-command' && req.method === 'POST') { const b = JSON.parse(await body(req)); COMMANDS.push(b.command); return json(res, Object.assign({ id: String(COMMANDS.length), command: b.command }, runLine(b.command))); }
   if (p === '/__test/commands') return json(res, { commands: COMMANDS, metric: CTRL.metric, machine: MACHINE });
   if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.ctrl) CTRL = Object.assign(CTRL, b.ctrl); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
