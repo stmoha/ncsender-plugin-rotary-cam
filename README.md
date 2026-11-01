@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.6).** Air-cut the first program on a new setup.
+**Prototype (0.9.7).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -271,6 +271,12 @@ Save project uses the browser's Save dialog where it has one (ncSender on this c
 otherwise it downloads the file.
 
 Every setting has a tooltip (hover it, or the **?** beside it).
+
+**Which way A turns:** *A+90 moves the top of the stock to* (Stock & rotary) has to match
+the machine: mark the top of the stock, jog A+90 and see which way the mark goes. Wrong,
+the rest of the part only comes out mirrored, but Indexed cuts from the side and lands on
+the opposite one (180° off at A90 and A270). Until you've said, a program with Indexed asks,
+with a button for each way; picking the other way drops the toolpaths to generate again.
 
 **Units:** Rotary CAM follows ncSender's units setting. In inches every field is in
 inches (in, in/min) and the program is posted in G20; in millimetres, G21. **But:** in an

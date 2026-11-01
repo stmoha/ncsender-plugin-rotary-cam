@@ -134,6 +134,27 @@ fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, 'job.json'), JSON.stringify(dump.job, null, 2));
     fs.writeFileSync(path.join(outDir, 'tenons.json'), JSON.stringify(dump.tenons));
     fs.writeFileSync(path.join(outDir, 'program.nc'), dump.gcode);
+
+    // ---- which way A turns: Indexed asks, since it cuts the opposite side if it's wrong
+    await page.click('[data-tab=3d]').catch(() => {}); await page.waitForTimeout(300);
+    let adir = await page.$$eval('#rcam-root .rc-msg', (els) => { const m = els.find((e) => /Indexed depends on which way A turns/.test(e.textContent)); return m ? { text: m.textContent, btns: [...m.querySelectorAll('.rc-adir')].map((b) => b.textContent) } : null; });
+    ok(adir && /toward you \(.Y\)/.test(adir.text) && /180. off at A90 and A270/.test(adir.text) && adir.btns.length === 2, 'Indexed asks which way A+90 turned the top of the stock: ' + (adir && adir.btns.join(' | ')));
+    await shot('5-a-direction');
+    // it turned away: the setting flips, the toolpaths go
+    await page.click('#rcam-root .rc-adir[data-asign="-1"]'); await page.waitForTimeout(500);
+    let sj = await page.evaluate(() => ({ s: window.RotaryCam.__state.job.a_sign, c: window.RotaryCam.__state.job.a_checked, p: !!window.RotaryCam.__state.program, sel: document.querySelector('#rcam-root [data-k=a_sign]') && document.querySelector('#rcam-root [data-k=a_sign]').value }));
+    ok(sj.s === -1 && sj.c === true && !sj.p && sj.sel === '-1', 'Away from me: A+90 now turns it to +Y, and the toolpaths are dropped to generate again ' + JSON.stringify(sj));
+    // turning the other way, Indexed still cuts what it should (the program and the plan agree)
+    await page.evaluate(() => { window.RotaryCam.__state.program = null; });
+    await page.click('#rcam-root .rc-gen');
+    await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 1500000, polling: 500 });
+    const g2 = await page.evaluate(() => ({ head: window.RotaryCam.__state.program.gcode.slice(0, 400), ask: window.RotaryCam.__state.warnings.some((w) => /which way A turns/.test(w)) }));
+    ok(/a_sign=-1/.test(g2.head) && !g2.ask, 'generated with a_sign=-1, and it doesn\u2019t ask again');
+    await page.click('[data-tab=sim]');
+    await page.waitForFunction(() => window.RotaryCam.sim && window.RotaryCam.sim.checked, null, { timeout: 600000, polling: 500 });
+    await page.waitForTimeout(800);
+    const rep2 = await page.evaluate(() => window.RotaryCam.__state.simReport);
+    ok(rep2 && rep2.rapids === 0 && rep2.gouges === 0 && rep2.index && rep2.index.left < 0.2 * rep2.index.total, 'turning the other way: still no rapids into the stock, nothing below the part, Indexed cuts away most of what was left ' + JSON.stringify(rep2 && rep2.index));
   } catch (e) {
     fails++;
     console.log('FAILED:', e.message);

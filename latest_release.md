@@ -1,13 +1,10 @@
-## Rotary CAM 0.9.6 (beta)
+## Rotary CAM 0.9.7 (beta)
 
-**New in 0.9.6**
-- **Inch programs only where A is set up as rotary.** In an inch program (G20), grblHAL multiplies every axis value by 25.4, A included, unless the axis is marked rotary in `$376` (`$376=1` for A). Otherwise A90 turns about 2,286° and the features come out at the wrong angles. Now, unless the controller reports A as rotary, the program is written in millimetres (G21), which runs the same and is never rescaled, and a note says why. Set `$376=1` to get inch programs again.
-- **Progress you can follow.** The bar is split into the steps of a Generate: toolpaths round the part, sharp features, what the rotary passes missed, and Indexed. Each part of the bar fills as its step runs, including within each Indexed angle. The status line shows how far the step has got, about how long it has left, the time so far, and which step it is (for example *Indexed: Planning A90° (1 of 4)… 38% · about 2 min left · 1:12 so far · step 4 of 4*).
-- **More of your cores.** Up to 8 workers (all the cores but one) instead of 4, and big batches are split finer so every worker stays busy to the end.
-- Indexed reuses each angle's collet nut and spindle map for that angle's passes instead of working it out three times.
-- **A calibration note.** These programs turn A continuously through many turns, so a small error in A's steps per degree (`$103`) adds up. A note gives how far off the last passes would be if `$103` were 0.1% out, and how to check it over 10 turns.
+**New in 0.9.7**
+- **Indexed asks which way A turns.** Indexed cuts from the side, so if A turns the other way from the "A+90 moves the top of the stock to" setting, it lands on the opposite side: 180° off at A90 and A270. Roughing and finishing only come out mirrored. Until you've confirmed the direction, a program with Indexed asks you to mark the top of the stock, jog A+90, and pick *Toward me (−Y)* or *Away from me (+Y)*. Picking the other way flips the setting and drops the toolpaths so you generate again. Tested both ways: the simulation of an Indexed program cuts what it should with A turning either way.
 
 **Since 0.2.0**
+- 0.9.6: progress you can follow, more cores, inch programs only with A set as rotary ($376), a note on calibrating A
 - 0.9.5: the Z travel limit holds still while you shorten stickouts; what's left once every tool fits
 - 0.9.4: one Z travel message with the most a tool may stick out and how to check it, stickout of the tool in the spindle, one stickout per tool number, stock length + clamping distance, live centre total length, the chuck end and tailstock end fade when they're in the way, silver / dark gray setup
 - 0.9.3: Z not zeroed on the axis yet (or not homed) no longer blocks Generate
