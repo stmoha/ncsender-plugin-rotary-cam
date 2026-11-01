@@ -7,7 +7,7 @@ kind of rotary work that Fusion keeps behind the Machining Extension.
 
 **New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
 
-**Prototype (0.11.0).** Air-cut the first program on a new setup.
+**Prototype (0.11.1).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -113,7 +113,9 @@ wrong mirrors anything asymmetric.
      part is many small spots, each its own plunge and hop: a stippled look. The whole side
      gives one even surface, at the cost of time (roughly doubling the cutting time on the
      chess knight). Anything thick still there under the side pass is taken down in layers
-     first.
+     first. It only goes where the ball itself touches the part: beside the part a tapered
+     ball's cone can rest on the part's side with the tip far below it, and those spots are
+     left out (as is anything below the part's own outline).
      **Pick the angles for me** (off by default) tries A every 15° first and picks the fewest
      angles that reach the most, at most *Most angles* of them. It takes much longer, since
      all 24 are tried before any is planned (on a detailed part, minutes rather than seconds),
@@ -397,6 +399,7 @@ node test/tenon-test.js                                    # tenon length, scale
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
+node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads

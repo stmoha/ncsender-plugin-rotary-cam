@@ -60,7 +60,7 @@ const OCL = require('../lib/ocl.js');
     console.log(`indexed: left after finishing ${left.volume.toFixed(0)} mm3 to clean, ${left.other.toFixed(0)} mm3 other, ${left.n} points (step ${left.s.toFixed(2)})`);
     const tPlan = Date.now();
     maps.indexed = await core.planIndexed(job, left,
-      (groups) => Promise.resolve(groups.map((g) => worker.dropXY(ocl, wm.tris, rot, job, g.a, g.xy, cutters.index, core.cutterOf(job, 'index').maxR))),
+      (groups) => Promise.resolve(groups.map((g) => (g.ball > 0 ? worker.dropBallXY(wm.tris, job, g.a, g.xy, g.ball) : worker.dropXY(ocl, wm.tris, rot, job, g.a, g.xy, cutters.index, core.cutterOf(job, 'index').maxR)))),
       (x, y, a) => sim.hullTop(x, y, a), (st) => { if (process.env.STEPS) console.log(`  ${((Date.now() - tPlan) / 1000).toFixed(1)} s ${st}`); }, p.indexLimits);
     console.log(`indexed planning: ${((Date.now() - tPlan) / 1000).toFixed(1)} s`);
     const ix = maps.indexed;
@@ -72,6 +72,16 @@ const OCL = require('../lib/ocl.js');
         const z = worker.dropXY(ocl, wm.tris, rot, job, g.a, Float64Array.from(all.flatMap((q) => [q[0], q[1]])), cutters.index, core.cutterOf(job, 'index').maxR);
         all.forEach((q, k) => { if (isFinite(z[k]) && z[k] - q[2] > 0.005) { bad++; worst = Math.max(worst, z[k] - q[2]); srcs[q.src] = (srcs[q.src] || 0) + 1; if (bad <= 5) console.log(`  low point A${g.a} X${q[0].toFixed(3)} Y${q[1].toFixed(3)} Z${q[2].toFixed(3)} drop ${z[k].toFixed(3)} from ${q.src}`); } });
       }
+      // and none below the part's own outline at its Y (a tapered ball's cone resting on the
+      // part's side lets the tip down far below the part: never cut there)
+      let deep = 0, deepest = 0;
+      const rm = left.rmax;
+      ix.angles.forEach((g) => g.passes.forEach((pts) => pts.forEach((q) => {
+        const lo = Math.abs(q[1]) < rm ? -Math.sqrt(rm * rm - q[1] * q[1]) - 0.06 : -Infinity;
+        if (Math.abs(q[1]) < rm && q[2] < lo) { deep++; deepest = Math.min(deepest, q[2]); if (deep <= 5) console.log(`  under the part: A${g.a} X${q[0].toFixed(3)} Y${q[1].toFixed(3)} Z${q[2].toFixed(3)} (${q.src})`); }
+        if (Math.abs(q[1]) >= rm && q[2] < -0.06) { deep++; deepest = Math.min(deepest, q[2]); if (deep <= 5) console.log(`  beside the part, below the axis: A${g.a} X${q[0].toFixed(3)} Y${q[1].toFixed(3)} Z${q[2].toFixed(3)} (${q.src})`); }
+      })));
+      console.log(`outline check: ${deep} points below the part's outline${deep ? ', deepest Z' + deepest.toFixed(2) : ''}`);
       if (process.env.NEAR) { const [nx, ny] = process.env.NEAR.split(',').map(Number); ix.angles.forEach((g) => g.passes.forEach((pts, pi) => pts.forEach((q, qi) => { if (Math.abs(q[0] - nx) < 0.004 && Math.abs(q[1] - ny) < 0.004) {
         console.log(`  near: A${g.a} pass ${pi} #${qi}/${pts.length} X${q[0].toFixed(4)} Y${q[1].toFixed(4)} Z${q[2].toFixed(4)} ${q.src} L=${pts.L}`);
         const ixj = job.index, cb = new ocl.BallCutter(ixj.tool_dia, 25), jit = [[0, 0], [1e-3, 0], [-1e-3, 0], [0, 1e-3], [0, -1e-3]];

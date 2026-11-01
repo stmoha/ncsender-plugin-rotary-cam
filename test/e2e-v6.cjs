@@ -64,6 +64,20 @@ fs.mkdirSync(outDir, { recursive: true });
     // (with the library's 22 mm stickout the nut keeps it off much of the jaw's underside)
     await openSec('index'); await typeIn('#rc-index-stickout', (40 / U).toFixed(metric ? 2 : 4));
     await openSec('finish'); await typeIn('#rc-finish-pitch', (0.4 / U).toFixed(metric ? 2 : 4));
+    // ---- Cancel stops it whatever it's waiting for: here a drop that never comes back
+    await page.click('#rcam-root .rc-gen');
+    await page.waitForFunction(() => window.RotaryCam.pool && window.RotaryCam.pool.workers && window.RotaryCam.pool.workers.length, null, { timeout: 120000 });
+    await page.evaluate(() => { const p = window.RotaryCam.pool; p.drop = () => new Promise(() => {}); });
+    await page.waitForFunction(() => /^Indexed:/.test(window.RotaryCam.__state.busy || ''), null, { timeout: 600000, polling: 250 });
+    await page.waitForTimeout(2500);
+    const tick1 = await page.$eval('#rcam-root .rc-status', (e) => e.textContent);
+    await page.waitForTimeout(1500);
+    const tick2 = await page.$eval('#rcam-root .rc-status', (e) => e.textContent);
+    ok(tick1 !== tick2 && /so far/.test(tick2), 'stuck waiting, the clock still ticks: "' + tick1.replace(/.*· (\d+:\d+) so far.*/, '$1') + '" then "' + tick2.replace(/.*· (\d+:\d+) so far.*/, '$1') + '"');
+    await page.click('#rcam-root .rc-cancel'); await page.waitForTimeout(600);
+    const cx = await page.evaluate(() => ({ busy: window.RotaryCam.__state.busy, gen: window.RotaryCam.__state.gen, prog: !!window.RotaryCam.__state.program, off: document.querySelector('#rcam-root .rc-gen').disabled, pool: !!window.RotaryCam.pool, bar: document.querySelector('#rcam-root .rc-prog').style.display }));
+    ok(!cx.busy && !cx.gen && !cx.prog && !cx.off && !cx.pool && cx.bar === 'none', 'Cancel while it waits on a drop that never comes: stopped at once, Generate back on ' + JSON.stringify(cx));
+
     // every progress report, as it's made (sampling the screen misses them on a busy machine)
     await page.evaluate(() => { const h = window.RotaryCam.session.hooks, p = h.progress; window.__prog = []; h.progress = function (G, k, f, t) { window.__prog.push([k, f]); return p.apply(this, arguments); }; });
     await page.click('#rcam-root .rc-gen');
@@ -76,7 +90,7 @@ fs.mkdirSync(outDir, { recursive: true });
         return { busy: window.RotaryCam.__state.busy, done: !!window.RotaryCam.__state.program, probs: window.RotaryCam.__state.problems.length, segs, shown: document.querySelector('#rcam-root .rc-prog').style.display };
       });
       if (st.busy) stages.add(st.busy.replace(/[\d,]+.*$/, '').trim());
-      if (/^Indexed: Planning/.test(st.busy || '')) { bars.push(st); if (!shot1 && st.segs.length === 4 && st.segs[3].w > 5) { shot1 = true; await shot('progress-indexed'); } }
+      if (/^Indexed: Planning/.test(st.busy || '')) { bars.push(st); if (!shot1 && st.segs.length === 5 && st.segs[3].w > 5) { shot1 = true; await shot('progress-indexed'); } }
       if (st.done || (!st.busy && st.probs)) break;
       await page.waitForTimeout(250);
     }
@@ -85,10 +99,10 @@ fs.mkdirSync(outDir, { recursive: true });
     // the bar: a piece per step; during Indexed the earlier ones are full and Indexed's own moves
     const ixf = (await page.evaluate(() => window.__prog)).filter((q) => q[0] === 'index').map((q) => q[1]);
     const rising = ixf.every((f, i) => !i || f >= ixf[i - 1] - 1e-9), distinct = new Set(ixf.map((f) => Math.round(f * 100))).size;
-    ok(bars.length && bars.every((b) => b.shown === 'flex' && b.segs.length === 4 && b.segs.slice(0, 3).every((q) => q.w === 100) && b.segs[3].now && /Indexed/.test(b.segs[3].t)), `during Indexed the bar shows 4 steps, the first 3 done and Indexed's the one going (${bars.length} looks)`);
+    ok(bars.length && bars.every((b) => b.shown === 'flex' && b.segs.length === 5 && b.segs.slice(0, 3).every((q) => q.w === 100) && b.segs[3].now && /Indexed/.test(b.segs[3].t) && /Writing the program/.test(b.segs[4].t)), `during Indexed the bar shows its 5 steps (the last writing the program), the first 3 done and Indexed's the one going (${bars.length} looks)`);
     ok(ixf.length > 10 && rising && distinct >= 10 && ixf[ixf.length - 1] === 1, `Indexed reports its progress ${ixf.length} times, rising through ${distinct} different values to 100%, not pegged`);
     const lastBusy = bars.length ? bars[bars.length - 1].busy : '';
-    ok(/^Indexed: Planning A.*\(\d of \d\)\u2026 \d+% \u00b7 .*so far \u00b7 step 4 of 4$/.test(lastBusy), 'with how far it is, how long so far (and left, once it can tell), and which step: "' + lastBusy + '"');
+    ok(/^Indexed: Planning A.*\(\d of \d\)\u2026 \d+% \u00b7 .*so far \u00b7 step 4 of 5$/.test(lastBusy), 'with how far it is, how long so far (and left, once it can tell), and which step: "' + lastBusy + '"');
     const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, info: s.program && s.program.info.index && { angles: s.program.info.index.angles, target: s.program.info.index.target, removed: s.program.info.index.removed }, n: s.program && s.program.paths.index.length / 4 }; });
     console.log(ms(), '   generated:', JSON.stringify(st));
     ok(st.info && st.info.angles.length > 0 && st.info.removed / st.info.target > 0.8, `Indexed reaches ${st.info ? Math.round(100 * st.info.removed / st.info.target) : 0}% at A ${st.info && st.info.angles.join(', ')}`);

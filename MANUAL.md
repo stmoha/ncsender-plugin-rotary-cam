@@ -261,6 +261,7 @@ Then zero (or measure) Z with the first tool, as above.
 | Grbl alarm partway through, on A | Soft limits with A travel (`$133`) smaller than the program's A | Soft limits off for the job, or raise `$133` |
 | Collet nut or spindle near the chuck or tailstock | Stickout too short for where it has to reach | The message says how much stickout would reach; or move the part further from the jaws |
 | The dust boot hits the rotary | The lowered boot isn't in the collision checks | Turn dust collection off (Machine), or make room |
+| Generate seems stuck | Indexed with a tapered ball is slow (it goes through OpenCAMLib): minutes per angle on a detailed part | The status clock keeps ticking every second while it works; **Cancel** stops it at once. If the clock stops, the page itself is stuck: reload it (settings and the part come back) |
 | Generate takes a long time | Indexed with *Pick the angles for me* tries every 15° first | List your own angles; the progress bar shows which step and how long is left |
 | Indexed looks stippled: lots of little spots, the tool jumping between them | Clean-up only goes where material is left, which on a detailed part is many small spots | Tick **Finish the whole side it faces** (Indexed): one even pass over each side, line by line; or raise **Ignore less than** to skip the thinnest spots |
 

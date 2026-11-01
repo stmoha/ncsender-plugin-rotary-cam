@@ -1,14 +1,13 @@
-## Rotary CAM 0.11.0 (beta)
+## Rotary CAM 0.11.1 (beta)
 
-**New in 0.11.0**
-- **Indexed: Finish the whole side it faces** (off by default). Clean-up alone only goes where material is left. On a detailed part that's many small spots, each with its own plunge and hop, which looks stippled. With this ticked, each angle also runs one even finishing pass over the whole side it faces, line by line along the part a stepover apart, with the tool riding the surface like a 3-axis parallel finish.
-  - It only covers surface up to 55° steep across the passes; the next angle round does the steeper parts.
-  - The collet nut and spindle stay clear, and it stays inside the keep-aways.
-  - Anything thick still left under it is taken down in layers first.
-  - It's smoother and more even, but slower: on the test parts it roughly doubles the cutting time.
-  - Checked: no point of the passes goes below a fresh drop onto the part, and the simulation shows nothing cut below the part.
+**New in 0.11.1**
+- **Fixed: with a tapered ball, "Finish the whole side it faces" could plunge far below the part** (an inch under the axis on the knight). Beside the part, the tool's widening cone can rest on the part's side with the tip far below. The whole-side pass took those spots as surface to finish. It now only goes where the ball itself touches the part, never where the cone is holding the tool up, and never below the part's outline. A new test checks exactly this. **Generate again** any program made with 0.11.0 and the whole side ticked.
+- **Cancel always stops it.** It used to only stop at the next point where the calculation checked in, so a calculation stuck waiting (for example on a worker that never answered) ignored it. Now it stops at once, whatever the calculation is doing or waiting for: the workers are shut down (new ones start next time), anything that comes back from that calculation is ignored, and Generate is ready again.
+- **The status clock keeps ticking** every second while it works, so you can tell a slow step from a stuck page. If the clock stops, the page itself is stuck: reload it, and your settings and the part come back.
+- **Writing the program is a step of its own** on the bar. Before, it ran with the bar showing Indexed at 100%.
 
 **Since 0.2.0**
+- 0.11.0: Indexed can finish the whole side it faces (one even pass instead of spots)
 - 0.10.0: dust collection / dust boot switch (off by default); a manual (MANUAL.md)
 - 0.9.9: the A+ arrow in 3D follows the A direction setting
 - 0.9.8: which way A turns is a Machine setting, with a Turn A +90° test
