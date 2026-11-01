@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.1).** Air-cut the first program on a new setup.
+**Prototype (0.9.2).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -277,8 +277,13 @@ Every change is saved to ncSender as you make it (a moment's pause while typing)
 Rotary CAM closes, so it's there on every computer that opens Rotary CAM on that ncSender,
 and after updates. Several computers can have it open at once: a save only writes what that
 window changed and keeps everyone else's changes (if two change the same setting, the later
-one stands), and a window opened again picks up what changed elsewhere. If ncSender can't
-be reached it keeps trying and says so. A stickout or flute length you type for a Tool
+one stands). Each window also checks ncSender every few seconds, whenever it comes back to
+the front, and before every command (Generate, Load into ncSender, Save to File Manager,
+Download, Save project, Simulate), so a change made on another computer is in before
+anything is made or sent. If it means the toolpaths no longer match the settings, they're
+dropped rather than loaded, and the message says which settings changed; a field you're
+typing in is left alone until you leave it. If ncSender can't be reached it keeps trying
+and says so. A stickout or flute length you type for a Tool
 Library tool is kept when Rotary CAM opens again; picking the tool again takes the
 library's values.
 
@@ -325,6 +330,7 @@ node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by def
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
+node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
 node test/e2e-v7.cjs test/knight_test.step out/          # tapered ball bits

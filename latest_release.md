@@ -1,18 +1,13 @@
-## Rotary CAM 0.9.1 (beta)
+## Rotary CAM 0.9.2 (beta)
 
-**New in 0.9.1**
-- **Programs stay inside the Z travel.** ncSender flags a program that goes above machine Z0, using the work offset it's loaded with. Rotary CAM now reads that offset, the Z travel and the tool in the spindle when it opens and before each Generate, and keeps every move inside the travel for each tool's stickout (a tool that sticks out further has less room).
-  - If a tool can't get above the stock without going past the top of Z, Generate is off and the message says how much shorter the stickout needs to be.
-  - Rapids kept lower than planned are noted. They show in red if the collet nut and spindle needed more room than that, or if a cut would go below the bottom of the travel.
-  - **Top of Z above the axis** is under Tool changes, and shows in 3D as a ceiling
-- **Stock at a glance** in the header: the stock you've set, the least the part needs (across, and from the jaws to the centre), and the Z room above the axis. Anything short shows in red; click it to open Stock & rotary
-- **Version under the name**, and an **update badge** when ncSender finds a newer release. Its card has what's new, a button that opens ncSender's plugin settings, and Update now
-- **Settings survive:**
-  - A stickout or flute length you type for a Tool Library tool is no longer replaced by the library's values each time Rotary CAM opens
-  - Every change is saved as you make it, and again on Close
-  - Two computers with Rotary CAM open on the same ncSender no longer write over each other's changes; each save adds only what that window changed, and a window opened again catches up
+**New in 0.9.2**
+- **Changes made on another computer reach every open window before it does anything.** Each Rotary CAM window checks ncSender:
+  - before every command: Generate, Load into ncSender, Save to File Manager, Download, Save project, Simulate
+  - every few seconds while it's open, and whenever it comes back to the front
+- **Programs that no longer match aren't used.** If a change from elsewhere means the toolpaths no longer match the settings, they're dropped instead of loaded or saved, and the message names the settings that changed (*Settings were changed on another computer (Roughing stickout)…: generate again*). A field you're typing in isn't touched until you leave it
 
 **Since 0.2.0**
+- 0.9.1: programs stay inside the Z travel, stock at a glance in the header, version and update badge, settings that survive reopening and two computers
 - 0.9.0: Indexed planning around 7× faster (own exact ball drop-cutter, drops on every worker), listed angles by default
 - 0.8.0: work zero from a corner of the rotary (Move zero to the rotary axis), G-code zero marked in 3D, 4-jaw chuck, see-through spindle, tenon length
 - 0.7.1: settings light up their part of the 3D setup with a dimension; headstock and tailstock reach front and back separately
