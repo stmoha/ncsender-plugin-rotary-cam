@@ -103,6 +103,11 @@ function zs(gcode) {
   }
   let r = await program({});
   const free = Math.max(...r.z);
+  // inches, but the controller would scale A in G20: the program is in mm, A in degrees as ever
+  const aw = (g) => (g.match(/\bA-?[\d.]+/g) || []).slice(0, 400).join(' ');
+  const rIn = await program({ units: 'in' }), rMm = await program({ units: 'in', program_mm: true });
+  ok(/\nG20 /.test(rIn.prog.gcode) && /\nG21 /.test(rMm.prog.gcode) && !/\nG20 /.test(rMm.prog.gcode) && /\$376/.test(rMm.prog.gcode), 'inches with A not set as rotary: written in mm (G21), and says why');
+  ok(aw(rMm.prog.gcode) === aw(r.prog.gcode) && aw(rIn.prog.gcode) === aw(r.prog.gcode) && Math.abs(Math.max(...rMm.z) - Math.max(...r.z)) < 1e-6, 'its A words are the same degrees, its moves the same in mm');
   ok(free > 26.9, `no limit known: the program goes up to its retract height (Z${free.toFixed(2)})`);
   r = await program({ rig: { tc: { ztop: 26, zbot: -80 } } });
   const top = Math.max(...r.z);

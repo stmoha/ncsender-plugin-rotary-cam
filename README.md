@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.5).** Air-cut the first program on a new setup.
+**Prototype (0.9.6).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -110,7 +110,8 @@ wrong mirrors anything asymmetric.
      **Speed:** a plain ball is dropped onto the part by Rotary CAM's own exact drop-cutter,
      the same contact maths as OpenCAMLib (it agrees with it to well under a micron) with the
      part kept in a grid for each angle, 8 to 15 times faster; a tapered ball still goes
-     through OpenCAMLib. The drops are shared out over all the workers, and the checks for
+     through OpenCAMLib. The drops are shared out over all the workers (all the cores but
+     one, up to 8), and the checks for
      the collet nut and spindle only look where they're needed. On the chess knight that
      took Indexed from over two minutes to around 20 seconds on one core.
      **Angles in 3D:** with Indexed showing (its button on the view, or any of its settings),
@@ -272,7 +273,13 @@ otherwise it downloads the file.
 Every setting has a tooltip (hover it, or the **?** beside it).
 
 **Units:** Rotary CAM follows ncSender's units setting. In inches every field is in
-inches (in, in/min) and the program is posted in G20; in millimetres, G21.
+inches (in, in/min) and the program is posted in G20; in millimetres, G21. **But:** in an
+inch program grblHAL multiplies every axis word by 25.4, A included, unless that axis is
+set as rotary (`$376`, bit 0 for A: `$376=1`). With A not set as rotary, A90 turns 2286°
+and the carving comes out at the wrong angles. So an inch program is only posted when the
+controller reports `$376` with A set; otherwise the program is posted in millimetres (it
+runs the same) and says why. Set `$376=1` to get inch programs (check `$103`, `$113` and
+`$123` then: they're read per degree for a rotary axis).
 
 **Picking up where you left off:** closing and reopening keeps the part, settings,
 toolpaths and view. The part and its toolpaths are also kept in this browser, so they
@@ -366,6 +373,7 @@ node test/ztravel-test.js                                  # programs kept insid
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
+node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only with A set as rotary ($376), otherwise mm
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed

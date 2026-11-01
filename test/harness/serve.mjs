@@ -22,7 +22,7 @@ const LIBRARY = [
   // a tapered ball the way it has to be entered today: as a V-bit, diameter = shank
   { id: 15, toolId: 15, toolNumber: 5, name: '1mm Tapered Ball 3.6° 1/8" shank', type: 'v-bit', diameter: 3.175, dimensions: { flute_length: 25 } }
 ];
-const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { value: '24000' }, 110: { value: '5000' }, 112: { value: '2500' }, 113: { value: '5400' }, 133: { value: '0' } } };
+const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { value: '24000' }, 110: { value: '5000' }, 112: { value: '2500' }, 113: { value: '5400' }, 133: { value: '0' }, 376: { value: '1' } } };
 
 // the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
 // ncsender-plugin-manualtoolchanger settings: parking = tool change position, toolSetter)

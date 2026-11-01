@@ -1,11 +1,14 @@
-## Rotary CAM 0.9.5 (beta)
+## Rotary CAM 0.9.6 (beta)
 
-**New in 0.9.5**
-- **The Z travel limit holds still while you shorten stickouts.** It used to drop as you made changes, because when ncSender reports a tool whose stickout isn't known, the plugin took the tool in the spindle to be the first operation's tool at whatever its stickout was set to. Now the tool in the spindle, and so the height of the spindle nose, is worked out when Z is read and kept until the machine changes (Z zeroed again, or a different tool). Changing stickouts in the settings no longer moves it.
-- Once every operation's tool fits, the message says what's left: put in the first tool, zero Z on the rotary axis with it, and Generate again. ncSender checks the whole program against the tool in the spindle when it's loaded.
-- When ncSender names a tool whose stickout it doesn't know, the button reads *Set T5's stickout* (with that tool's number).
+**New in 0.9.6**
+- **Inch programs only where A is set up as rotary.** In an inch program (G20), grblHAL multiplies every axis value by 25.4, A included, unless the axis is marked rotary in `$376` (`$376=1` for A). Otherwise A90 turns about 2,286° and the features come out at the wrong angles. Now, unless the controller reports A as rotary, the program is written in millimetres (G21), which runs the same and is never rescaled, and a note says why. Set `$376=1` to get inch programs again.
+- **Progress you can follow.** The bar is split into the steps of a Generate: toolpaths round the part, sharp features, what the rotary passes missed, and Indexed. Each part of the bar fills as its step runs, including within each Indexed angle. The status line shows how far the step has got, about how long it has left, the time so far, and which step it is (for example *Indexed: Planning A90° (1 of 4)… 38% · about 2 min left · 1:12 so far · step 4 of 4*).
+- **More of your cores.** Up to 8 workers (all the cores but one) instead of 4, and big batches are split finer so every worker stays busy to the end.
+- Indexed reuses each angle's collet nut and spindle map for that angle's passes instead of working it out three times.
+- **A calibration note.** These programs turn A continuously through many turns, so a small error in A's steps per degree (`$103`) adds up. A note gives how far off the last passes would be if `$103` were 0.1% out, and how to check it over 10 turns.
 
 **Since 0.2.0**
+- 0.9.5: the Z travel limit holds still while you shorten stickouts; what's left once every tool fits
 - 0.9.4: one Z travel message with the most a tool may stick out and how to check it, stickout of the tool in the spindle, one stickout per tool number, stock length + clamping distance, live centre total length, the chuck end and tailstock end fade when they're in the way, silver / dark gray setup
 - 0.9.3: Z not zeroed on the axis yet (or not homed) no longer blocks Generate
 - 0.9.2: open windows pick up changes made on another computer before generating, loading or saving
