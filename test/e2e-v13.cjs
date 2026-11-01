@@ -103,6 +103,18 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest
     ok(r.gcode && top - 26.5 <= 1e-6, `generated: highest Z ${top.toFixed(3)} mm, so nothing above machine Z0 with the work offset at Z-26.5 (what ncSender checks)`);
     ok(r.warns.some((w) => /^To stay inside the Z travel/.test(w)), 'and it says the rapids were kept lower: ' + (r.warns.find((w) => /Z travel/.test(w)) || '(none)').slice(0, 140));
     await page.waitForTimeout(400); await shot('z-capped');
+    // ---- Z not zeroed on the axis yet (work offset Z0 at the top of the travel): no block
+    await H('/__test/machine', { machine: { WCO: '-300.000,-200.000,0.000', g54: '-300.000,-200.000,0.000,0.000' } });
+    await openSec('toolchange'); await page.click('#rcam-root [data-act=readmachine]'); await page.waitForTimeout(800);
+    b = await box();
+    const tcInfo = await page.$eval('#rcam-root details[data-sec=toolchange]', (d) => d.textContent);
+    ok(/zero Z on the rotary axis first/.test(b.l2) && /isn.t zeroed on the rotary axis yet/.test(tcInfo) && !(await page.$eval('#rcam-root .rc-gen', (g) => g.disabled)), 'Z0 at the top of the travel: "' + b.l2.split(' · ').pop() + '", and Generate stays on');
+    // not homed: its machine coordinates mean nothing yet
+    await H('/__test/machine', { machine: { homed: false, WCO: '-300.000,-200.000,-26.500' } });
+    await page.click('#rcam-root [data-act=readmachine]'); await page.waitForTimeout(800);
+    b = await box();
+    ok(/home the machine first/.test(b.l2) && await page.evaluate(() => window.RotaryCam.__state.job.rig.tc.ztop) === null, 'not homed: "' + b.l2.split(' · ').pop() + '", the Z travel isn\u2019t used');
+    await H('/__test/machine', { machine: { homed: true } });
     // ---- open ncSender's plugin settings from the card
     await H('/__test/update', { updateAvailable: true }); await page.evaluate(() => { window.RotaryCam.updateCheck = null; });
   } catch (e) {

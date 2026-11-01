@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.2).** Air-cut the first program on a new setup.
+**Prototype (0.9.3).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -208,6 +208,11 @@ wrong mirrors anything asymmetric.
    - If a tool can't get its tip above the stock without leaving the travel, Generate is
      off and the message says by how much (a shorter stickout, zeroed again, or smaller
      stock fixes it).
+   - It needs Z zeroed on the rotary axis and the machine homed. With Z0 still at the top of
+     the travel (not zeroed on the axis yet), or the machine not homed, it isn't checked:
+     the header says *zero Z on the rotary axis first* or *home the machine first*, Generate
+     stays on, and the program carries a note. Zero Z on the axis, then generate (or press
+     Read from ncSender) before loading.
    - Rapids that wanted to go higher than the travel allows are kept at the top of Z; if
      that still clears the stock, the message just says so. If the collet nut and spindle
      needed more room than that, or a cut would go below the bottom of the travel, it's a

@@ -1,12 +1,10 @@
-## Rotary CAM 0.9.2 (beta)
+## Rotary CAM 0.9.3 (beta)
 
-**New in 0.9.2**
-- **Changes made on another computer reach every open window before it does anything.** Each Rotary CAM window checks ncSender:
-  - before every command: Generate, Load into ncSender, Save to File Manager, Download, Save project, Simulate
-  - every few seconds while it's open, and whenever it comes back to the front
-- **Programs that no longer match aren't used.** If a change from elsewhere means the toolpaths no longer match the settings, they're dropped instead of loaded or saved, and the message names the settings that changed (*Settings were changed on another computer (Roughing stickout)…: generate again*). A field you're typing in isn't touched until you leave it
+**New in 0.9.3**
+- **Z not zeroed yet no longer blocks Generate.** If ncSender's Z zero is still at the top of the Z travel (not zeroed on the rotary axis yet), or the machine isn't homed, the Z travel check is skipped instead of reading as negative room. The header says *zero Z on the rotary axis first* or *home the machine first*, and the program carries a note. Zero Z on the axis, then generate before loading: ncSender checks the program against the zero as it is when you load it
 
 **Since 0.2.0**
+- 0.9.2: open windows pick up changes made on another computer before generating, loading or saving
 - 0.9.1: programs stay inside the Z travel, stock at a glance in the header, version and update badge, settings that survive reopening and two computers
 - 0.9.0: Indexed planning around 7× faster (own exact ball drop-cutter, drops on every worker), listed angles by default
 - 0.8.0: work zero from a corner of the rotary (Move zero to the rotary axis), G-code zero marked in 3D, 4-jaw chuck, see-through spindle, tenon length

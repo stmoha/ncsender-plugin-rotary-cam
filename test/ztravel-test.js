@@ -64,6 +64,11 @@ function zs(gcode) {
   // below the bottom
   r = await program({ rig: { tc: { ztop: 60, zbot: 12 } } });
   ok(r.warns.some((w) => /^!!Finishing .* below the bottom of Z travel/.test(w)), 'cutting below the bottom of the travel is marked as a danger: ' + (r.warns.find((w) => /bottom/.test(w)) || '').slice(0, 120));
+  // Z0 at the top of the travel (not zeroed on the axis yet): nothing is limited or blocked, it's said
+  job = fresh({ stock: { dia: 44 }, rig: { tc: { ztop: 0, zbot: -130 } } });
+  ok(core.zRoom(job, 'rough') === null && core.zNotOnAxis(job) && !core.check(job, mb).some((p) => /Z travel/.test(p)), 'Z0 at the top of the travel: not taken as the room, Generate isn\u2019t stopped');
+  r = await program({ rig: { tc: { ztop: 0, zbot: -130 } } });
+  ok(Math.max(...r.z) > 26.9 && r.warns.some((w) => /^Z travel not checked: .*isn.t on the rotary axis yet/.test(w)), 'its program keeps its heights, with a note to zero Z on the axis first');
   console.log(fails ? fails + ' FAILED' : 'ALL PASS');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
