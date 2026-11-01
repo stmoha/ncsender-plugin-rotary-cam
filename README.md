@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.4).** Air-cut the first program on a new setup.
+**Prototype (0.9.5).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -228,6 +228,11 @@ wrong mirrors anything asymmetric.
      The tool in the spindle when the program is loaded has to be short enough too, since
      ncSender checks the whole program with it. A shorter stickout (zero Z again with it
      in), or smaller stock, fixes it.
+   - Which tool is in the spindle, and so where the spindle nose is, is worked out when Z is
+     read from the machine and kept until the machine changes (Z zeroed again, another
+     tool): shortening stickouts in the settings is a plan for the next time a tool goes
+     in, so the limit holds still while you do it. Once every operation fits, the message
+     says what's left: put in the first tool, zero Z with it, and Generate again.
    - One tool number is one tool in one holder: a stickout or flute length set for one
      operation goes to every operation with that tool, and a tool picked from the Tool
      Library that another operation already uses comes in as set there. Two stickouts for

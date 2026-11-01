@@ -62,6 +62,26 @@ function zs(gcode) {
   ok(/at most 1\.667 in/.test(zp[0]) && /Too long: Corners T4 \(1\.750 in\) by 0\.083 in, Roughing T4 \(3\.000 in\) by 1\.333 in, Indexed T12 \(1\.750 in\) by 0\.083 in, Parting T4 \(1\.750 in\) by 0\.083 in\./.test(zp[0]) && /has to be short enough too/.test(zp[0]), 'tools up to 1.667 in fit; the 1.75 in ones are 0.083 in too long, and so is the one in the spindle: ' + zp[0].split('\n')[1]);
   ok(/about 0\.287 in above the top of the stock \(a flat face up\)/.test(zp[0]), 'check: with Z at the top the tip is 0.287 in over the 1.5 in square');
   ok(up.indexOf(up.find((p) => /^T4 sticks out/.test(p))) < up.indexOf(zp[0]) && /^T4 sticks out 1\.750 in for Corners and Parting but 3\.000 in for Roughing\. One tool number is one tool/.test(up.find((p) => /^T4 sticks/.test(p)) || ''), 'and T4 sticking out two lengths comes first: ' + up.find((p) => /^T4/.test(p)));
+  // ---- the limit holds still while stickouts are edited (it used to follow them down)
+  const m = fresh({ units: 'in', stock: { shape: 'square', width: 1.5 * IN }, corners: { enabled: true, tool_number: 4, tool_dia: 6.35, stickout: 1.5 * IN },
+    rough: { tool_number: 4, tool_dia: 6.35, stickout: 1.5 * IN }, finish: { tool_number: 13, stickout: 1.5 * IN }, index: { enabled: true, tool_number: 12, stickout: 1.75 * IN },
+    parting: { enabled: true, tool_number: 4, tool_dia: 6.35, stickout: 1.5 * IN }, rig: { tc: { ztop: 1.037 * IN, zbot: -3 * IN, ztool: 5 } } });
+  m.rig.tc.zref = core.zRefLive(m);          // what reading the machine does: T5 is in, stickout unknown, so T4 at 1.5 in
+  const lim0 = core.zFit(m).soMax;
+  ['corners', 'rough', 'finish', 'index', 'parting'].forEach((o) => { m[o].stickout = 1.4 * IN; });
+  const lim1 = core.zFit(m).soMax, mm = core.check(m, mb, Lin).find((p) => /^Z travel/.test(p)) || '';
+  ok(Math.abs(lim0 - lim1) < 1e-9 && Math.abs(lim0 / IN - 1.417) < 0.002, `every stickout cut to 1.4 in: the limit stays at ${Lin(lim1)} (it was ${Lin(lim0)}), it doesn't follow them down`);
+  ok(!/Too long/.test(mm) && /Every operation.s tool fits now\. What.s left is the tool in the spindle/.test(mm) && /Put in T4 \(Corners, 1\.400 in\), zero Z on the rotary axis with it/.test(mm), 'all the tools fit: what\u2019s left is the tool in the spindle, and what to do: ' + mm.split('\n')[1]);
+  ok(/T4 \(Corners, 1\.500 in stickout when Z was read\), taken to be the tool in the spindle because ncSender says T5 is in/.test(mm) && /Changing stickouts here doesn.t move that/.test(mm) && /Set T5.s stickout under Tool changes/.test(mm), 'it says what it took to be in the spindle, from when, and that editing stickouts doesn\u2019t move it');
+  // T4 put in at 1.4 in and Z zeroed on the axis with it: read again, and it fits
+  m.rig.tc.ztop = 1.137 * IN; m.rig.tc.zref = core.zRefLive(m);
+  ok(!core.check(m, mb, Lin).some((p) => /^Z travel/.test(p)) && Math.abs(core.zFit(m).soMax / IN - 1.417) < 0.002, 'T4 put in at 1.4 in and Z zeroed with it: everything fits, under the same ' + Lin(core.zFit(m).soMax));
+  // typed in, it wins; cleared, the reading is back
+  m.rig.tc.zso = 1.6 * IN; m.rig.tc.typed = { zso: true };
+  ok(core.zRefInfo(m).how === 'typed' && Math.abs(core.zFit(m).nose / IN - 2.737) < 0.001, 'the spindle tool\u2019s stickout typed in wins');
+  delete m.rig.tc.typed; m.rig.tc.zso = null;
+  ok(core.zRefInfo(m).how === 'first' && core.zRefInfo(m).held && Math.abs(core.zRefInfo(m).so / IN - 1.4) < 1e-9, 'cleared: back to what the reading took');
+
   const cl = core.toolClashes(u);
   ok(cl.length === 1 && cl[0].num === 4 && cl[0].key === 'stickout' && cl[0].vals.length === 2 && cl[0].vals[0].ops.join() === 'corners,parting', 'toolClashes: T4, stickout, two lengths');
   ok(core.sameTool(u, 'rough').join() === 'corners,parting' && core.sameTool(u, 'finish').length === 0, 'the operations that share roughing\u2019s T4');

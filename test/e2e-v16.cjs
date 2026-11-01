@@ -158,6 +158,18 @@ fs.mkdirSync(outDir, { recursive: true });
     b = await box();
     ok(/Z allows .* stickout/.test(b.l2) && b.zred, 'the header, in red: ' + b.l2.split(' · ').pop());
     await shot('z-message');
+    // shortening the tools as it asks doesn't move the limit (it used to follow them down)
+    const lim = (txt) => (txt.match(/Z allows ([\d.]+)/) || [])[1];
+    const before = lim(b.l2);
+    await openSec('rough'); await page.focus('#rc-rough-stickout'); await typeIn('#rc-rough-stickout', D(25));
+    await page.evaluate(() => document.activeElement && document.activeElement.blur()); await away();
+    let b2 = await box();
+    await openSec('toolchange'); await page.click('#rcam-root [data-act=readmachine]'); await page.waitForTimeout(800);      // the machine hasn't changed
+    let b3 = await box();
+    ok(before && lim(b2.l2) === before && lim(b3.l2) === before, `roughing's T${tn} shortened to 25 mm: the limit stays ${before} (${lim(b2.l2)}, and ${lim(b3.l2)} after reading the machine again)`);
+    p = await probs();
+    ok(/Changing stickouts here doesn.t move that/.test(p.find((q) => /^Z travel/.test(q)) || ''), 'and the message says so');
+    await openSec('rough'); await typeIn('#rc-rough-stickout', D(50.8));
     await page.click('#rcam-root .rc-zspindle'); await page.waitForTimeout(500);
     const foc = await page.evaluate(() => ({ id: document.activeElement && document.activeElement.id, ph: document.activeElement && document.activeElement.placeholder, open: document.querySelector('#rcam-root details[data-sec=toolchange]').open }));
     ok(foc.id === 'rc-rig-tc-zso' && foc.open && /^auto [\d.]+$/.test(foc.ph), 'it opens Tool changes at "Stickout of the tool in the spindle": ' + JSON.stringify(foc));
@@ -169,7 +181,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await typeIn('#rc-rig-tc-zso', D(70));
     p = await probs();
     const z70 = p.find((q) => /^Z travel/.test(q)) || '';
-    ok(/at most/.test(z70) && !/Too long/.test(z70) && /has to be short enough too/.test(z70), 'a 70 mm tool typed in: every operation\u2019s tool fits, but not the one in the spindle: ' + z70.split('\n').slice(0, 2).join(' / '));
+    ok(/at most/.test(z70) && !/Too long/.test(z70) && /What.s left is the tool in the spindle/.test(z70), 'a 70 mm tool typed in: every operation\u2019s tool fits, but not the one in the spindle: ' + z70.split('\n').slice(0, 2).join(' / '));
     const info = await page.$eval('#rcam-root details[data-sec=toolchange]', (d) => d.textContent);
     ok(/Typed in: .*stickout of the tool in the spindle/.test(info) && /tools can stick out up to/.test(info), 'Tool changes says it’s typed in, and how far tools may stick out');
     await page.fill('#rc-rig-tc-zso', ''); await page.dispatchEvent('#rc-rig-tc-zso', 'change'); await page.waitForTimeout(300);
