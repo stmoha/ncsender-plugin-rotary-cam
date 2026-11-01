@@ -5,7 +5,7 @@ with a flat end mill in spiral layers and finish it with one continuous ball-mil
 spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
 kind of rotary work that Fusion keeps behind the Machining Extension.
 
-**Prototype (0.9.7).** Air-cut the first program on a new setup.
+**Prototype (0.9.8).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -272,11 +272,14 @@ otherwise it downloads the file.
 
 Every setting has a tooltip (hover it, or the **?** beside it).
 
-**Which way A turns:** *A+90 moves the top of the stock to* (Stock & rotary) has to match
-the machine: mark the top of the stock, jog A+90 and see which way the mark goes. Wrong,
-the rest of the part only comes out mirrored, but Indexed cuts from the side and lands on
-the opposite one (180° off at A90 and A270). Until you've said, a program with Indexed asks,
-with a button for each way; picking the other way drops the toolpaths to generate again.
+**Which way A turns** (Machine): *A+90 turns the top of the stock* toward you (−Y) or away
+(+Y) has to match the machine. Wrong, the rest of the part only comes out mirrored, but
+Indexed cuts from the side and lands on the opposite one (180° off at A90 and A270). **Turn
+A +90°** jogs A a quarter turn (`$J=G91 G21 A90`, in degrees whatever the units; not while
+the machine is running): raise Z clear first, watch which way the top of the stock goes and
+press *Toward me* or *Away from me*; **Turn it back** jogs it −90°. Until it's been checked
+the Machine section says so, and a program with Indexed asks too. Picking the other way
+from what the toolpaths were made with drops them to generate again.
 
 **Units:** Rotary CAM follows ncSender's units setting. In inches every field is in
 inches (in, in/min) and the program is posted in G20; in millimetres, G21. **But:** in an

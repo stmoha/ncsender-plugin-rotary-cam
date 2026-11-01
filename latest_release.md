@@ -1,9 +1,11 @@
-## Rotary CAM 0.9.7 (beta)
+## Rotary CAM 0.9.8 (beta)
 
-**New in 0.9.7**
-- **Indexed asks which way A turns.** Indexed cuts from the side, so if A turns the other way from the "A+90 moves the top of the stock to" setting, it lands on the opposite side: 180° off at A90 and A270. Roughing and finishing only come out mirrored. Until you've confirmed the direction, a program with Indexed asks you to mark the top of the stock, jog A+90, and pick *Toward me (−Y)* or *Away from me (+Y)*. Picking the other way flips the setting and drops the toolpaths so you generate again. Tested both ways: the simulation of an Indexed program cuts what it should with A turning either way.
+**New in 0.9.8**
+- **Which way A turns is now a Machine setting, with a test.** "A+90 turns the top of the stock" (toward you −Y, or away +Y) moved from Stock & rotary to Machine. **Turn A +90°** jogs A a quarter turn: raise Z clear first, watch which way the top of the stock goes, then press *Toward me* or *Away from me*. The jog is in degrees whatever the units, and won't run while the machine is busy. **Turn it back** jogs A −90°. Until you've checked it, the Machine section says so.
+- A program with Indexed still asks after Generate if the direction hasn't been checked. Picking the other way from what the toolpaths were made with drops them so you generate again.
 
 **Since 0.2.0**
+- 0.9.7: a program with Indexed asks which way A turns (wrong, Indexed cuts the opposite side)
 - 0.9.6: progress you can follow, more cores, inch programs only with A set as rotary ($376), a note on calibrating A
 - 0.9.5: the Z travel limit holds still while you shorten stickouts; what's left once every tool fits
 - 0.9.4: one Z travel message with the most a tool may stick out and how to check it, stickout of the tool in the spindle, one stickout per tool number, stock length + clamping distance, live centre total length, the chuck end and tailstock end fade when they're in the way, silver / dark gray setup

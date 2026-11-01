@@ -7,6 +7,7 @@ const fs = require('fs'), path = require('path');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8808));
+
 fs.mkdirSync(outDir, { recursive: true });
 (async () => {
   const srv = spawn('node', [path.join(__dirname, 'harness/serve.mjs'), String(PORT)], { stdio: ['ignore', 'pipe', 'inherit'] });
@@ -57,6 +58,38 @@ fs.mkdirSync(outDir, { recursive: true });
     const a1 = (r.gcode || '').match(/\bA-?[\d.]+/g) || [];
     ok(r.gcode && /\nG20 G90/.test(r.gcode) && !r.warns.some((w) => /millimetres/.test(w)), '$376=1: an inch program (G20), nothing to say');
     ok(a0.length > 100 && a0.slice(0, 500).join() === a1.slice(0, 500).join(), `A is in degrees either way (${a0.length} A words, the same)`);
+    // ---- which way A turns: a setting under Machine, with a test turn
+    const where = await page.evaluate(() => { const el = document.querySelector('#rcam-root [data-k=a_sign]'); return el && el.closest('details').getAttribute('data-sec'); });
+    ok(where === 'machine', 'A+90 turns the top of the stock: under Machine now (' + where + ')');
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=machine]'); d.open = true; d.scrollIntoView(); });
+    await page.evaluate(() => { window.RotaryCam.__state.job.a_checked = false; });
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=machine]'); d.querySelector('[data-k=a_sign]').dispatchEvent(new Event('focus')); });
+    const adir = () => page.evaluate(() => ({ hint: document.querySelector('#rcam-root [data-adir="1"]').textContent, btns: [...document.querySelectorAll('#rcam-root [data-adir="2"] button')].map((b) => b.textContent) }));
+    await page.evaluate(() => window.RotaryCam.session.hooks.renderForm());
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=machine]'); d.open = true; d.scrollIntoView(); });
+    let ad = await adir();
+    ok(/Not checked yet/.test(ad.hint) && ad.btns.join() === 'Turn A +90°', 'not checked yet: it says so, with Turn A +90° (' + ad.btns.join(' | ') + ')');
+    const n0 = (await H('/__test/commands')).commands.length;
+    await page.click('#rcam-root [data-act=adir-turn]'); await page.waitForTimeout(800);
+    let cmds = (await H('/__test/commands')).commands.slice(n0);
+    ad = await adir();
+    ok(cmds.join() === '$J=G91 G21 A90 F1800' && /Which way did the top of the stock go/.test(ad.hint) && ad.btns.join(' | ') === 'Toward me (−Y) | Away from me (+Y) | Turn it back (A −90°)', 'it jogs A +90° (in degrees: ' + cmds.join() + '), then asks which way the top went: ' + ad.btns.join(' | '));
+    await page.screenshot({ path: path.join(outDir, 'a-direction-test.png') });
+    await page.click('#rcam-root [data-act=adir-set][data-v="-1"]'); await page.waitForTimeout(500);
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=machine]'); d.open = true; });
+    let j = await page.evaluate(() => ({ s: window.RotaryCam.__state.job.a_sign, c: window.RotaryCam.__state.job.a_checked, sel: document.querySelector('#rcam-root [data-k=a_sign]').value, dropped: !window.RotaryCam.__state.program }));
+    ad = await adir();
+    ok(j.s === -1 && j.c && j.sel === '-1' && j.dropped && /Checked: A\+90 turns the top of the stock away from you \(\+Y\)/.test(ad.hint), 'Away from me: set to +Y, checked, and the toolpaths (made the other way) dropped ' + JSON.stringify(j));
+    await page.click('#rcam-root [data-act=adir-back]'); await page.waitForTimeout(800);
+    cmds = (await H('/__test/commands')).commands.slice(n0);
+    ad = await adir();
+    ok(cmds[cmds.length - 1] === '$J=G91 G21 A-90 F1800' && /Turned back/.test(ad.hint) && !ad.btns.some((b) => /Turn it back/.test(b)), 'Turn it back jogs A −90° (' + cmds[cmds.length - 1] + ')');
+    // not while the machine is busy
+    await H('/__test/machine', { machine: { status: 'Run' } });
+    await page.click('#rcam-root [data-act=adir-turn]'); await page.waitForTimeout(800);
+    ad = await adir();
+    ok(/Didn.t turn A: the machine is Run/.test(ad.hint) && (await H('/__test/commands')).commands.slice(n0).length === cmds.length, 'not while the machine is running: ' + ad.hint);
+    await H('/__test/machine', { machine: { status: 'Idle' } });
   } catch (e) {
     fails++;
     console.log('FAILED:', e.message);
