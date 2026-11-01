@@ -202,7 +202,9 @@ Then zero (or measure) Z with the first tool, as above.
    part** or **Scale the part to fit** if needed.
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
 4. **Operations:** Corners (square stock), Roughing, Finishing, Indexed, Parting. Pick
-   each tool from ncSender's Tool Library where you can.
+   each tool from ncSender's Tool Library where you can. Indexed cleans up what the rotary
+   passes couldn't reach; **Finish the whole side it faces** adds one even finishing pass
+   over each side instead of only the spots, for a smoother result.
    - **One tool number is one tool.** A stickout or flute length changed for one operation
      goes to every operation with the same number. Two different stickouts for one number
      stop Generate with a button for each.
@@ -260,6 +262,7 @@ Then zero (or measure) Z with the first tool, as above.
 | Collet nut or spindle near the chuck or tailstock | Stickout too short for where it has to reach | The message says how much stickout would reach; or move the part further from the jaws |
 | The dust boot hits the rotary | The lowered boot isn't in the collision checks | Turn dust collection off (Machine), or make room |
 | Generate takes a long time | Indexed with *Pick the angles for me* tries every 15° first | List your own angles; the progress bar shows which step and how long is left |
+| Indexed looks stippled: lots of little spots, the tool jumping between them | Clean-up only goes where material is left, which on a detailed part is many small spots | Tick **Finish the whole side it faces** (Indexed): one even pass over each side, line by line; or raise **Ignore less than** to skip the thinnest spots |
 
 ---
 

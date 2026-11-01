@@ -7,7 +7,7 @@ kind of rotary work that Fusion keeps behind the Machining Extension.
 
 **New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
 
-**Prototype (0.10.0).** Air-cut the first program on a new setup.
+**Prototype (0.11.0).** Air-cut the first program on a new setup.
 
 ## Setup it assumes
 
@@ -104,6 +104,16 @@ wrong mirrors anything asymmetric.
      axis on this machine, so a pocket that only opens toward the chuck or tailstock can't
      be reached; the message after Generate says how much was reached and where the rest is.
      Each angle is checked just before it's planned, against what the angles before it left.
+     **Finish the whole side it faces** (off by default): after that clean-up, each angle
+     also runs one even finishing pass over the whole side of the part it faces, line by
+     line along the part a stepover apart, the tool riding the surface like a 3-axis
+     parallel finish, wherever the surface is no steeper across the passes than 55° (the
+     next angle round does the steeper parts), the collet nut and spindle clear, inside
+     the keep-aways. Clean-up alone goes only where material is left, which on a detailed
+     part is many small spots, each its own plunge and hop: a stippled look. The whole side
+     gives one even surface, at the cost of time (roughly doubling the cutting time on the
+     chess knight). Anything thick still there under the side pass is taken down in layers
+     first.
      **Pick the angles for me** (off by default) tries A every 15° first and picks the fewest
      angles that reach the most, at most *Most angles* of them. It takes much longer, since
      all 24 are tried before any is planned (on a detailed part, minutes rather than seconds),
