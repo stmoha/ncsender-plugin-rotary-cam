@@ -174,14 +174,19 @@ wrong mirrors anything asymmetric.
    does). An end that sits off to one side with no tenon keeps the whole cutter over the
    part, so the tool never drops down beside the part and cuts through the stock holding it.
 6. **Generate toolpaths.** The **Corners / Roughing / Finishing / Parting** buttons on the
-   view pick which tool and toolpath to show, each in its own colour.
+   view pick which tool and toolpath to show, each in its own colour. **Checks** (what to
+   fix in red, what to check in amber, how Indexed did in green) show under the view on a
+   portrait screen or a narrow window. On a wide landscape screen (1200 px or more) they get
+   a column of their own right of the view, so the view keeps its height; click its header
+   to shut it to a strip that still counts them (remembered in that browser). Notices of
+   what just happened (saved, picked up a change) float over the view there.
 7. **Simulate** plays the program itself, line by line, against a model of the stock: play,
    pause, drag to any point, and 1× to 1000× speed, with the current line and operation
    shown. The whole program is checked first: rapids that cut into the stock, anywhere
    the stock ends up below the part (red), any cut into a tenon, and the collet nut or
    spindle running into the stock or the chuck, headstock, live centre or tailstock. The
    tool shows with its nut and spindle. The result shows
-   under the view. From the start of Indexed the view shows the part inside a see-through
+   with the checks. From the start of Indexed the view shows the part inside a see-through
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
@@ -437,6 +442,7 @@ node test/e2e-v13.cjs test/chin_test.step out/            # version + update bad
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
 node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only with A set as rotary ($376), otherwise mm
+node test/e2e-v19.cjs test/chin_test.step out/            # the checks: a column on wide landscape screens (shuts to a strip), below the view on portrait
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
