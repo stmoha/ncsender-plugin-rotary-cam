@@ -1,0 +1,30 @@
+name: Tests
+
+# The Node tests on every push to main and every pull request: the same
+# engine the plugin runs (OpenCAMLib WASM, the planner, the post), no browser.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Versions agree
+        run: |
+          V=$(jq -r .version manifest.json)
+          grep -q "VERSION = '$V'" lib/cam-core.js || { echo "::error::lib/cam-core.js VERSION isn't $V (manifest.json)"; exit 1; }
+      - name: Tests
+        run: |
+          node test/tenon-test.js
+          node test/route-test.js
+          node test/project-test.js test/horn.stl
+          node test/ztravel-test.js
+          node test/indexside-test.js
+          node test/drop-test.js

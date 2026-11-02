@@ -7,7 +7,18 @@ kind of rotary work that Fusion keeps behind the Machining Extension.
 
 **New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
 
-**Prototype (0.11.1).** Air-cut the first program on a new setup.
+**Beta.** Air-cut the first program on a new setup.
+
+## Install
+
+- **ncSender › Settings › Plugins**: find **Rotary CAM** in the plugin list and install it.
+- Or download `com.cncdocs.rotary-cam_vX.Y.Z.zip` from
+  [Releases](https://github.com/stmoha/ncsender-plugin-rotary-cam/releases/latest) and use
+  **Install Plugin** in the same place.
+- Then open it from **Tools › Rotary CAM**. Updates show as **Update available** on the
+  plugin's card in Settings › Plugins (and as a badge in Rotary CAM's header).
+
+Needs ncSender 2.0.88 or later (Pro 2.0.149), grblHAL, and a rotary A axis parallel to X.
 
 ## Setup it assumes
 
@@ -383,9 +394,12 @@ library's values.
 
 ## Development
 
+Releases: see [RELEASING.md](RELEASING.md).
+
 ```
 cd viewer && npm install && cd ..       # three.js + esbuild for the 3D view bundle
 node build.mjs                          # bundles the 3D view, stamps the build tag, writes dist/rotary-cam-<version>.zip
+node build.mjs --test                   # the same as dist/com.cncdocs.rotary-cam_v<version>-test.zip (--release: the release name)
 node dev/logo.cjs                       # renders dev/logo.svg to icon.png
 node test/run-node.js part.step - out.nc   # same engine in Node
 node test/harness/serve.mjs             # stand-in for ncSender's plugin APIs on :8777

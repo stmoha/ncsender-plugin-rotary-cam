@@ -3,3 +3,7 @@ dist/
 test/out*/
 test/__pycache__/
 *.log
+
+# generated test outputs (programs and placed parts): make them with test/run-node.js
+test/*.nc
+test/*_placed.stl

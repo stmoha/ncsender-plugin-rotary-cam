@@ -272,4 +272,6 @@ Then zero (or measure) Z with the first tool, as above.
 - Settings are saved in ncSender as you go, so they're the same on every computer that
   opens it, and changes made on one computer are picked up by the others.
 - **Save project** keeps the part, settings and toolpaths in one `.rcam` file.
-- `README.md` describes every setting in detail; `latest_release.md` lists what changed.
+- `README.md` describes every setting in detail; the
+  [Releases page](https://github.com/stmoha/ncsender-plugin-rotary-cam/releases) lists what
+  changed in each version and has every version's ZIP.
