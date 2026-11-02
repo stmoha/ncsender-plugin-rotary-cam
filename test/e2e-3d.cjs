@@ -18,7 +18,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
-  const S = () => page.evaluate(() => { const s = window.RotaryCam.__state; return { model: s.job.model, stock: s.job.stock_radius * 2, problems: s.problems, rmax: s.mesh && s.mesh.rmax, toast: document.querySelector('#rcam-root .rc-msgs').innerText }; });
+  const S = () => page.evaluate(() => { const s = window.RotaryCam.__state; return { model: s.job.model, stock: s.job.stock_radius * 2, problems: s.problems, rmax: s.mesh && s.mesh.rmax, toast: (document.querySelector('#rcam-root .rc-toasts').innerText + ' ' + document.querySelector('#rcam-root .rc-msgs').innerText) }; });
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   try {

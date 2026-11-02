@@ -34,7 +34,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec);
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
   const D = (mm) => (mm / U).toFixed(metric ? 2 : 4);
-  const msgs = () => page.$eval('#rcam-root .rc-msgs', (el) => el.innerText.replace(/\n/g, ' '));
+  const msgs = () => page.evaluate(() => ['.rc-toasts', '.rc-msgs'].map((s) => document.querySelector('#rcam-root ' + s).innerText).join(' ').replace(/\n/g, ' '));
   const job = () => page.evaluate(() => window.RotaryCam.__state.job);
   const generate = async () => {
     await page.click('#rcam-root .rc-gen');

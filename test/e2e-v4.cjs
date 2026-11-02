@@ -57,7 +57,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForFunction(() => window.RotaryCam.sim && window.RotaryCam.sim.checked, null, { timeout: 300000, polling: 500 });
     await page.waitForTimeout(800);
     const rep = await page.evaluate(() => window.RotaryCam.__state.simReport);
-    const msg = await page.$eval('#rcam-root .rc-msgs', (el) => el.innerText.replace(/\n/g, ' '));
+    const msg = await page.evaluate(() => ['.rc-toasts', '.rc-msgs'].map((s) => document.querySelector('#rcam-root ' + s).innerText).join(' ').replace(/\n/g, ' '));
     console.log(ms(), '   simulation report:', JSON.stringify(rep));
     ok(rep && rep.rapids === 0 && rep.gouges === 0, 'simulation: no rapids into stock, nothing below the part');
     ok(/Whole program simulated/.test(msg), 'simulation result shown in the messages');

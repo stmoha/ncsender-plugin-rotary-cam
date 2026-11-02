@@ -60,7 +60,7 @@ fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, 'job.json'), JSON.stringify(dump.job, null, 2));
 
     await page.click('#rcam-root .rc-save');
-    await page.waitForFunction(() => /Saved to File Manager/.test(document.querySelector('#rcam-root .rc-msgs').textContent), null, { timeout: 30000 });
+    await page.waitForFunction(() => /Saved to File Manager/.test((document.querySelector('#rcam-root .rc-toasts').textContent + ' ' + document.querySelector('#rcam-root .rc-msgs').textContent)), null, { timeout: 30000 });
     const saved = await (await fetch(`http://localhost:${PORT}/__test/saved`)).json();
     console.log(ms(), 'saved to File Manager:', Object.keys(saved));
 
