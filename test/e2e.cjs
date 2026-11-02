@@ -72,11 +72,14 @@ fs.mkdirSync(outDir, { recursive: true });
     const settings = await (await fetch(`http://localhost:${PORT}/__test/settings`)).json();
     console.log(ms(), 'settings persisted:', !!settings.job, settings.job && ('rough tool ' + settings.job.rough.library_id + ', finish tool ' + settings.job.finish.library_id));
 
-    // reopen: settings come back, cached build is reused
+    // reopen: settings, the part and the program come back (since 0.3.0), cached build is reused
     await page.click('#open');
-    await page.waitForFunction(() => window.RotaryCam.__state && !window.RotaryCam.__state.mesh && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rc-rough-tool option[value="11"]'), null, { timeout: 20000 });
-    const back = await page.evaluate(() => ({ rough: document.querySelector('#rc-rough-tool').value, finish: document.querySelector('#rc-finish-tool').value }));
+    await page.waitForFunction(() => window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rc-rough-tool option[value="11"]'), null, { timeout: 20000 });
+    await page.waitForTimeout(1500);
+    const back = await page.evaluate(() => ({ rough: document.querySelector('#rc-rough-tool').value, finish: document.querySelector('#rc-finish-tool').value, part: !!window.RotaryCam.__state.mesh }));
     console.log(ms(), 'reopened; tool picks restored:', JSON.stringify(back));
+    if (back.rough !== '11' || back.finish !== '12' || !back.part) throw new Error('reopened without the tools or the part: ' + JSON.stringify(back));
+    console.log('ALL PASS');
   } catch (e) {
     console.log('FAILED:', e.message);
     await page.screenshot({ path: path.join(outDir, 'failure.png') }).catch(() => {});
