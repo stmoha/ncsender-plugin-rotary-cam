@@ -1,9 +1,16 @@
 # Rotary CAM (ncSender plugin)
 
 Simultaneous 4th-axis rotary CAM inside ncSender. Open an STL or STEP part, rough it
-with a flat end mill in spiral layers and finish it with one continuous ball-mill
-spiral, then load the G-code straight into ncSender. This is the X/Z/A wrapping-around
-kind of rotary work that Fusion keeps behind the Machining Extension.
+with a flat end mill in spiral layers, finish it with one continuous ball-mill spiral,
+clean up under overhangs with indexed (3+1) passes, and simulate the program against
+the stock, then load the G-code straight into ncSender. This is the X/Z/A
+wrapping-around kind of rotary work that Fusion keeps behind the Machining Extension.
+
+![Rotary CAM in ncSender: a knight placed in square stock between the chuck and the tailstock, wrapped in the orange roughing spiral, with the settings on the left and the program checks below](docs/images/knight-roughing.png)
+
+*A knight in 1½ in square stock: the roughing spiral (orange) wraps the part, the chuck,
+tailstock and spindle are drawn to scale, and below them are the checks Rotary CAM runs
+on every program before you cut.*
 
 **New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
 
