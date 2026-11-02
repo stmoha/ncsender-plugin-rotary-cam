@@ -1,14 +1,12 @@
-## Rotary CAM 0.11.1 (beta)
+## Rotary CAM 0.11.2 (beta)
 
-Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. **First public release:** install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin). From here on ncSender shows *Update available* when there's a new one. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
+Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.11.1**
-- **Fixed: with a tapered ball, "Finish the whole side it faces" could plunge far below the part** (an inch under the axis on the knight). Beside the part, the tool's widening cone can rest on the part's side with the tip far below. The whole-side pass took those spots as surface to finish. It now only goes where the ball itself touches the part, never where the cone is holding the tool up, and never below the part's outline. A new test checks exactly this. **Generate again** any program made with 0.11.0 and the whole side ticked.
-- **Cancel always stops it.** It used to only stop at the next point where the calculation checked in, so a calculation stuck waiting (for example on a worker that never answered) ignored it. Now it stops at once, whatever the calculation is doing or waiting for: the workers are shut down (new ones start next time), anything that comes back from that calculation is ignored, and Generate is ready again.
-- **The status clock keeps ticking** every second while it works, so you can tell a slow step from a stuck page. If the clock stops, the page itself is stuck: reload it, and your settings and the part come back.
-- **Writing the program is a step of its own** on the bar. Before, it ran with the bar showing Indexed at 100%.
+**New in 0.11.2**
+- **The fine print.** The first time Rotary CAM opens, it shows a short disclaimer before anything else: it's beta software, you're the machinist and safety is on you, there's no warranty and no liability, and it isn't an official ncSender or Sienci Labs product. Click **I understand — let's make chips** to carry on; it's saved with your settings, so it doesn't ask again on that ncSender. **Close Rotary CAM** closes it without accepting, and it asks again next time. Click **beta** next to the name to read it again any time. The same words are at the top of the [README](https://github.com/stmoha/ncsender-plugin-rotary-cam#readme) and the manual.
 
 **Since 0.2.0**
+- 0.11.1: with a tapered ball, the whole-side pass never plunges below the part; Cancel always stops; the status clock keeps ticking; writing the program is a step of its own
 - 0.11.0: Indexed can finish the whole side it faces (one even pass instead of spots)
 - 0.10.0: dust collection / dust boot switch (off by default); a manual (MANUAL.md)
 - 0.9.9: the A+ arrow in 3D follows the A direction setting

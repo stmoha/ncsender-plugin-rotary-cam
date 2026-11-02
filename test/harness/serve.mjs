@@ -8,7 +8,8 @@ import { join, resolve, normalize } from 'node:path';
 const PORT = Number(process.argv[2] || 8777);
 const PLUGIN_DIR = resolve(new URL('../..', import.meta.url).pathname);
 const ID = 'com.cncdocs.rotary-cam';
-let pluginSettings = {};
+// starts as someone who has accepted the fine print (POST /__test/settings {} for a first open)
+let pluginSettings = { job: { fineprint: 1 } };
 const saved = new Map();
 let loaded = null;
 let UNITS = 'metric';
@@ -123,6 +124,7 @@ http.createServer(async (req, res) => {
   // test hooks
   if (p === '/__test/loaded') return json(res, loaded || {});
   if (p === '/__test/saved') return json(res, Object.fromEntries(saved));
+  if (p === '/__test/settings' && req.method === 'POST') { pluginSettings = JSON.parse(await body(req)); return json(res, pluginSettings); }
   if (p === '/__test/settings') return json(res, pluginSettings);
   if (p === '/__test/log') return json(res, log);
   if (p === '/__test/firmware' && req.method === 'POST') { Object.assign(FIRMWARE.settings, JSON.parse(await body(req))); return json(res, FIRMWARE); }

@@ -62,7 +62,9 @@ wrong mirrors anything asymmetric.
    shows the stock: what's set, the least the part needs (across and from the jaws to the
    centre), and the room Z has above the axis, in red when something's short; click it for
    Stock & rotary. The collet nut and spindle go
-   see-through when they'd hide the part (looking down from the top, say). **Open…** (or drop) a `.stl`, `.step` or `.stp`
+   see-through when they'd hide the part (looking down from the top, say). The first time
+   it opens it shows the fine print (above) until you click **I understand**; click **beta**
+   next to the name to read it again. **Open…** (or drop) a `.stl`, `.step` or `.stp`
    part, or a Rotary CAM project (`.rcam`, below).
 2. **Place the part** with the buttons on the 3D view:
    - **Turning axis X / Y / Z:** which model axis lies along the rotary. A new file starts
@@ -435,6 +437,7 @@ node test/e2e-v13.cjs test/chin_test.step out/            # version + update bad
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
 node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only with A set as rotary ($376), otherwise mm
+node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
 node test/e2e-v6.cjs test/chin_test.step out/            # Indexed
