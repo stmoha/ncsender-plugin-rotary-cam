@@ -57,7 +57,7 @@ wrong mirrors anything asymmetric.
 
 1. **Tools › Rotary CAM** opens a full-window view of the rotary setup: chuck (4 jaws, or
    3), stock, tailstock, the rotary axis and the G-code zero. The version shows under the
-   name, with a pulsing badge when ncSender finds a newer release (its card links to what's
+   name, beside a **Manual** link (opens [MANUAL.md](MANUAL.md) in a new tab), with a pulsing badge when ncSender finds a newer release (its card links to what's
    new, opens ncSender's plugin settings, or updates it there and then). The header always
    shows the stock: what's set, the least the part needs (across and from the jaws to the
    centre), and the room Z has above the axis, in red when something's short; click it for

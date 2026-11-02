@@ -4,6 +4,7 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 
 **New in 0.11.2**
 - **The fine print.** The first time Rotary CAM opens, it shows a short disclaimer before anything else: it's beta software, you're the machinist and safety is on you, there's no warranty and no liability, and it isn't an official ncSender or Sienci Labs product. Click **I understand — let's make chips** to carry on; it's saved with your settings, so it doesn't ask again on that ncSender. **Close Rotary CAM** closes it without accepting, and it asks again next time. Click **beta** next to the name to read it again any time. The same words are at the top of the [README](https://github.com/stmoha/ncsender-plugin-rotary-cam#readme) and the manual.
+- **A Manual link** next to the version opens the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) in a new tab: setting up the controller and the rotary, and what to check before the first carve. The fine print points anyone new to it too.
 
 **Since 0.2.0**
 - 0.11.1: with a tapered ball, the whole-side pass never plunges below the part; Cancel always stops; the status clock keeps ticking; writing the program is a step of its own

@@ -38,7 +38,7 @@ fs.mkdirSync(outDir, { recursive: true });
       title: d.querySelector('h2').textContent, labels: Array.from(d.querySelectorAll('li > b')).map((b) => b.textContent),
       buttons: Array.from(d.querySelectorAll('[data-fp]')).map((b) => b.textContent), focus: document.activeElement && document.activeElement.getAttribute('data-fp'),
       covers: d.contains(hit), inView: cr.top >= 0 && cr.bottom <= innerHeight + 1 && cr.left >= 0 && cr.right <= innerWidth + 1,
-      text: card.textContent
+      text: card.textContent, manual: (card.querySelector('.rc-fpman a') || {}).href || ''
     };
   });
   // the five points, as the docs have them
@@ -54,6 +54,7 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(s && s.buttons.join('|') === 'Close Rotary CAM|I understand — let’s make chips' && s.focus === 'yes', 'two choices, "I understand" focused: ' + (s && s.buttons.join(' | ')));
     const readme = docLabels('README.md'), manual = docLabels('MANUAL.md');
     ok(readme.length === 5 && JSON.stringify(readme) === JSON.stringify(s && s.labels) && JSON.stringify(manual) === JSON.stringify(readme), 'the same five points as README.md and MANUAL.md: ' + (s && s.labels.join(' / ')));
+    ok(s && /\/blob\/main\/MANUAL\.md$/.test(s.manual), 'and a link to the manual for anyone new: ' + (s && s.manual));
     ok(s && /Whoever presses Cycle Start owns what happens next/.test(s.text) && /MIT License/.test(s.text) && /Sienci Labs/.test(s.text), 'the words are all there');
     await page.screenshot({ path: path.join(outDir, 'fineprint-first-open.png') });
     // ---- Close Rotary CAM: closes without accepting
@@ -73,6 +74,10 @@ fs.mkdirSync(outDir, { recursive: true });
     // ---- opening after that: not shown
     await open();
     ok(!(await shown()), 'accepted: opening doesn’t show it');
+    const man = await page.evaluate(() => { const a = document.querySelector('#rcam-root .rc-verrow a.rc-manual'), v = document.querySelector('#rcam-root .rc-version').getBoundingClientRect(), r = a && a.getBoundingClientRect();
+      return a && { href: a.href, target: a.target, rel: a.rel, text: a.textContent, row: Math.abs(r.top + r.height / 2 - (v.top + v.height / 2)) < 4 && r.left > v.right }; });
+    ok(man && /\/blob\/main\/MANUAL\.md$/.test(man.href) && man.target === '_blank' && /noopener/.test(man.rel) && man.text === 'Manual' && man.row, 'a Manual link beside the version opens the manual in a new tab');
+    await page.screenshot({ path: path.join(outDir, 'header-manual.png'), clip: { x: 0, y: 0, width: 700, height: 130 } });
     // ---- the beta badge shows it again, to read
     await page.click('#rcam-root .rc-beta');
     s = await shown();

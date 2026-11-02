@@ -37,6 +37,9 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.evaluate(() => document.querySelectorAll('#rcam-root details').forEach((d) => { d.open = d.dataset.sec !== 'machine'; }));
     await page.selectOption('#rc-rough-tool', arg('--rough-tool', '11'));
     await page.selectOption('#rc-finish-tool', arg('--finish-tool', '12'));
+    // stock that fits the part (the default 40 mm is smaller than the knight)
+    const across = await page.evaluate(() => 2 * window.RotaryCam.__state.mesh.rmax);
+    if (across > 39) { await page.fill('#rc-stock-dia-round', String(Math.ceil(across + 3))); await page.dispatchEvent('#rc-stock-dia-round', 'change'); await page.waitForTimeout(400); }
     await page.screenshot({ path: path.join(outDir, '2-loaded.png') });
 
     await page.click('#rcam-root .rc-gen');
