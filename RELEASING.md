@@ -66,7 +66,8 @@ everyone else gets) skips it.
 
 ## Discord
 The workflow can post every release to a Discord channel through a webhook.
-- **The webhook lives only in the repository secret `DISCORD_WEBHOOK_URL`**
+- **The webhook lives only in the repository secret `DISCORD_WEBHOOK_URL_ROTARY_CAM`**
+  (`DISCORD_WEBHOOK_URL` works too)
   (Settings → Secrets and variables → Actions). It is a password for posting
   in the channel, so it never goes in the repo, which is public. Whoever
   runs the server (siganberg) makes it: the channel's settings →

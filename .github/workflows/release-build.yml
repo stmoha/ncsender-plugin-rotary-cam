@@ -100,13 +100,14 @@ jobs:
           fi
 
       - name: Announce on Discord
-        # skipped when the DISCORD_WEBHOOK_URL secret isn't set; a failed post
+        # skipped when neither the DISCORD_WEBHOOK_URL_ROTARY_CAM nor the
+        # DISCORD_WEBHOOK_URL secret is set; a failed post
         # shows as a warning and doesn't fail the release
         if: success()
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL_ROTARY_CAM || secrets.DISCORD_WEBHOOK_URL }}
           TAG: ${{ steps.plugin_info.outputs.TAG }}
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body // ""' > announce-notes.md

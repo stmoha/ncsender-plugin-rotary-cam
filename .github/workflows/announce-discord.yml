@@ -25,11 +25,11 @@ jobs:
       - name: Announce on Discord
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL_ROTARY_CAM || secrets.DISCORD_WEBHOOK_URL }}
           TAG_INPUT: ${{ inputs.tag }}
         run: |
           if [ -z "$DISCORD_WEBHOOK_URL" ]; then
-            echo "::error::Add the DISCORD_WEBHOOK_URL secret first (Settings -> Secrets and variables -> Actions)"
+            echo "::error::Add the DISCORD_WEBHOOK_URL_ROTARY_CAM secret first (Settings -> Secrets and variables -> Actions)"
             exit 1
           fi
           TAG="${TAG_INPUT:-$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)}"
