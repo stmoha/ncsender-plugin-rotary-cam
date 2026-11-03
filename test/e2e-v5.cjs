@@ -56,7 +56,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.uncheck('#rc-tenons-same');
     await page.waitForTimeout(300);
     r = await rows();
-    ok(r.join('|') === 'Ends|Same at both ends|Chuck end diameter|Chuck end: into the part|Chuck end: length out|Tailstock end diameter|Tailstock end: into the part|Tailstock end: length out', 'unticking Same shows sizes for each end');
+    ok(r.join('|') === 'Ends|Same at both ends|Chuck end: diameter|Chuck end: into the part|Chuck end: length out|Tailstock end: diameter|Tailstock end: into the part|Tailstock end: length out', 'unticking Same shows sizes for each end');
     await typeIn('#rc-tenons-tailstock-dia', (10 / U).toFixed(metric ? 2 : 4));
     await typeIn('#rc-tenons-tailstock-depth', (16 / U).toFixed(metric ? 2 : 4));
     tn = await tenons();
@@ -78,6 +78,13 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForTimeout(300);
     r = await rows(); tn = await tenons();
     ok(r.join('|') === 'Ends|Diameter|Into the part|Length out of the part' && tn.list.length === 1 && tn.list[0].side === 'tailstock' && tn.shown === 1 && Math.abs(tn.list[0].r - 5) < 0.01, 'Tailstock end only: one tenon, its own size kept');
+    // Chuck end only: just the chuck tenon's sizes (0.11.2 also showed the tailstock's, which did nothing)
+    await page.selectOption('#rc-tenons-ends', 'chuck');
+    await page.waitForTimeout(300);
+    r = await rows(); tn = await tenons();
+    const ids = await page.$$eval('#rcam-root details[data-sec=tenons] .rc-row input', (els) => els.filter((e) => e.offsetParent).map((e) => e.id.replace('rc-tenons-', '')));
+    ok(r.join('|') === 'Ends|Diameter|Into the part|Length out of the part' && ids.join() === 'chuck-dia,chuck-depth,chuck-len' && tn.list.length === 1 && tn.list[0].side === 'chuck' && Math.abs(tn.list[0].r - 6.35) < 0.01,
+      'Chuck end only: one tenon, and only its sizes show (' + r.join(' / ') + ')');
     await page.selectOption('#rc-tenons-ends', 'both');
     await page.waitForTimeout(300);
     await page.uncheck('#rcam-root details[data-sec=tenons] summary input');
