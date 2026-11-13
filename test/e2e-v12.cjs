@@ -16,8 +16,9 @@ fs.mkdirSync(outDir, { recursive: true });
   await new Promise((r) => srv.stdout.once('data', r));
   const H = (p, b) => fetch(`http://localhost:${PORT}${p}`, b !== undefined ? { method: b === 'PUT' ? 'PUT' : 'POST', body: typeof b === 'string' ? b : JSON.stringify(b) } : undefined).then((r) => r.json());
   if (!metric) await H('/__test/units', 'imperial');
-  // settings saved by 0.8.0: Indexed on, its angles picked automatically (the old default)
-  await fetch(`http://localhost:${PORT}/api/plugins/com.cncdocs.rotary-cam/settings`, { method: 'PUT', body: JSON.stringify({ job: { stock: { shape: 'round', dia: 44 }, index: { enabled: true, auto: true, angle_list: '90, 270', stickout: 40, tool_number: 3, tool_dia: 3.175, tool_length: 12 }, finish: { pitch: 0.4 } } }) });
+  // settings saved by 0.8.0: Indexed on, its angles picked automatically (the old default);
+  // fineprint: someone who has since accepted the fine print (0.11.2), so it doesn't cover the page
+  await fetch(`http://localhost:${PORT}/api/plugins/com.cncdocs.rotary-cam/settings`, { method: 'PUT', body: JSON.stringify({ job: { fineprint: 1, stock: { shape: 'round', dia: 44 }, index: { enabled: true, auto: true, angle_list: '90, 270', stickout: 40, tool_number: 3, tool_dia: 3.175, tool_length: 12 }, finish: { pitch: 0.4 } } }) });
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const vp = arg('--viewport', '1500x950').split('x').map(Number);
   const errors = [];
