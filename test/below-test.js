@@ -21,8 +21,8 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   const ocl = await OCL(), occt = await require('../lib/occt-import-js.js')();
   const buf = fs.readFileSync(path.join(__dirname, 'slot_test.step'));
   const raw = core.trisFromOcct(occt.ReadStepFile(new Uint8Array(buf), { linearUnit: 'millimeter', linearDeflectionType: 'absolute_value', linearDeflection: 0.01, angularDeflection: 0.05 })).tris;
-  async function run(below) {
-    const job = core.prepareJob(core.deepMerge(core.DEFAULTS, { stock: { shape: 'round', dia: 30 }, tailstock_x: 150, tenons: { enabled: false }, corners: { enabled: false }, angle_step_deg: 4, finish: { pitch: 1 }, below_axis: below }));
+  async function run(below, more) {
+    const job = core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, { stock: { shape: 'round', dia: 30 }, tailstock_x: 150, tenons: { enabled: false }, corners: { enabled: false }, angle_step_deg: 4, finish: { pitch: 1 }, below_axis: below }), more || {}));
     const mb = core.placeMesh(raw, job.model, core.chuckLead(job)), wm = core.workMesh(job, mb), p = core.plan(job, wm);
     const cut = worker.makeCutters(ocl, job), rot = new Float32Array(wm.tris.length), maps = { roughZ: [], finZ: [] };
     for (let j = 0; j < p.nAng; j++) { const r = worker.computeAngle(ocl, wm.tris, rot, job, p, j, cut); maps.roughZ[j] = r.rough; maps.finZ[j] = r.fin; }
@@ -56,6 +56,13 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   const B = await run(2);
   ok(near(B.lo.fs, -2, 1e-6) && near(B.lo.fh, -2, 1e-6) && near(B.lo.rh, -2, 1e-6), `capped at 2 mm: the slot and the hole stop 2 mm past the axis (${B.lo.fs.toFixed(3)}, ${B.lo.fh.toFixed(3)}, rough ${B.lo.rh.toFixed(3)})`);
   ok(B.zmin >= -2 - 1e-3 && B.warns.some((w) => /Deepest below the axis \(Stock & rotary\) lets it go 2\.0 mm/.test(w)), `capped at 2 mm: the program never goes lower (${B.zmin.toFixed(3)}) and says why`);
+
+  // a big collet nut on a short stickout: it, not the part, stops the tool short of the hole's
+  // bottom, and both messages say so
+  const H = await run(null, { rig: { nut: { dia: 60, len: 25 } }, finish: { stickout: 18, tool_length: 12 } });
+  const hm = H.warns.find((w) => /^Finishing stays up to/.test(w)) || '', bm = H.warns.find((w) => /past the rotary axis between/.test(w)) || '';
+  ok(/the collet nut( or spindle)?, not the shape of the part, that sets how deep the tool goes there/.test(hm) && /need the tip [\d.]+ mm past the axis, and the collet nut( or spindle)? lets it get (only [\d.]+ mm|no further than the axis)/.test(hm) && /fit a smaller collet nut/.test(hm), 'held up by the nut: the finishing message says the nut sets the depth, how deep the middle needs and how deep it gets: ' + hm);
+  ok(!bm || /keeps it up: see the stickout message for finishing/.test(bm), 'and the past-the-axis notice points at it: ' + bm);
 
   const Z = await run(0);
   ok(Z.lo.fs >= 0 && Z.lo.fh >= 0 && Z.lo.rh >= 0 && Z.lo.fo >= 0, 'at 0: nothing past the axis');
