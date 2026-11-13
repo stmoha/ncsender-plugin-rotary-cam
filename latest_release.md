@@ -1,11 +1,13 @@
-## Rotary CAM 0.11.4 (beta)
+## Rotary CAM 0.11.5 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.11.4**
-- **Fixed: a stock exactly as thick as *Part needs at least* showed in red.** The size shown is rounded, and the part can need a hair more (32.003 mm shows as 32 mm), so a 32 mm stock was flagged. Now the stock only shows red when it’s smaller than the size shown; the same goes for the length. Your toolpaths don’t change. Thanks to Infield for spotting it.
+**New in 0.11.5**
+- **Clearer checks when the stock is too small.** A stock that’s too thin now names the field to change (*Side*, *Width x Height* or *Stock diameter*), and its button says what it sets, for example **Set Side to 56 mm**. It never touched the length, and now it says so.
+- **A stock that’s too short says so.** It used to say the part *runs past the tailstock*; now it says the *Stock length* is too short, how long it needs to be, and has a **Set Stock length to …** button. The length it sets leaves room for the tools past the end of the part (or the tailstock tenon) and the keep-away from the tailstock. Your toolpaths don’t change.
 
 **Since 0.2.0**
+- 0.11.4: a stock exactly as thick as *Part needs at least* no longer shows in red
 - 0.11.3: with Tenons › *Chuck end only*, only the chuck tenon’s sizes show
 - 0.11.2: the fine print on first open (and from the **beta** badge); a **Manual** link beside the version; on wide landscape screens the checks get a column right of the view that shuts to a strip
 - 0.11.1: with a tapered ball, the whole-side pass never plunges below the part; Cancel always stops; the status clock keeps ticking; writing the program is a step of its own

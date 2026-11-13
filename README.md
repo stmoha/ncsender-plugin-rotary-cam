@@ -443,6 +443,7 @@ node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reo
 node test/e2e-v15.cjs test/chin_test.step out/            # a change on one computer is in the other before it generates or loads
 node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only with A set as rotary ($376), otherwise mm
 node test/e2e-v19.cjs test/chin_test.step out/            # the checks: a column on wide landscape screens (shuts to a strip), below the view on portrait
+node test/e2e-v20.cjs test/horn.stl out/                   # stock too thin or too short: the checks name the field and set it
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
