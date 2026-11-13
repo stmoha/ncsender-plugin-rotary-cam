@@ -52,8 +52,25 @@ ts = core.tenonList(job, mb);
 ok(near(mb.min[0], 55) && near(ts[0].x0, 25), 'the tenon starts at Part starts at X (X25), the part after it (X55)');
 job = fresh({ tenons: { enabled: false } });
 ok(core.chuckLead(job) === 0, 'no tenon, no parting: no lead, the part starts at Part starts at X');
-job = fresh({ tenons: { enabled: false }, parting: { enabled: true, ends: 'both', gap: 1, tool_dia: 3, width: 0 } });
-ok(near(core.chuckLead(job), 4), 'parting at the chuck end: the gap and the cut (' + core.chuckLead(job) + ' mm)');
+
+// Parting cuts each tenon down to its diameter, over its whole length (0.11.5)
+job = fresh({ parting: { enabled: true }, tenons: { same: false, chuck: { len: 30, dia: 10 }, tailstock: { dia: 8 } }, tailstock_x: 300 });
+mb = core.placeMesh(raw, job.model, core.chuckLead(job));
+ts = core.tenonList(job, mb);
+let pp;
+const r6 = job.parting.tool_dia / 2;
+const P = (j, m) => { const W = core.workMesh(j, m); return core.plan(j, Object.assign({}, m, { tris: W.tris, solid: W.solid, tenons: W.tenons, walls: W.walls, ends: W.ends })).parting; };
+pp = P(job, mb);
+const ce = pp.ends.find((e) => e.side === 'chuck'), te = pp.ends.find((e) => e.side === 'tailstock');
+ok(ce && near(ce.r, 5) && ce.cols.every((x) => x - r6 >= ts[0].x0 - 1e-6 && x + r6 <= mb.min[0] + 1e-6) && Math.min(...ce.cols) - r6 < ts[0].x0 + 1e-6 && Math.max(...ce.cols) + r6 > mb.min[0] - 0.1, 'chuck end: cut to the tenon (Ø10) from beside the part to the end of its 30 mm (' + ce.cols.length + ' columns)');
+const tt = ts.find((t) => t.side === 'tailstock');
+ok(te && near(te.r, 4) && te.cols.length >= 1 && te.cols.every((x) => x - r6 >= mb.max[0] && x + r6 <= tt.x1 + 1e-6), 'tailstock end, auto length: cut inside the tenon, to Ø8 (tenon ' + (tt.x1 - mb.max[0]).toFixed(2) + ' mm)');
+ok(core.tenonExt(job, 'tailstock') >= job.parting.tool_dia + 1, 'with Parting on, an auto tenon is at least a parting cutter long');
+rr = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
+ok(rr[0] > mb.min[0] - 15, 'with Parting on, roughing leaves the 30 mm tenon thick past the tools’ room (from X' + rr[0].toFixed(2) + ', part at X' + mb.min[0] + ')');
+job = fresh({ parting: { enabled: true }, tenons: { enabled: false } });
+mb = core.placeMesh(raw, job.model, core.chuckLead(job));
+ok(core.check(job, mb).some((p) => /^Parting cuts the tenons down to size/.test(p)), 'Parting without tenons: flagged');
 job = fresh({ tenons: { chuck: { len: 30 } }, model: { part_start_x: 2 } });
 mb = core.placeMesh(raw, job.model, core.chuckLead(job));
 ok(core.check(job, mb).some((p) => /^Part starts at X is inside the keep-away/.test(p)), 'Part starts at X inside the keep-away with a tenon: flagged');

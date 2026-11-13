@@ -76,7 +76,7 @@ wrong mirrors anything asymmetric.
      of its chuck end (a chess piece's round base), the tailstock end, or the model origin.
    - **A slider:** turns the part and its stock the way the rotary will.
    - **Part starts at X** (Part placement): from the jaw face (X0) to where the work
-     starts: the chuck end tenon (or the parting neck) first, then the part. A longer tenon
+     starts: the chuck end tenon first, then the part. A longer tenon
      moves the part along, so you set this once. Keep it at least **Keep away from the
      jaws**, or the tools can't cut all of the tenon; the check that says so has a
      **Set Part starts at X to …** button. Settings from before 0.11.5 are converted so the
@@ -99,16 +99,20 @@ wrong mirrors anything asymmetric.
    part** sizes it.
 4. **Tenons** (on by default): a solid round stub on the rotary axis at each end of the
    part, so it stays joined to the stock while it's carved. Each one reaches a set depth
-   into the part and runs out to the uncut stock past the end. Nothing cuts into a tenon
-   except Parting's neck, beside the part. Trim the stubs off the part afterwards.
+   into the part and runs out to the uncut stock past the end. Nothing cuts into a tenon;
+   **Parting** cuts each one down to its diameter at the end, ready to cut the part free.
+   Trim the stubs off the part afterwards.
    - **Ends:** both, chuck end only, or tailstock end only.
    - **Same at both ends** (default, Ø1/2" × 1/4" deep): untick it to give each end its own
      diameter and depth, for example a thin tenon into a small nose and a bigger one into
      the base.
    - **Length out of the part:** how long each tenon is between the part and the rest of
      the stock, which stays full size. Empty (*auto*) is just the room the tools need to
-     reach the end of the part; set it for a longer stub to saw through. Roughing takes the
-     whole length down to the tenon's diameter. A long one at the chuck end brings the
+     reach the end of the part (with Parting on, at least one parting cutter); set it for a
+     longer stub to saw through. Without Parting, roughing takes the whole length down to
+     the tenon's diameter; with Parting on, roughing leaves it thick past the tools' room
+     (the part stays held firmly while it's carved) and Parting cuts it down last. A long
+     one at the chuck end brings the
      collet nut near the chuck: it stays up there and says so if it would hit.
    - Reach the tenon past any thin or off-centre spot near the end (a chess knight's nose);
      otherwise only that spot holds the part. The tenons show green in the 3D view, the
@@ -172,8 +176,10 @@ wrong mirrors anything asymmetric.
      in the 3D view to change its angle (5° steps, Shift for 1°), ✕ removes one, and **+ A**
      adds the angle the A slider is at: turn the part until the spot you want faces straight
      up, then press it. Changing the angles the calculation picked makes them your own.
-   - **Parting:** necks the stock down beside one or both ends of the part to a set
-     diameter (spiralling in), ready to cut it free. Off until you tick it.
+   - **Parting:** after finishing, cuts each tenon down to its diameter along its whole
+     length (spiralling in), ready to cut the part free. The tenons set where and how thin
+     (Tenons: ends, diameter, length), so Parting only has its tool, feeds and depth per
+     turn, and needs Tenons on. Off until you tick it.
    Toolpaths reach the ends of the part: the cutter runs past an end until its contact
    point gets there, as long as that end goes all the way round the rotary axis (a tenon
    does). An end that sits off to one side with no tenon keeps the whole cutter over the
