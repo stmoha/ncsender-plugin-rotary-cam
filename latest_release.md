@@ -3,7 +3,7 @@
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
 **New in 0.11.5**
-- **Clearer checks when the stock is too small.** A stock that’s too thin now names the field to change (*Side*, *Width x Height* or *Stock diameter*), and its button says what it sets, for example **Set Side to 56 mm**. It never touched the length, and now it says so.
+- **Clearer checks when the stock is too small.** A stock that’s too thin now names the field to change (*Stock width*, *Width x Height* or *Stock diameter*), and its button says what it sets, for example **Set Stock width to 56 mm**. It never touched the length, and now it says so. Square stock’s *Side* field is now called *Stock width*, to match.
 - **A stock that’s too short says so.** It used to say the part *runs past the tailstock*; now it says the *Stock length* is too short, how long it needs to be, and has a **Set Stock length to …** button. The length it sets leaves room for the tools past the end of the part (or the tailstock tenon) and the keep-away from the tailstock. Your toolpaths don’t change.
 
 **Since 0.2.0**

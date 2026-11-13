@@ -1,5 +1,5 @@
 // 0.11.5: the checks for stock that's too thin or too short name the field to change, and
-// each has a button that sets it: Set Side / Stock diameter to..., Set Stock length to...
+// each has a button that sets it: Set Stock width / Stock diameter to..., Set Stock length to...
 // node test/e2e-v20.cjs <part> <outdir> [--dark] [--port N]
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -61,15 +61,15 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(rf && /Stock diameter is only/.test(rf.text) && /^Set Stock diameter to [\d.]+ mm$/.test(rf.buttons[0]), 'too thin (round): names the Stock diameter, button: ' + (rf && rf.buttons[0]));
     await page.click('#rcam-root .rc-fitstock'); await page.waitForTimeout(500);
     ok(!(await fixes()).length && rf && await page.inputValue('#rc-stock-dia-round') === rf.buttons[0].replace(/^Set Stock diameter to | mm$/g, ''), 'the button sets the Stock diameter it said');
-    // ---- too thin, square: Side; the length stays
+    // ---- too thin, square: Stock width; the length stays
     const before = await page.inputValue('#rc-tailstock_x');
     await page.selectOption('#rc-stock-shape', 'square'); await page.waitForTimeout(400);
     await setField('#rc-stock-width-square', 5);
     F = await fixes();
     const sf = F.find((f) => /^The part needs/.test(f.text));
-    ok(sf && /the Side is only/.test(sf.text) && /^Set Side to [\d.]+ mm$/.test(sf.buttons[0]), 'too thin (square): names the Side, button: ' + (sf && sf.buttons[0]));
+    ok(sf && /the Stock width is only/.test(sf.text) && /^Set Stock width to [\d.]+ mm$/.test(sf.buttons[0]), 'too thin (square): names the Stock width, button: ' + (sf && sf.buttons[0]));
     await page.click('#rcam-root .rc-fitstock'); await page.waitForTimeout(500);
-    ok(!(await fixes()).length && await page.inputValue('#rc-tailstock_x') === before, 'the Side is set and the Stock length stays ' + before);
+    ok(!(await fixes()).length && await page.inputValue('#rc-tailstock_x') === before, 'the Stock width is set and the Stock length stays ' + before);
     ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   } catch (e) { fails++; console.log('ERROR', e); }
   await browser.close(); srv.kill();
