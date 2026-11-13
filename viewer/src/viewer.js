@@ -536,7 +536,8 @@ export function create(container, opts = {}) {
   function setA(deg) { aDeg = deg; partGroup.rotation.x = ((deg % 360) * aSign) * DEG; requestRender(); }
 
   // ---------------- simulation
-  // geo: { index: Uint32Array, pos: Float32Array, col: Float32Array } in the part frame
+  // geo: { index: Uint32Array, pos: Float32Array, col: Float32Array, count? } in the part frame
+  // (count: how much of index is faces now; the faces change as the stock does)
   function simSet(geo) {
     if (simMesh) { partGroup.remove(simMesh); simMesh.geometry.dispose(); simMesh = null; }
     if (!geo) { requestRender(); return; }
@@ -544,6 +545,7 @@ export function create(container, opts = {}) {
     g.setAttribute('position', new THREE.BufferAttribute(geo.pos, 3));
     g.setAttribute('color', new THREE.BufferAttribute(geo.col, 3));
     g.setIndex(new THREE.BufferAttribute(geo.index, 1));
+    if (geo.count !== undefined) g.setDrawRange(0, geo.count);
     g.computeVertexNormals();
     simMesh = new THREE.Mesh(g, ghost ? mats.simGhost : mats.sim);
     simMesh.renderOrder = ghost ? 5 : 0;
@@ -551,9 +553,14 @@ export function create(container, opts = {}) {
     partGroup.add(simMesh);
     requestRender();
   }
-  function simUpdate() {
+  function simUpdate(index, count) {
     if (!simMesh) return;
     const g = simMesh.geometry;
+    if (index) {
+      if (!g.index || g.index.array !== index) g.setIndex(new THREE.BufferAttribute(index, 1));
+      else g.index.needsUpdate = true;
+      g.setDrawRange(0, count !== undefined ? count : index.length);
+    }
     g.attributes.position.needsUpdate = true;
     g.attributes.color.needsUpdate = true;
     g.computeVertexNormals();

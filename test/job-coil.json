@@ -1,0 +1,2 @@
+{ "stock": { "shape": "round", "dia": 54 }, "tailstock_x": 160, "model": { "axis": "x", "centre": "bbox" }, "corners": { "enabled": false },
+  "finish": { "stickout": 70, "pitch": 0.5 } }

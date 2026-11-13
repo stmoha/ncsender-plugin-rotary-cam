@@ -409,11 +409,21 @@ desktop browser connected to ncSender is much faster than a Raspberry Pi kiosk s
   it and the tools are dropped straight down at Y0.
 - Sharp features: the controller moves A and Z in straight lines between points, so the
   finishing pass checks the middle of every move where the path bends and adds points
-  until it is within the **Tolerance** (default 0.01 mm).
+  until it is within the **Tolerance** (default 0.01 mm). Where the surface steps like a
+  wall between two angles a hair apart (the edge of a coil the tool reaches past the axis
+  on one side and rides on top of on the other), adding points can't close it: there the
+  move is split so the tool lifts before it turns up the wall, or turns before it goes
+  down one, instead of clipping the wall's corner.
 - 3D view: [three.js](https://threejs.org) (MIT).
-- Simulation: the stock is kept as a radius for every X and every degree around the axis;
-  each move is stepped through finely and the cutter (flat or ball, anywhere in Y) trims
-  every radius it reaches.
+- Simulation: the stock is kept as a radius for every X and every degree around the axis,
+  plus up to three gaps under it where a cut went through the inside without reaching the
+  top (a tool past the axis clearing the middle of a coil, or one beside the part reaching
+  under an overhang); gaps join up as they meet, and a cut from the top takes those it
+  reaches with it. Each move is stepped through finely and the cutter (flat or ball,
+  anywhere in Y) trims every ray it reaches. The view draws the outside and each ray's
+  outermost gap, with faces only between rays that both have stock and walls where it ends,
+  so a part open down the middle shows open. The gouge check and what's left for Indexed
+  count the gaps too.
 - STEP reading: [occt-import-js](https://github.com/kovacsv/occt-import-js) (Open
   CASCADE, LGPL-2.1).
 
@@ -451,8 +461,8 @@ library's values.
   any height. Set around the headstock and chuck, it keeps jogs and ncSender's tool change
   moves out of them and doesn't get in this program's way; it can't cover the tailstock as
   well. Rotary CAM doesn't rely on it.
-- The simulation keeps the stock as one radius per X and angle, so a pocket under an
-  overhang only shows through Indexed's yellow blocks.
+- The simulation keeps up to three gaps per X and angle and draws the outermost, so a
+  pocket hidden behind another one only shows through Indexed's yellow blocks.
 - Tapered balls take about three times as long to calculate as plain balls: OpenCAMLib's
   ball+cone cutter now and then misses a contact at one exact spot, so every tapered drop
   is checked against the tool's own ball tip and a 1 micron shifted drop.
@@ -479,6 +489,8 @@ node test/tenon-test.js                                    # tenon length, scale
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
 node test/below-test.js                                    # past the axis only where needed (slot_test.step: make_slot_step.py)
 node test/flat-test.js                                     # finishing and Indexed with flat end mills: simulated, never below a fresh drop
+node test/make_coil.js test/coil.stl                       # test part: a coil open down the middle
+node test/coil-test.js                                     # the core cleared from past the axis: kept, drawn, checked; walls split
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part
@@ -493,6 +505,7 @@ python test/make_slot_step.py test/slot_test.step          # test part with a sl
 node test/e2e-v22.cjs test/slot_test.step out/             # Deepest below the axis: auto goes past it and says so, 0 stays above
 node test/e2e-v23.cjs test/chin_test.step out/             # flat end mills for finishing and Indexed: Shape, the Tool list, Generate
 node test/e2e-v24.cjs test/chin_test.step out/             # tool sizes and pass settings dimensioned in 3D; the view closes in and goes back
+node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the inside of a part open down the middle
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

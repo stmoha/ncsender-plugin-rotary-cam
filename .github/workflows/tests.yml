@@ -30,3 +30,4 @@ jobs:
           node test/drop-test.js
           node test/below-test.js
           node test/flat-test.js
+          node test/coil-test.js

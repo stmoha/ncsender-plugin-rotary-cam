@@ -52,7 +52,7 @@ const OCL = require('../lib/ocl.js');
     const r = await core.refineFinish(job, core.finishPoints(job, p, maps), (groups) => Promise.resolve(groups.map((g) => worker.probe(ocl, wm.tris, rot, job, p, g.a, g.xs, cutters))),
       (round, segs, angles) => console.log(`  refine round ${round}: ${segs} segments at ${angles} angles`), (a, x, z) => core.belowClamp(job, p, maps, a, x, z));
     maps.finPts = r.pts; maps.finRefined = r.added;
-    console.log(`refined: +${r.added} points in ${r.rounds} rounds, worst deviation found ${r.worst.toFixed(4)} mm, ${((Date.now() - t1) / 1000).toFixed(1)} s`);
+    console.log(`refined: +${r.added} points (${r.walls || 0} walls split: up first, or along first) in ${r.rounds} rounds, worst deviation found ${r.worst.toFixed(4)} mm, ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   }
   if (core.indexActive(job)) {
     const t2 = Date.now(), { parseProgram, Sim, indexLeftover } = require('../lib/cam-sim.js');
