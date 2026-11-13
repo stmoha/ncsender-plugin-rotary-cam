@@ -34,12 +34,40 @@ let f = core.fitScale(job, raw);
 ok(f.by === 'length' && f.endBy === 'tools' && !f.startMoved, 'auto: fits to the tools’ room before the tailstock (scale ' + f.scale + ')');
 job = fresh({ stock: { dia: 60 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
 f = core.fitScale(job, raw);
-ok(f.endBy === 'tenon' && near(f.end, 245 - 8 - 30) && f.startMoved && near(f.start, 35), 'tenons 30 mm: fits from X35 (moved out from 25) to X207');
-ok(near(f.scale, Math.floor((207 - 35) / 100 * 1000) / 1000), 'scale ' + f.scale + ' = (207 - 35) / 100');
+ok(f.endBy === 'tenon' && near(f.end, 245 - 8 - 30) && !f.startMoved && near(f.start, 25), 'tenons 30 mm: the work starts at X25 (Part starts at X), the tenon then the part, to X207');
+ok(near(f.scale, Math.floor((207 - 25 - 30) / 100 * 1000) / 1000), 'scale ' + f.scale + ' = (207 - 25 - 30) / 100');
+job = fresh({ stock: { dia: 60 }, model: { part_start_x: 2 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
+f = core.fitScale(job, raw);
+ok(f.startMoved && near(f.start, 5), 'Part starts at X inside the keep-away (2 of 5 mm): moved out to X5');
 job = fresh({ stock: { dia: 60 }, model: { part_start_x: 50 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
 f = core.fitScale(job, raw);
 ok(!f.startMoved && near(f.start, 50), 'a part already further out stays where it is');
 ok(core.check(fresh({ tenons: { chuck: { len: -2 } } }), mb).some((p) => /length out of the part/.test(p)), 'a negative tenon length is flagged');
+
+// Part starts at X includes the chuck end tenon (or parting neck): 0.11.5
+job = fresh({ tenons: { chuck: { len: 30 } } });
+ok(near(core.chuckLead(job), 30), 'a 30 mm chuck tenon: the lead is 30 mm');
+mb = core.placeMesh(raw, job.model, core.chuckLead(job));
+ts = core.tenonList(job, mb);
+ok(near(mb.min[0], 55) && near(ts[0].x0, 25), 'the tenon starts at Part starts at X (X25), the part after it (X55)');
+job = fresh({ tenons: { enabled: false } });
+ok(core.chuckLead(job) === 0, 'no tenon, no parting: no lead, the part starts at Part starts at X');
+job = fresh({ tenons: { enabled: false }, parting: { enabled: true, ends: 'both', gap: 1, tool_dia: 3, width: 0 } });
+ok(near(core.chuckLead(job), 4), 'parting at the chuck end: the gap and the cut (' + core.chuckLead(job) + ' mm)');
+job = fresh({ tenons: { chuck: { len: 30 } }, model: { part_start_x: 2 } });
+mb = core.placeMesh(raw, job.model, core.chuckLead(job));
+ok(core.check(job, mb).some((p) => /^Part starts at X is inside the keep-away/.test(p)), 'Part starts at X inside the keep-away with a tenon: flagged');
+job = fresh({ tenons: { chuck: { len: 30 } } });
+mb = core.placeMesh(raw, job.model, core.chuckLead(job));
+ok(!core.check(job, mb).some((p) => /keep-away/.test(p)), 'outside it: not flagged');
+// older settings: the part stays where it was
+let saved = { model: { part_start_x: 60 }, tenons: { chuck: { len: 30 } } };
+job = core.migrateStart(fresh(saved), saved);
+ok(near(job.model.part_start_x, 30) && job.model.start_incl === true, 'settings from before 0.11.5 (part at X60, 30 mm tenon): Part starts at X becomes X30');
+ok(near(core.placeMesh(raw, job.model, core.chuckLead(job)).min[0], 60), 'and the part is still at X60');
+saved = { model: { part_start_x: 30, start_incl: true }, tenons: { chuck: { len: 30 } } };
+job = core.migrateStart(fresh(saved), saved);
+ok(near(job.model.part_start_x, 30), 'newer settings are left as they are');
 
 // corner zero: the offsets from Stefan's sheet (inches), added to the work offset on the corner
 const IN = 25.4, corner = { x: -43.0984 * IN, y: -43.7339 * IN, z: -0.9649 * IN };

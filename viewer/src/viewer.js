@@ -962,7 +962,8 @@ export function create(container, opts = {}) {
       }
       case 'chuck_clearance': targets.push(...refs.keepChuck); dim([cx, 0, -R], [cx, 0, -R - 10], [cx + setup.chuckClear, 0, -R - 10], [cx + setup.chuckClear, 0, -R], text); break;
       case 'tailstock_clearance': targets.push(...refs.keepTail); dim([tx - setup.tailClear, 0, -R], [tx - setup.tailClear, 0, -R - 10], [tx, 0, -R - 10], [tx, 0, -R], text); break;
-      case 'model.part_start_x': if (bounds) { if (partMesh) targets.push(partMesh); dim([cx, 0, 0], [cx, 0, -R - 24], [bounds.min.x, 0, -R - 24], [bounds.min.x, 0, 0], text); } break;
+      // to where the work starts: the chuck end tenon (setup.lead past it is the part)
+      case 'model.part_start_x': if (bounds) { if (partMesh) targets.push(partMesh); const ws = bounds.min.x - (setup.lead || 0); dim([cx, 0, 0], [cx, 0, -R - 24], [ws, 0, -R - 24], [ws, 0, 0], text); } break;
       case 'model.scale': case 'model.roll': case 'model.centre': case 'model.axis': case 'model.flip': if (partMesh) targets.push(partMesh); break;
       case 'stock.dia': {
         targets.push(...refs.stock); const x = (cx + tx) / 2;

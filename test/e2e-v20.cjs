@@ -1,5 +1,6 @@
 // 0.11.5: the checks for stock that's too thin or too short name the field to change, and
 // each has a button that sets it: Set Stock width / Stock diameter to..., Set Stock length to...
+// Part starts at X is where the work starts: the chuck end tenon, then the part.
 // node test/e2e-v20.cjs <part> <outdir> [--dark] [--port N]
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -70,6 +71,22 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(sf && /the Stock width is only/.test(sf.text) && /^Set Stock width to [\d.]+ mm$/.test(sf.buttons[0]), 'too thin (square): names the Stock width, button: ' + (sf && sf.buttons[0]));
     await page.click('#rcam-root .rc-fitstock'); await page.waitForTimeout(500);
     ok(!(await fixes()).length && await page.inputValue('#rc-tailstock_x') === before, 'the Stock width is set and the Stock length stays ' + before);
+    // ---- Part starts at X includes the chuck end tenon: a longer tenon moves the part along
+    const minX = () => page.evaluate(() => window.RotaryCam.__state.mesh.min[0]);
+    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=part]'); d.open = true; const t = document.querySelector('#rcam-root details[data-sec=tenons]'); if (t) t.open = true; });
+    await setField('#rc-model-part_start_x', 25);
+    await setField('#rc-tenons-chuck-len', 30);
+    ok(Math.abs(await minX() - 55) < 1e-3, 'a 30 mm chuck end tenon: the part starts at X55, the tenon at Part starts at X (25)');
+    await setField('#rc-tenons-chuck-len', 40);
+    ok(Math.abs(await minX() - 65) < 1e-3, 'tenon 40 mm: the part moves along to X65, Part starts at X stays ' + await page.inputValue('#rc-model-part_start_x'));
+    // ---- the tenon starting inside the keep-away from the jaws: a check and a button
+    await setField('#rc-model-part_start_x', 2);
+    F = await fixes();
+    const kf = F.find((f) => /^Part starts at X is inside the keep-away/.test(f.text));
+    ok(kf && /^Set Part starts at X to 5 mm$/.test(kf.buttons[0]), 'Part starts at X 2 mm (keep-away 5): flagged, button: ' + (kf && kf.buttons[0]));
+    await page.screenshot({ path: path.join(outDir, 'keepaway.png') });
+    await page.click('#rcam-root .rc-fitstart'); await page.waitForTimeout(500);
+    ok(!(await fixes()).some((f) => /keep-away/.test(f.text)) && await page.inputValue('#rc-model-part_start_x') === '5' && Math.abs(await minX() - 45) < 1e-3, 'the button sets Part starts at X to 5: the tenon from X5, the part from X45');
     ok(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   } catch (e) { fails++; console.log('ERROR', e); }
   await browser.close(); srv.kill();

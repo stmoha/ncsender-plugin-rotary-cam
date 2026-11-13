@@ -5,6 +5,7 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 **New in 0.11.5**
 - **Clearer checks when the stock is too small.** A stock that’s too thin now names the field to change (*Stock width*, *Width x Height* or *Stock diameter*), and its button says what it sets, for example **Set Stock width to 56 mm**. It never touched the length, and now it says so. Square stock’s *Side* field is now called *Stock width*, to match.
 - **A stock that’s too short says so.** It used to say the part *runs past the tailstock*; now it says the *Stock length* is too short, how long it needs to be, and has a **Set Stock length to …** button. The length it sets leaves room for the tools past the end of the part (or the tailstock tenon) and the keep-away from the tailstock. Your toolpaths don’t change.
+- **Part starts at X now includes the chuck end tenon.** It’s where the work starts: the tenon (or the parting neck) first, then the part. Make the tenon longer and the part moves along, so you no longer have to change Part starts at X to match. If it’s inside *Keep away from the jaws*, the tools can’t cut all of the tenon: a check says so, with a **Set Part starts at X to …** button. Your saved settings and projects are converted so the part stays exactly where it was (the number in Part starts at X goes down by the tenon’s length). **This moves parts in new setups: air-cut the first program.**
 
 **Since 0.2.0**
 - 0.11.4: a stock exactly as thick as *Part needs at least* no longer shows in red

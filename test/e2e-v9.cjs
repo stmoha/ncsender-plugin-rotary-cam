@@ -87,7 +87,9 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // ---- the part close to the chuck: the nut would hit it
     await openSec('part');
-    await typeIn('#rc-model-part_start_x', D(15));
+    // the part itself at X15: Part starts at X is where the chuck end tenon starts (0.11.5)
+    const lead = await page.evaluate(() => window.RotaryCam.__state.lead || 0);
+    await typeIn('#rc-model-part_start_x', D(15 - lead));
     await openSec('finish'); await typeIn('#rc-finish-pitch', D(0.5));
     let g = await generate();
     console.log(ms(), '   warnings:', JSON.stringify(g.warnings).slice(0, 600));

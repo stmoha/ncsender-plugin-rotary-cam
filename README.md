@@ -75,15 +75,20 @@ wrong mirrors anything asymmetric.
    - **On axis:** what sits on the rotary centreline: the centre of the part, the centre
      of its chuck end (a chess piece's round base), the tailstock end, or the model origin.
    - **A slider:** turns the part and its stock the way the rotary will.
+   - **Part starts at X** (Part placement): from the jaw face (X0) to where the work
+     starts: the chuck end tenon (or the parting neck) first, then the part. A longer tenon
+     moves the part along, so you set this once. Keep it at least **Keep away from the
+     jaws**, or the tools can't cut all of the tenon; the check that says so has a
+     **Set Part starts at X to …** button. Settings from before 0.11.5 are converted so the
+     part stays where it was.
    - **Scale** (Part placement): the part's size against the model as drawn (100%). A model
      drawn in inches but read as millimetres needs 2540%. **Scale to fit the stock** picks
      the largest size that fits the stock with 1 mm to spare all round and fits between
      where the part starts and the tailstock, leaving the tailstock end tenon's length (or
      the tools' room) and the keep-away; the message says what set the size and where each
-     end is. With a chuck end tenon length set, the part starts no closer to the jaws than
-     that plus their keep-away.
-     A part too big for the stock also offers **Scale the part to fit** beside **Fit the
-     stock to the part**.
+     end is. If Part starts at X is inside the keep-away from the jaws, it moves out to it.
+     A part too big for the stock offers **Set Stock width / Stock diameter to …** and
+     **Scale the part to fit**; stock too short offers **Set Stock length to …**.
    - Settings in the side panel update the 3D view as you type or use the arrow keys.
 3. **Stock & rotary:** round, square or rectangular stock, its **Stock length** (the whole
    piece, the end in the jaws included) and **Clamping distance** (how far it goes into the
