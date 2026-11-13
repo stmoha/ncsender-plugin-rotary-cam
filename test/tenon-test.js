@@ -93,5 +93,23 @@ const cz = core.cornerZero(job, corner);
 ok(near(cz.to.x, -38.4961 * IN, 1e-6) && near(cz.to.y, -42.3197 * IN, 1e-6) && near(cz.to.z, -2.3475 * IN, 1e-6), 'corner + offsets lands on his axis point (X-38.4961 Y-42.3197 Z-2.3475 in)');
 ok(core.cornerZero(fresh(), corner) === null, 'no offsets set: nothing to move');
 ok(fresh().rig.chuck.jaws === 4, 'chucks have 4 jaws unless set to 3');
+
+// Fit the stock to the part: thickness and length for the part as placed; the part stays
+{
+  const big = core.cylinderTris(0, 300, 30, 32);              // 300 mm long, 60 mm across
+  for (const [shape, step] of [['round', 1], ['square', 1], ['rect', 1], ['round', 2.54]]) {
+    const j = fresh({ stock: { shape, dia: 20, width: 20, height: 20, clamp: 12.7 }, tenons: { same: false, chuck: { len: 10 }, tailstock: { len: 20 } } });
+    const m = core.placeMesh(big, j.model, core.chuckLead(j));
+    ok(core.check(j, m).some((p) => /^The part (is|needs)/.test(p)) && core.check(j, m).some((p) => /Stock length is too short/.test(p)), shape + ': too thin and too short before');
+    const f = core.fitStockToPart(j, m, step);
+    const m2 = core.placeMesh(big, j.model, core.chuckLead(j));
+    const left = core.check(j, m2).filter((p) => /^The part (is|needs)|Stock length/.test(p));
+    ok(!left.length && near(m2.min[0], m.min[0]) && near(m2.max[0], m.max[0]), shape + (step > 1 ? ' (inch steps)' : '') + ': fits after, the part hasn’t moved' + (left.length ? ': ' + left.join(' | ') : ''));
+    const across = shape === 'round' ? f.dia : f.width;
+    ok(across >= 62 - 1e-9 && across < 62 + step && near(across / step, Math.round(across / step)), shape + ': ' + across + ' across (1 mm to spare, rounded up to ' + step + ')');
+    ok(near(f.length, j.tailstock_x - j.chuck_face_x + 12.7) && near(j.stock.clamp, 12.7) && f.length >= m.max[0] + 20 + Number(j.tailstock_clearance) + 12.7 - 1e-9, shape + ': ' + f.length.toFixed(2) + ' long with the tailstock tenon and keep-away, clamping distance stays');
+  }
+}
+
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exit(fails ? 1 : 0);

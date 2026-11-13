@@ -210,8 +210,9 @@ Then zero (or measure) Z with the first tool, as above.
    (what's centred on the axis).
 2. **Stock & rotary:** shape and size; **Stock length** (the whole piece, the part in the
    jaws included) and **Clamping distance** (how far it goes into the jaws). The header
-   shows the stock against what the part needs; red is too small. **Fit the stock to the
-   part** or **Scale the part to fit** if needed.
+   shows the stock against what the part needs; red is too small. Either keep the part's
+   size and click **Size the stock to fit the part** (bottom of Stock & rotary), then cut a
+   blank that size, or keep your blank and click **Scale to fit the stock** (Part placement).
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
 4. **Operations:** Corners (square stock), Roughing, Finishing, Indexed, Parting. Pick
    each tool from ncSender's Tool Library where you can. Indexed cleans up what the rotary

@@ -95,8 +95,11 @@ wrong mirrors anything asymmetric.
    jaws past the jaw face, 1/2" to start), keep-away distances. The live centre is at the
    stock length less the clamping distance from the jaw face; changing the clamping
    distance keeps the stock length, so the centre moves. The 3D stock goes into the jaws by
-   the clamping distance. If the part doesn't fit, it turns red and **Fit the stock to the
-   part** sizes it.
+   the clamping distance. If the part doesn't fit, it turns red. **Size the stock to fit the
+   part** (bottom of the section) is the other way round from Scale to fit the stock: the
+   part keeps its size and the stock is set for it, 1 mm to spare all round (rounded up to
+   a whole mm, or a tenth of an inch) and long enough for the part, the tailstock end tenon
+   (or the tools' room) and the keep-away from the tailstock. The clamping distance stays.
 4. **Tenons** (on by default): a solid round stub on the rotary axis at each end of the
    part, so it stays joined to the stock while it's carved. Each one reaches a set depth
    into the part and runs out to the uncut stock past the end. Nothing cuts into a tenon;
@@ -455,6 +458,7 @@ node test/e2e-v15.cjs test/chin_test.step out/            # a change on one comp
 node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only with A set as rotary ($376), otherwise mm
 node test/e2e-v19.cjs test/chin_test.step out/            # the checks: a column on wide landscape screens (shuts to a strip), below the view on portrait
 node test/e2e-v20.cjs test/horn.stl out/                   # stock too thin or too short: the checks name the field and set it
+node test/e2e-v21.cjs test/horn.stl out/                   # Size the stock to fit the part: across and long, in mm and inches
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
