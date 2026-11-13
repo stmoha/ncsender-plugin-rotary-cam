@@ -88,7 +88,8 @@ def parse(path):
         m = re.match(r"\(OP (\w+) T\d+ D([\d.]+) (.*)\)", line)
         if m:
             st["op"], st["dia"] = m.group(1), float(m.group(2)) * st["scale"]
-            st["kind"] = "ball" if "ball" in m.group(3).lower() else "flat"
+            se = re.search(r"\[(ball|flat) end\]", m.group(3))   # since 0.11.6; before, the tool's name
+            st["kind"] = se.group(1) if se else ("ball" if "ball" in m.group(3).lower() else "flat")
             so = re.search(r"\[stickout ([\d.]+)\]", m.group(3))
             if so:
                 stickouts[st["op"]] = float(so.group(1)) * st["scale"]
@@ -480,9 +481,13 @@ def main():
                 pts.append(to_model(p, a, s))
             pts = np.vstack(pts)
             dist, inside = query(mesh, pts)
+            # a finishing / indexed flat end rests right on the surface: into it by more than
+            # the tolerance is a gouge, as for a ball (a hair inside is rounding)
+            into = inside & (dist > TOL)
             eats_leave = (~inside) & (dist < leave - TOL)
-            report[op] = (len(samples), int(inside.sum()), int(eats_leave.sum()))
-            print(f"{op} (flat D{dia}): {len(pts)} cutter points checked, inside part: {int(inside.sum())}, "
+            report[op] = (len(samples), int(into.sum()), int(eats_leave.sum()))
+            deepest = float(dist[inside].max()) if inside.any() else 0.0
+            print(f"{op} (flat D{dia}): {len(pts)} cutter points checked, inside part by more than {TOL} mm: {int(into.sum())} (deepest {deepest:.4f} mm), "
                   f"closer than leave {leave}: {int(eats_leave.sum())}, min clearance {dist[~inside].min():.3f} mm")
 
     # ---- uncut stock: past what roughing cut, no finishing / indexed tool point inside the stock

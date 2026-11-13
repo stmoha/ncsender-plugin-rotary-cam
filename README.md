@@ -1,7 +1,7 @@
 # Rotary CAM (ncSender plugin)
 
 Simultaneous 4th-axis rotary CAM inside ncSender. Open an STL or STEP part, rough it
-with a flat end mill in spiral layers, finish it with one continuous ball-mill spiral,
+with a flat end mill in spiral layers, finish it with one continuous spiral (ball, flat or tapered ball end mill),
 clean up under overhangs with indexed (3+1) passes, and simulate the program against
 the stock, then load the G-code straight into ncSender. This is the X/Z/A
 wrapping-around kind of rotary work that Fusion keeps behind the Machining Extension.
@@ -138,8 +138,12 @@ wrong mirrors anything asymmetric.
      octagon. Roughing then starts from the octagon, so it spends far less time in air.
      It can use a bigger end mill than roughing; the same tool number means no tool change.
    - **Roughing:** flat end mill, spiral layers, leaving an allowance for finishing.
-   - **Finishing:** one continuous ball-mill spiral, with extra points on sharp features.
-     Finishing and Indexed take a **ball** or a **tapered ball** (Shape): a small ball tip on
+   - **Finishing:** one continuous spiral, with extra points on sharp features.
+     Finishing and Indexed take any end mill (Shape): a **ball** for smooth curves, a
+     **flat end mill** for flat faces, square shoulders and corners (on curves it leaves
+     small steps, so use a fine stepover; the Tool list has the library's flat end mills too,
+     and finishing with the roughing tool's number and size needs no tool change), or a
+     **tapered ball**: a small ball tip on
      a cone that widens to the shank, for fine detail. Set its tip diameter, taper per side
      and shank diameter here; ncSender's Tool Library doesn't store those yet, so a tapered
      ball kept there as a V-bit can be picked and its diameter is taken as the shank. The
@@ -177,8 +181,8 @@ wrong mirrors anything asymmetric.
      ball's radius) to rank them, then looks at the ones it picks as finely as listed angles.
      **Speed:** a plain ball is dropped onto the part by Rotary CAM's own exact drop-cutter,
      the same contact maths as OpenCAMLib (it agrees with it to well under a micron) with the
-     part kept in a grid for each angle, 8 to 15 times faster; a tapered ball still goes
-     through OpenCAMLib. The drops are shared out over all the workers (all the cores but
+     part kept in a grid for each angle, 8 to 15 times faster; a flat end mill or a tapered
+     ball still goes through OpenCAMLib. The drops are shared out over all the workers (all the cores but
      one, up to 8), and the checks for
      the collet nut and spindle only look where they're needed. On the chess knight that
      took Indexed from over two minutes to around 20 seconds on one core.
@@ -462,6 +466,7 @@ node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code 
 node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
 node test/below-test.js                                    # past the axis only where needed (slot_test.step: make_slot_step.py)
+node test/flat-test.js                                     # finishing and Indexed with flat end mills: simulated, never below a fresh drop
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part
@@ -474,6 +479,7 @@ node test/e2e-v20.cjs test/horn.stl out/                   # stock too thin or t
 node test/e2e-v21.cjs test/horn.stl out/                   # Size the stock to fit the part: across and long, in mm and inches
 python test/make_slot_step.py test/slot_test.step          # test part with a slot through it and a hole past the axis
 node test/e2e-v22.cjs test/slot_test.step out/             # Deepest below the axis: auto goes past it and says so, 0 stays above
+node test/e2e-v23.cjs test/chin_test.step out/             # flat end mills for finishing and Indexed: Shape, the Tool list, Generate
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
