@@ -74,6 +74,11 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest
     await typeIn('#rc-stock-dia-round', D(30));
     b = await box();
     ok(b.red >= 2, `stock too thin: shown in red (${b.l1} / ${b.l2})`);
+    // exactly the diameter it says the part needs: fine, not red (the need is rounded for show)
+    const need = /needs at least Ø([\d.]+)/.exec(b.l2)[1];
+    await typeIn('#rc-stock-dia-round', need);
+    b = await box();
+    ok(b.red === 0, `stock equal to the shown need (Ø${need}): not red (${b.l1} / ${b.l2})`);
     await typeIn('#rc-stock-dia-round', D(44));
     await openSec('part'); await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=stock]').open = false; });
     await page.click('#rcam-root .rc-stockbox'); await page.waitForTimeout(500);

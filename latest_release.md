@@ -1,12 +1,12 @@
-## Rotary CAM 0.11.3 (beta)
+## Rotary CAM 0.11.4 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.11.3**
-- **Fixed: with Tenons › Ends set to *Chuck end only*, the tailstock tenon's sizes showed too.** Rotary CAM only makes the chuck end's tenon then, so those three fields did nothing. Now each choice shows just the sizes it uses: one Diameter / Into the part / Length out for *Chuck end only*, *Tailstock end only*, or both ends the same; a set for each end when they're not. Your toolpaths don't change: the hidden sizes were never used. Thanks to Infield for spotting it.
-- With a set for each end, the labels read the same way: *Chuck end: diameter*, *Tailstock end: diameter* (was *Chuck end diameter*).
+**New in 0.11.4**
+- **Fixed: a stock exactly as thick as *Part needs at least* showed in red.** The size shown is rounded, and the part can need a hair more (32.003 mm shows as 32 mm), so a 32 mm stock was flagged. Now the stock only shows red when it’s smaller than the size shown; the same goes for the length. Your toolpaths don’t change. Thanks to Infield for spotting it.
 
 **Since 0.2.0**
+- 0.11.3: with Tenons › *Chuck end only*, only the chuck tenon’s sizes show
 - 0.11.2: the fine print on first open (and from the **beta** badge); a **Manual** link beside the version; on wide landscape screens the checks get a column right of the view that shuts to a strip
 - 0.11.1: with a tapered ball, the whole-side pass never plunges below the part; Cancel always stops; the status clock keeps ticking; writing the program is a step of its own
 - 0.11.0: Indexed can finish the whole side it faces (one even pass instead of spots)

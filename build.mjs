@@ -26,5 +26,9 @@ const files = ['manifest.json', 'config.html', 'icon.png', 'README.md', 'MANUAL.
   'lib/cam-core.js', 'lib/cam-sim.js', 'lib/cam-worker.js', 'lib/rcam-project.js', 'lib/rotary-ui.js', 'lib/rotary-viewer.js', 'lib/ocl.js',
   'lib/occt-import-js.js', 'lib/occt-import-js.wasm',
   'licenses/OpenCAMLib-COPYING.txt', 'licenses/three.js-LICENSE.txt', 'licenses/OpenCascade-LICENSE.txt', 'licenses/occt-import-js-LICENSE.txt'];
-execFileSync('zip', ['-q', '-9', zip, ...files]);
+try { execFileSync('zip', ['-q', '-9', zip, ...files]); }
+catch (e) {
+  if (e.code !== 'ENOENT') throw e;
+  execFileSync('tar', ['-a', '-c', '-f', zip, ...files]); // no zip (Windows): its tar writes a .zip from the name
+}
 console.log(`${zip} (build ${tag})`);

@@ -4,9 +4,10 @@
 import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const PORT = Number(process.argv[2] || 8777);
-const PLUGIN_DIR = resolve(new URL('../..', import.meta.url).pathname);
+const PLUGIN_DIR = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const ID = 'com.cncdocs.rotary-cam';
 // starts as someone who has accepted the fine print (POST /__test/settings {} for a first open)
 let pluginSettings = { job: { fineprint: 1 } };
