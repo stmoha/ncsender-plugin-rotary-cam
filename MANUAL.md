@@ -213,6 +213,9 @@ Then zero (or measure) Z with the first tool, as above.
    shows the stock against what the part needs; red is too small. Either keep the part's
    size and click **Size the stock to fit the part** (bottom of Stock & rotary), then cut a
    blank that size, or keep your blank and click **Scale to fit the stock** (Part placement).
+   **Deepest below the axis** is empty (auto) to start: the tool goes past the rotary axis
+   only where a spot can't be reached any other way (a slot or hole through the part, the
+   inside of a curl). Set it to 0 to keep the tool above the axis everywhere.
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
 4. **Operations:** Corners (square stock), Roughing, Finishing, Indexed, Parting. Pick
    each tool from ncSender's Tool Library where you can. Indexed cleans up what the rotary
@@ -249,6 +252,8 @@ Then zero (or measure) Z with the first tool, as above.
 - [ ] Stickouts measured on the actual tools; one stickout per tool number.
 - [ ] Dust boot off, or its clearance checked with it down.
 - [ ] Simulate shows no red.
+- [ ] If a message says the tool goes past the rotary axis, look at those toolpaths in 3D
+      and air-cut them: the tool reaches deep into the part there.
 - [ ] **Air cut:** take the stock out of the chuck and run the program with the real zero:
       at least the start, the first tool change and the start of Indexed. The tool goes
       exactly where it will when cutting, only in air, and the chuck, jaws and tailstock

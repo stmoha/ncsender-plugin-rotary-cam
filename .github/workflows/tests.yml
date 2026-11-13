@@ -28,3 +28,4 @@ jobs:
           node test/ztravel-test.js
           node test/indexside-test.js
           node test/drop-test.js
+          node test/below-test.js

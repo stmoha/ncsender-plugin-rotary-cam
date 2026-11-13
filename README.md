@@ -45,6 +45,8 @@ Needs ncSender 2.0.88 or later (Pro 2.0.149), grblHAL, and a rotary A axis paral
   it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Work zero —
   from a corner of the rotary** sets it from a corner you can touch off (below).
 - Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
+- The rotary passes keep the tool tip above the axis, except where a spot can only be
+  reached by going past it (see **Deepest below the axis** under Stock & rotary).
 - With **Tool changes › Go round the rotary** on (the default once ncSender says where things
   are), start the job with the spindle over the rotary, where you set X0 Y0: the program
   goes up to ncSender's Safe Z and over the part before its first tool change.
@@ -100,6 +102,16 @@ wrong mirrors anything asymmetric.
    part keeps its size and the stock is set for it, 1 mm to spare all round (rounded up to
    a whole mm, or a tenth of an inch) and long enough for the part, the tailstock end tenon
    (or the tools' room) and the keep-away from the tailstock. The clamping distance stays.
+   **Deepest below the axis:** how far roughing and finishing may take the tool tip past the
+   rotary axis. Most of the part is reached from above the axis, half a turn round, so the
+   tool only goes past it where nothing else gets there: the middle of a slot or hole right
+   through the part (a ball goes one radius past, so no thin web is left on the axis), the
+   bottom of a hole that goes past the axis, the inside of a curl. Empty (auto) goes there,
+   only as deep as each spot needs; a number is the most it may go; 0 keeps the tool above
+   the axis everywhere (Indexed can clean up those spots instead). After Generate a message
+   says how deep and where. Where nothing of the part is under the tool at all (looking
+   straight through a slot), roughing and finishing now cut down to the axis instead of
+   leaving the stock there.
 4. **Tenons** (on by default): a solid round stub on the rotary axis at each end of the
    part, so it stays joined to the stock while it's carved. Each one reaches a set depth
    into the part and runs out to the uncut stock past the end. Nothing cuts into a tenon;
@@ -449,6 +461,7 @@ node test/e2e-v5.cjs test/horn.stl out/                  # tenons
 node test/e2e-v11.cjs test/chin_test.step out/            # corner zero, G-code zero, jaws, see-through spindle, tenon length
 node test/tenon-test.js                                    # tenon length, scale to fit, corner zero maths
 node test/drop-test.js                                     # Indexed's own ball drop against OpenCAMLib (must agree)
+node test/below-test.js                                    # past the axis only where needed (slot_test.step: make_slot_step.py)
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part
@@ -459,6 +472,8 @@ node test/e2e-v17.cjs test/chin_test.step out/            # inch programs only w
 node test/e2e-v19.cjs test/chin_test.step out/            # the checks: a column on wide landscape screens (shuts to a strip), below the view on portrait
 node test/e2e-v20.cjs test/horn.stl out/                   # stock too thin or too short: the checks name the field and set it
 node test/e2e-v21.cjs test/horn.stl out/                   # Size the stock to fit the part: across and long, in mm and inches
+python test/make_slot_step.py test/slot_test.step          # test part with a slot through it and a hole past the axis
+node test/e2e-v22.cjs test/slot_test.step out/             # Deepest below the axis: auto goes past it and says so, 0 stays above
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

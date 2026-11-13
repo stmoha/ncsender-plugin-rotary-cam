@@ -1,0 +1,2 @@
+{ "stock": { "shape": "round", "dia": 30 }, "model": { "axis": "x", "centre": "bbox", "part_start_x": 15 }, "tailstock_x": 150,
+  "tenons": { "enabled": false }, "corners": { "enabled": false } }

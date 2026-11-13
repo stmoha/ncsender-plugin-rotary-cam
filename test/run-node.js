@@ -45,10 +45,12 @@ const OCL = require('../lib/ocl.js');
     if (r.fin) maps.finZ[j] = r.fin;
   }
   console.log(`drop-cutter: ${p.nAng} angles in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  const below = core.applyBelowAxis(job, p, maps);
+  ['rough', 'finish'].forEach((op) => { const b = below[op]; if (b.depth > 0) console.log(`below the axis: ${op} up to ${b.depth.toFixed(2)} mm, X ${b.x0.toFixed(1)}..${b.x1.toFixed(1)} (most allowed: ${isFinite(below.cap) ? below.cap : 'auto'})`); });
   if (job.finish.enabled && !process.argv.includes('--no-refine')) {
     const t1 = Date.now();
     const r = await core.refineFinish(job, core.finishPoints(job, p, maps), (groups) => Promise.resolve(groups.map((g) => worker.probe(ocl, wm.tris, rot, job, p, g.a, g.xs, cutters))),
-      (round, segs, angles) => console.log(`  refine round ${round}: ${segs} segments at ${angles} angles`));
+      (round, segs, angles) => console.log(`  refine round ${round}: ${segs} segments at ${angles} angles`), (a, x, z) => core.belowClamp(job, p, maps, a, x, z));
     maps.finPts = r.pts; maps.finRefined = r.added;
     console.log(`refined: +${r.added} points in ${r.rounds} rounds, worst deviation found ${r.worst.toFixed(4)} mm, ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   }
