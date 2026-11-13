@@ -155,7 +155,7 @@ export function create(container, opts = {}) {
   let needsRender = true;
   const requestRender = () => { needsRender = true; };
   controls.addEventListener('change', requestRender);
-  controls.addEventListener('start', () => { if (opts.onUserCamera) opts.onUserCamera(); });
+  controls.addEventListener('start', () => { camMoved = true; if (opts.onUserCamera) opts.onUserCamera(); });
   let raf = 0, alive = true;
   const loop = () => {
     if (!alive) return;
@@ -428,30 +428,32 @@ export function create(container, opts = {}) {
       if (top > ztop) pts.push(new THREE.Vector2(rs, top));
       pts.push(new THREE.Vector2(0, top));
       const lathe = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), flutes);
-      lathe.rotation.x = Math.PI / 2;
+      lathe.rotation.x = Math.PI / 2; lathe.userData.part = 'flutes';
       tool.add(lathe);
       if (so > top) {
         const shank = new THREE.Mesh(new THREE.CylinderGeometry(rs, rs, so - top, 32), mats.shank);
-        shank.rotation.x = Math.PI / 2; shank.position.z = (top + so) / 2;
+        shank.rotation.x = Math.PI / 2; shank.position.z = (top + so) / 2; shank.userData.part = 'shank';
         tool.add(shank);
       }
+      tool.userData.cut = { tr, len, ball: true, taper: a, rs, rc, zt, ztop, top, so };
       holder(tool, so);
       return tool;
     }
     if (ball) {
       const b = new THREE.Mesh(new THREE.SphereGeometry(tr, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), flutes);
-      b.rotation.x = Math.PI / 2; b.position.z = tr;
+      b.rotation.x = Math.PI / 2; b.position.z = tr; b.userData.part = 'flutes';
       tool.add(b);
     }
     const base = ball ? tr : 0, fl = Math.min(len, so);
     const flute = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, Math.max(0.1, fl - base), 32, 1, false), flutes);
-    flute.rotation.x = Math.PI / 2; flute.position.z = base + (fl - base) / 2;
+    flute.rotation.x = Math.PI / 2; flute.position.z = base + (fl - base) / 2; flute.userData.part = 'flutes';
     tool.add(flute);
     if (so > fl) {
       const shank = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, so - fl, 32), mats.shank);
-      shank.rotation.x = Math.PI / 2; shank.position.z = (fl + so) / 2;
+      shank.rotation.x = Math.PI / 2; shank.position.z = (fl + so) / 2; shank.userData.part = 'shank';
       tool.add(shank);
     }
+    tool.userData.cut = { tr, len, ball, taper: 0, rs: tr, top: fl, so };
     holder(tool, so);
     return tool;
   }
@@ -783,7 +785,7 @@ export function create(container, opts = {}) {
     const ls = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seg), lm);
     ls.renderOrder = 30; group.add(ls);
     const len = a.distanceTo(b), dir = b.clone().sub(a).normalize(), hs = Math.max(1.2, Math.min(4, len / 4));
-    if (len > 0.01) for (const [p, d] of [[a, dir.clone().negate()], [b, dir]]) {
+    if (len > 0.01 && !o.plain) for (const [p, d] of [[a, dir.clone().negate()], [b, dir]]) {
       const cone = new THREE.Mesh(new THREE.ConeGeometry(hs * 0.35, hs, 12), new THREE.MeshBasicMaterial({ color: col, depthTest: false, transparent: true }));
       cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
       cone.position.copy(p).addScaledVector(d, -hs / 2);
@@ -835,9 +837,38 @@ export function create(container, opts = {}) {
   }
   // highlight(key, text): key is a setting's key (rig.chuck.dia, finish.stickout, ...),
   // text its value as shown (55 mm). Returns whether there's anything to show for it.
-  function highlight(key, text, refit = true) {
+  // zoom: the setting is being edited. A tool's own sizes and the pass settings are a few mm
+  // across, too small to read at the usual view, so the view closes in on the tool, and goes
+  // back to where it was when the editing stops (unless you've moved it since)
+  const DETAIL = /^op\.(tool_dia|tool_length|shank_dia|taper_deg|stepdown|pitch|stepover|leave)$/;
+  let zoomBack = null, camMoved = false;
+  function highlight(key, text, refit = true, zoom = false) {
     hl.key = key || null; hl.text = text || '';
-    try { return applyHighlight(refit); } catch (e) { clearHighlight(); hl.key = null; requestRender(); return false; }
+    const detail = !!key && DETAIL.test(key.replace(/^(corners|rough|finish|index|parting)\./, 'op.'));
+    if (zoomBack && (!key || (zoom && !detail))) { if (!camMoved) setCamera(zoomBack); zoomBack = null; }
+    let any = false;
+    try { any = applyHighlight(refit); } catch (e) { clearHighlight(); hl.key = null; requestRender(); return false; }
+    if (any && zoom && detail) zoomIn();
+    return any;
+  }
+  function zoomIn() {
+    // the dimension lines and outlines (not the value's pill, which keeps its size on screen)
+    const b = new THREE.Box3();
+    hlGroup.children.forEach((c) => { if (!c.isSprite) b.expandByObject(c); });
+    if (b.isEmpty()) return;
+    camera.updateMatrixWorld();
+    // how much of the view's height it takes now
+    let y0 = Infinity, y1 = -Infinity;
+    for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
+      const q = new THREE.Vector3(x, y, z).project(camera);
+      y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y);
+    }
+    if ((y1 - y0) / 2 > 0.3) return;
+    if (!zoomBack) zoomBack = getCamera();
+    camMoved = false;
+    const size = b.getSize(new THREE.Vector3()), m = Math.max(size.x, size.y, size.z);
+    b.expandByScalar(Math.max(m * 0.35, 5));
+    fitBox(b, camera.position.clone().sub(controls.target).normalize());
   }
   function applyHighlight(refit) {
     clearHighlight();
@@ -852,6 +883,14 @@ export function create(container, opts = {}) {
     const dimP = (...a) => { dimLine(hlPart, ...a); n++; };
     const td = tool && tool.userData.dims, tp = tool && tool.position;
     const toolParts = (want) => (tool ? tool.children.filter((c) => want(c.userData.part)) : []);
+    // the tool on show is the operation being edited (a setting of another operation, only hovered, draws nothing on it)
+    const kop = (key.match(/^(corners|rough|finish|index|parting)\./) || [])[1], mine = !kop || kop === op;
+    const cutter = (p) => p !== 'nut' && p !== 'spindle', tc0 = mine && tool ? tool.userData.cut : null, st = (setup.steps && setup.steps[op]) || {};
+    // a see-through outline of the cutter's end at (x, y), tip at z: where the next pass or layer goes
+    const ghost = (x, y, z) => {
+      const r = tc0.tr, h = Math.max(2 * r, 6), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 32, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), wireframe: true, transparent: true, opacity: 0.5, depthTest: false }));
+      m.rotation.x = Math.PI / 2; m.position.set(x, y, z + h / 2); m.renderOrder = 29; hlGroup.add(m);
+    };
     const k = key.replace(/^(corners|rough|finish|index|parting)\./, 'op.');
     const box = (b, which) => (b ? (targets.push(...(refs[which] || [])), b) : null);
     switch (k) {
@@ -975,9 +1014,79 @@ export function create(container, opts = {}) {
         else dimP([x, -h[0], h[1]], [x, -h[0] - 12, h[1]], [x, -h[0] - 12, -h[1]], [x, -h[0], -h[1]], text);
         break;
       }
-      case 'safe_clearance': if (tp) { targets.push(...toolParts((p) => !p)); dim([tp.x - 8, 0, R], [tp.x - 14, 0, R], [tp.x - 14, 0, tp.z], [tp.x - 8, 0, tp.z], text); } break;
-      case 'op.stickout': if (td) { targets.push(...toolParts((p) => !p)); const y = -td.nd / 2 - 10; dim([tp.x, 0, tp.z], [tp.x, y, tp.z], [tp.x, y, tp.z + td.so], [tp.x, -td.nd / 2, tp.z + td.so], text); } break;
-      case 'op.tool_dia': case 'op.tool_length': case 'op.shank_dia': case 'op.taper_deg': case 'op.tool': if (tp) targets.push(...toolParts((p) => !p)); break;
+      case 'safe_clearance': if (tp) { targets.push(...toolParts(cutter)); dim([tp.x - 8, 0, R], [tp.x - 14, 0, R], [tp.x - 14, 0, tp.z], [tp.x - 8, 0, tp.z], text); } break;
+      case 'op.stickout': if (td) { targets.push(...toolParts(cutter)); const y = -td.nd / 2 - 10; dim([tp.x, 0, tp.z], [tp.x, y, tp.z], [tp.x, y, tp.z + td.so], [tp.x, -td.nd / 2, tp.z + td.so], text); } break;
+      case 'op.tool': if (tp) targets.push(...toolParts(cutter)); break;
+      // the tool's own sizes: across its end (a ball at its widest), along its flutes, across
+      // its shank, and a tapered ball's cone against its axis
+      case 'op.tool_dia': if (tc0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const r = tc0.tr, z = tp.z + (tc0.ball ? r : 0), y = -Math.max(r, 3) - 8;
+        dim([tp.x - r, 0, z], [tp.x - r, y, z], [tp.x + r, y, z], [tp.x + r, 0, z], text);
+      } break;
+      case 'op.tool_length': if (tc0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const r = Math.max(tc0.tr, tc0.taper ? tc0.rs : 0), x = tp.x + r + 8, z1 = tp.z + tc0.len;
+        dim([tp.x + r, 0, tp.z], [x, 0, tp.z], [x, 0, z1], [tp.x + r, 0, z1], text);
+      } break;
+      case 'op.shank_dia': if (tc0) {
+        targets.push(...toolParts((p) => p === 'shank' || (tc0.taper > 0 && p === 'flutes')));
+        const r = tc0.rs, z = tp.z + (tc0.so > tc0.top ? (tc0.top + tc0.so) / 2 : tc0.top), y = -Math.max(r, 3) - 8;
+        dim([tp.x - r, 0, z], [tp.x - r, y, z], [tp.x + r, y, z], [tp.x + r, 0, z], text);
+      } break;
+      case 'op.taper_deg': if (tc0 && tc0.taper > 0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const a = [tp.x + tc0.rc, 0, tp.z + tc0.zt], up = tp.z + tc0.ztop + 6;
+        dimLine(hlGroup, null, a, [tp.x + tc0.rc, 0, up], null, '', { plain: true });
+        dimLine(hlGroup, null, a, [tp.x + tc0.rs + (up - tp.z - tc0.ztop) * Math.tan(tc0.taper), 0, up], null, text, { plain: true, off: [1, 0, 0] });
+        n++;
+      } break;
+      // the pass settings, at the tool: the next layer down, the next turn along X, the next
+      // pass across in Y, what's left on the part
+      case 'op.stepdown': if (tc0 && st.stepdown > 0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const r = tc0.tr, d = st.stepdown, x = tp.x - r - 8;
+        ghost(tp.x, 0, tp.z - d);
+        dim([tp.x - r, 0, tp.z], [x, 0, tp.z], [x, 0, tp.z - d], [tp.x - r, 0, tp.z - d], text);
+      } break;
+      case 'op.pitch': if (tc0 && st.pitch > 0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const d = st.pitch, z = tp.z - 5;
+        ghost(tp.x + d, 0, tp.z);
+        dim([tp.x, 0, tp.z], [tp.x, 0, z], [tp.x + d, 0, z], [tp.x + d, 0, tp.z], text);
+      } break;
+      case 'op.stepover': if (tc0 && st.stepover > 0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const d = st.stepover, z = tp.z - 5;
+        ghost(tp.x, d, tp.z);
+        dim([tp.x, 0, tp.z], [tp.x, 0, z], [tp.x, d, z], [tp.x, d, tp.z], text);
+      } break;
+      case 'op.leave': if (tc0 && st.leave >= 0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        if (partMesh) targets.push(partMesh);
+        const r = tc0.tr, d = st.leave, x = tp.x + r + 8;
+        dim([tp.x + r, 0, tp.z], [x, 0, tp.z], [x, 0, tp.z - d], [tp.x - r, 0, tp.z - d], text);
+      } break;
+      // how far past the rotary axis the tool tip may go: from the axis down, at the tool
+      case 'below_axis': if (tc0) {
+        targets.push(...toolParts((p) => p === 'flutes'));
+        const b = setup.below || {}, d = b.cap !== null && b.cap !== undefined ? b.cap : b.used || 0, y = -R - 14;
+        dot(hlGroup, [tp.x, 0, 0], 2);
+        if (d > 0) { ghost(tp.x, 0, -d); dim([tp.x, 0, 0], [tp.x, y, 0], [tp.x, y, -d], [tp.x, 0, -d], text); }
+        else { const lab = pill(text); lab.center.set(0.5, 0); lab.position.set(tp.x, y, 4); hlGroup.add(lab); dim([tp.x, 0, 0], [tp.x, y, 4], [tp.x, y, 4], null, ''); }
+        n++;
+      } break;
+      // the angle step: a spoke round the stock where the tool is, every step
+      case 'angle_step_deg': if (tp) {
+        const s = Math.max(0.5, Number(setup.angleStep) || 2), seg = [], x = tp.x;
+        for (let a = 0; a < 360 - 1e-6; a += s) { const t = a * DEG; seg.push(new THREE.Vector3(x, 0, 0), new THREE.Vector3(x, R * Math.sin(t), R * Math.cos(t))); }
+        const ls = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(seg), new THREE.LineBasicMaterial({ color: dimColor(), depthTest: false, transparent: true, opacity: 0.7 }));
+        ls.renderOrder = 30; hlPart.add(ls);
+        const lab = pill(text + ' apart'); lab.center.set(0.5, 0); lab.position.set(x, 0, R + 4); hlGroup.add(lab);
+        n++;
+      } break;
+      case 'stock.shape': targets.push(...refs.stock); break;
+      case 'tenons.ends': case 'tenons.same': tenonGroup.children.forEach((m) => { if (m.isMesh) targets.push(m); }); break;
       case 'rig.nut.dia': if (td) { targets.push(...toolParts((p) => p === 'nut')); const z = tp.z + td.so + td.nl / 2, y = -td.nd / 2 - 10; dim([tp.x - td.nd / 2, -td.nd / 4, z], [tp.x - td.nd / 2, y, z], [tp.x + td.nd / 2, y, z], [tp.x + td.nd / 2, -td.nd / 4, z], text); } break;
       case 'rig.nut.len': if (td) { targets.push(...toolParts((p) => p === 'nut')); const x = tp.x + td.nd / 2 + 10; dim([tp.x + td.nd / 2, 0, tp.z + td.so], [x, 0, tp.z + td.so], [x, 0, tp.z + td.so + td.nl], [tp.x + td.nd / 2, 0, tp.z + td.so + td.nl], text); } break;
       case 'rig.spindle.dia': if (td) { targets.push(...toolParts((p) => p === 'spindle')); const z = tp.z + td.so + td.nl + 30, y = -td.sd / 2 - 12; dim([tp.x - td.sd / 2, 0, z], [tp.x - td.sd / 2, y, z], [tp.x + td.sd / 2, y, z], [tp.x + td.sd / 2, 0, z], text); } break;

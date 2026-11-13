@@ -256,8 +256,17 @@ wrong mirrors anything asymmetric.
    as half to each side.) Click into or hover over any setting and the 3D view lights up
    the part of the setup it's about, with a dimension line showing what the number
    measures; if that part is off the screen the view swings round to it. The same goes for
-   the stock, the keep-aways, retract height, each tool's stickout and diameter, the part's
-   start and placement, and the tool change, tool setter and rotary zero. Each operation's tool has a **Stickout**: how far it sticks out of the nut
+   the stock, the keep-aways, retract height, each tool's stickout, the part's start and
+   placement, and the tool change, tool setter and rotary zero. Each tool's own sizes are
+   dimensioned on it (diameter, flute length, a tapered ball's shank and taper), and the
+   pass settings show at the tool with a see-through outline of where the next one goes:
+   **Stepdown** (and Parting's depth per turn) one layer lower, **Advance / Stepover per
+   turn** one turn along X, Indexed and Corners **Stepover** one pass across, and the
+   **Leave** against the part. Those are a few mm across, so clicking into one closes the
+   view in on the tool, and leaving the field puts it back (unless you've moved it).
+   **Deepest below the axis** shows from the axis down at the tool (on auto, how deep the
+   last program went), **Angle step** a spoke round the stock every step, and Stock shape
+   and the tenon Ends light up what they change. Each operation's tool has a **Stickout**: how far it sticks out of the nut
    (from the Tool Library's stickout when it has one, otherwise its flutes plus a little).
    The 3D view draws all of it at size, the tool with its nut and spindle.
    Every operation keeps the whole tool, the nut and the spindle off the chuck, headstock,
@@ -480,6 +489,7 @@ node test/e2e-v21.cjs test/horn.stl out/                   # Size the stock to f
 python test/make_slot_step.py test/slot_test.step          # test part with a slot through it and a hole past the axis
 node test/e2e-v22.cjs test/slot_test.step out/             # Deepest below the axis: auto goes past it and says so, 0 stays above
 node test/e2e-v23.cjs test/chin_test.step out/             # flat end mills for finishing and Indexed: Shape, the Tool list, Generate
+node test/e2e-v24.cjs test/chin_test.step out/             # tool sizes and pass settings dimensioned in 3D; the view closes in and goes back
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap
