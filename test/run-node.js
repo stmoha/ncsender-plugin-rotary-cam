@@ -18,7 +18,8 @@ const OCL = require('../lib/ocl.js');
     const rr = core.trisFromOcct(occt.ReadStepFile(new Uint8Array(buf), { linearUnit: 'millimeter', linearDeflectionType: 'absolute_value', linearDeflection: 0.01, angularDeflection: 0.05 }));
     raw = rr.tris; console.log(`STEP: ${rr.solids} solid(s), ${rr.skipped} surface bodies skipped`);
   } else raw = core.parseSTL(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length));
-  const mb = core.placeMesh(raw, job.model);
+  core.migrateStart(job, saved);   // Part starts at X includes the chuck end tenon (as in the plugin)
+  const mb = core.placeMesh(raw, job.model, core.chuckLead(job));
   const stlOut = process.argv[6];
   if (stlOut) {
     const n = mb.tris.length / 9, b = Buffer.alloc(84 + n * 50);
