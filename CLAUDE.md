@@ -60,6 +60,7 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
 ## Gotchas
 - `node build.mjs` stamps the build tag into `config.html`, `lib/rotary-ui.js` and
   `lib/rotary-viewer.js`. Afterwards run `git checkout -- config.html lib/rotary-ui.js lib/rotary-viewer.js`.
+  **Commit first**: that checkout also throws away uncommitted edits to those files.
 - Browser tests (`test/e2e-*.cjs`) use the stand-in ncSender in `test/harness`. It
   starts as someone who has accepted the fine print; `POST /__test/settings {}`
   makes it a first open. When reloading a `#dark` URL, go to `about:blank` first.
