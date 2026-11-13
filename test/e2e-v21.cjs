@@ -1,4 +1,4 @@
-// 0.11.5: Size the stock to fit the part (bottom of Stock & rotary) sizes the stock for the part as it is:
+// 0.11.6: Size the stock to fit the part (bottom of Stock & rotary) sizes the stock for the part as it is:
 // across and long, the part and its scale stay. The other way to Scale to fit the stock.
 // node test/e2e-v21.cjs <part> <outdir> [--dark] [--port N]
 const { chromium } = require('playwright');

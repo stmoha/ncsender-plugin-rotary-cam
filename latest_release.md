@@ -1,15 +1,13 @@
-## Rotary CAM 0.11.5 (beta)
+## Rotary CAM 0.11.6 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.11.5**
+**New in 0.11.6**
 - **Size the stock to fit the part.** A new button at the bottom of *Stock & rotary*, the other way round from *Scale to fit the stock*: the part keeps its size, and the stock is set for it in one click, 1 mm to spare all round and long enough for the part, the tailstock end tenon (or the room the tools need) and the keep-away from the tailstock. Sizes round up to a whole mm, or a tenth of an inch. Handy when you’re about to cut a blank. The part doesn’t move, so your toolpaths only change if the stock did.
-- **Clearer checks when the stock is too small.** A stock that’s too thin now names the field to change (*Stock width*, *Width x Height* or *Stock diameter*), and its button says what it sets, for example **Set Stock width to 56 mm**. It never touched the length, and now it says so. Square stock’s *Side* field is now called *Stock width*, to match.
-- **A stock that’s too short says so.** It used to say the part *runs past the tailstock*; now it says the *Stock length* is too short, how long it needs to be, and has a **Set Stock length to …** button. The length it sets leaves room for the tools past the end of the part (or the tailstock tenon) and the keep-away from the tailstock. Your toolpaths don’t change.
-- **Part starts at X now includes the chuck end tenon.** It’s where the work starts: the tenon first, then the part. Make the tenon longer and the part moves along, so you no longer have to change Part starts at X to match. If it’s inside *Keep away from the jaws*, the tools can’t cut all of the tenon: a check says so, with a **Set Part starts at X to …** button. Your saved settings and projects are converted so the part stays exactly where it was (the number in Part starts at X goes down by the tenon’s length). **This moves parts in new setups: air-cut the first program.**
-- **Parting cuts the tenons.** The tenons now set where and how thin Parting cuts: it cuts each tenon down to its diameter along its whole length, from the end of the part out to the stock. Before, it cut a separate neck a gap away from the part, which could land past the tenon or in the keep-away (and then didn’t cut at all). With Parting on, roughing leaves the tenons thick past the room the tools need, so the part is held firmly while it’s carved, and Parting thins them last. Parting’s own Neck, Neck diameter, Gap from the part and Neck width are gone: set the tenons under Tenons (Parting shows what it will cut). **Parting toolpaths change: air-cut the first one.**
+- The *Scale to fit the stock* button is ready as soon as a part opens (it could stay greyed out until you changed a setting).
 
 **Since 0.2.0**
+- 0.11.5: checks for stock that’s too thin or too short name the field and set it; Part starts at X includes the chuck end tenon; Parting cuts the tenons
 - 0.11.4: a stock exactly as thick as *Part needs at least* no longer shows in red
 - 0.11.3: with Tenons › *Chuck end only*, only the chuck tenon’s sizes show
 - 0.11.2: the fine print on first open (and from the **beta** badge); a **Manual** link beside the version; on wide landscape screens the checks get a column right of the view that shuts to a strip
