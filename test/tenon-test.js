@@ -111,5 +111,15 @@ ok(fresh().rig.chuck.jaws === 4, 'chucks have 4 jaws unless set to 3');
   }
 }
 
+// ---- stepovers as a % of the tool's diameter (0.11.6)
+{
+  const j = fresh({ rough: { tool_dia: 10, pitch: 3.5, pitch_pct: 40 }, finish: { tool_dia: 6.35, pitch: 0.5 }, index: { tool_dia: 3.175, stepover_pct: 10 }, corners: { tool_dia: 8, stepover_pct: null, stepover: 4.8 } });
+  ok(near(j.rough.pitch, 4) && near(j.index.stepover, 0.3175), 'typed as a %, the length is that % of the tool: 40% of 10 mm is ' + j.rough.pitch + ', 10% of 3.175 mm is ' + j.index.stepover);
+  ok(near(j.finish.pitch, 0.5) && near(j.corners.stepover, 4.8), 'typed as a length, it stays that length');
+  j.rough.tool_dia = 6; core.syncPct(j);
+  ok(near(j.rough.pitch, 2.4), 'a new tool: the % holds, the length follows (40% of 6 mm is ' + j.rough.pitch + ')');
+  ok(core.pctOf(j, 'finish', 'pitch') === null && core.pctOf(j, 'rough', 'pitch') === 40, 'pctOf: the % when one was typed, null otherwise');
+}
+
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exit(fails ? 1 : 0);

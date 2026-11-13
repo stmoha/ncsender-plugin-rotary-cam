@@ -887,9 +887,14 @@ export function create(container, opts = {}) {
     const kop = (key.match(/^(corners|rough|finish|index|parting)\./) || [])[1], mine = !kop || kop === op;
     const cutter = (p) => p !== 'nut' && p !== 'spindle', tc0 = mine && tool ? tool.userData.cut : null, st = (setup.steps && setup.steps[op]) || {};
     // a see-through outline of the cutter's end at (x, y), tip at z: where the next pass or layer goes
-    const ghost = (x, y, z) => {
-      const r = tc0.tr, h = Math.max(2 * r, 6), m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 32, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), wireframe: true, transparent: true, opacity: 0.5, depthTest: false }));
+    const ghost = (x, y, z, h = Math.max(tc0.tr, 1)) => {
+      const r = tc0.tr, m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 32, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), wireframe: true, transparent: true, opacity: 0.5, depthTest: false }));
       m.rotation.x = Math.PI / 2; m.position.set(x, y, z + h / 2); m.renderOrder = 29; hlGroup.add(m);
+    };
+    // a solid slab of the cutter's width, from z0 up to z1: what one layer takes off
+    const slab = (x, y, z0, z1) => {
+      const r = tc0.tr, m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, Math.max(0.05, z1 - z0), 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), transparent: true, opacity: 0.6, depthTest: false }));
+      m.rotation.x = Math.PI / 2; m.position.set(x, y, (z0 + z1) / 2); m.renderOrder = 29; hlGroup.add(m);
     };
     const k = key.replace(/^(corners|rough|finish|index|parting)\./, 'op.');
     const box = (b, which) => (b ? (targets.push(...(refs[which] || [])), b) : null);
@@ -987,15 +992,22 @@ export function create(container, opts = {}) {
         break;
       }
       case 'tailstock_x': {
-        // the whole stock: from its end in the jaws to the live centre
-        targets.push(...refs.stock, ...refs.centre);
+        // the whole stock: from its end in the jaws to the live centre (the stock alone lights up)
+        targets.push(...refs.stock);
         const x0 = cx - (setup.clamp || 0);
         dim([x0, 0, -R], [x0, 0, -R - 16], [tx, 0, -R - 16], [tx, 0, -R], text);
         break;
       }
       case 'stock.clamp': {
-        targets.push(...refs.stock);
+        // just the end in the jaws, seen through them
         const c = setup.clamp || 0;
+        if (c > 0) {
+          const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), transparent: true, opacity: 0.55, depthTest: false });
+          let o;
+          if (setup.stockShape === 'round') o = xCylinder(R + 0.3, R + 0.3, cx - c, cx, m, 72);
+          else { const h = setup.stockHalf || [R, R], g = new THREE.BoxGeometry(c, 2 * h[0] + 0.6, 2 * h[1] + 0.6); g.translate(cx - c / 2, 0, 0); o = new THREE.Mesh(g, m); }
+          o.renderOrder = 29; hlPart.add(o);
+        }
         dim([cx - c, 0, -R], [cx - c, 0, -R - 8], [cx, 0, -R - 8], [cx, 0, -R], text);
         break;
       }
@@ -1044,19 +1056,17 @@ export function create(container, opts = {}) {
       // the pass settings, at the tool: the next layer down, the next turn along X, the next
       // pass across in Y, what's left on the part
       case 'op.stepdown': if (tc0 && st.stepdown > 0) {
-        targets.push(...toolParts((p) => p === 'flutes'));
+        // one layer: a slab as deep as the stepdown under the tool's end
         const r = tc0.tr, d = st.stepdown, x = tp.x - r - 8;
-        ghost(tp.x, 0, tp.z - d);
+        slab(tp.x, 0, tp.z - d, tp.z);
         dim([tp.x - r, 0, tp.z], [x, 0, tp.z], [x, 0, tp.z - d], [tp.x - r, 0, tp.z - d], text);
       } break;
       case 'op.pitch': if (tc0 && st.pitch > 0) {
-        targets.push(...toolParts((p) => p === 'flutes'));
         const d = st.pitch, z = tp.z - 5;
         ghost(tp.x + d, 0, tp.z);
         dim([tp.x, 0, tp.z], [tp.x, 0, z], [tp.x + d, 0, z], [tp.x + d, 0, tp.z], text);
       } break;
       case 'op.stepover': if (tc0 && st.stepover > 0) {
-        targets.push(...toolParts((p) => p === 'flutes'));
         const d = st.stepover, z = tp.z - 5;
         ghost(tp.x, d, tp.z);
         dim([tp.x, 0, tp.z], [tp.x, 0, z], [tp.x, d, z], [tp.x, d, tp.z], text);
@@ -1271,7 +1281,7 @@ export function create(container, opts = {}) {
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
     simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost,
     setIndexAngles, setLeftover, setToolChanges, highlight,
-    highlighted() { return hl.key ? { key: hl.key, parts: hl.swapped.length, dims: hlGroup.children.length + hlPart.children.length } : null; },
+    highlighted() { return hl.key ? { key: hl.key, parts: hl.swapped.length, dims: hlGroup.children.length + hlPart.children.length, onPart: hlPart.children.length } : null; },
     toolChangeShown() { return !!(tcData && tcData.change && tcGroup.children.length); },
     toolChangeRoutes() { return tcData && tcData.paths ? tcData.paths.length : 0; },
     fixtures() { return (setup && setup.fixtures || []).map((f) => Object.assign({}, f)); },

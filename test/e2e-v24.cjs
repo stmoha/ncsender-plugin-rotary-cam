@@ -50,7 +50,7 @@ fs.mkdirSync(outDir, { recursive: true });
       ['finish', '#rc-finish-tool_dia', 'finishing ball diameter'], ['finish', '#rc-finish-tool_length', 'finishing flute length'], ['finish', '#rc-finish-pitch', 'finishing stepover per turn'],
       ['index', '#rc-index-tool_dia', 'Indexed tool diameter'], ['index', '#rc-index-stepover', 'Indexed stepover'], ['index', '#rc-index-stepdown', 'Indexed stepdown'],
       ['parting', '#rc-parting-tool_dia', 'parting tool diameter'], ['parting', '#rc-parting-stepdown', 'parting depth per turn'],
-      ['stock', '#rc-below_axis', 'Deepest below the axis'], ['stock', '#rc-angle_step_deg', 'angle step'], ['stock', '#rc-stock-shape', 'stock shape']
+      ['stock', '#rc-below_axis', 'Deepest below the axis'], ['stock', '#rc-angle_step_deg', 'angle step'], ['stock', '#rc-stock-shape', 'stock shape'], ['stock', '#rc-stock-clamp', 'clamping distance'], ['stock', '#rc-tailstock_x', 'stock length']
     ];
     for (const [sec, id, what] of list) {
       if (!(await page.$(id))) { ok(false, what + ': no field ' + id); continue; }
@@ -68,6 +68,29 @@ fs.mkdirSync(outDir, { recursive: true });
       await page.screenshot({ path: path.join(outDir, 'hl-' + id.slice(4) + '.png') });
       await blur(); await page.waitForTimeout(200);
     }
+    // stepovers as a length or a % of the tool's diameter: type either, the other follows
+    const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await blur(); await page.waitForTimeout(300); };
+    const rp = () => page.evaluate(() => { const j = window.RotaryCam.__state.job.rough; return { len: j.pitch, pct: j.pitch_pct, dia: j.tool_dia, lenBox: document.querySelector('#rc-rough-pitch').value, pctBox: document.querySelector('#rc-rough-pitch-pct').value }; });
+    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=rough]').open = true; });
+    let q = await rp();
+    ok(q.pctBox === String(Math.round(q.len / q.dia * 1000) / 10), `Roughing Stepover per turn shows as a % too: ${q.lenBox} mm = ${q.pctBox}% of D${q.dia}`);
+    for (const k of ['corners', 'finish', 'index']) {
+      const key = k === 'finish' ? 'pitch' : 'stepover';
+      ok(await page.evaluate((s) => !!document.querySelector(s), `#rc-${k}-${key}-pct`) || k === 'corners', `${k}: a % box under its stepover`);
+    }
+    await typeIn('#rc-rough-pitch-pct', 50);
+    q = await rp();
+    ok(Math.abs(q.len - 3.175) < 1e-6 && q.pct === 50 && Number(q.lenBox) === 3.175, `50% of the 6.35 mm tool: ${q.lenBox} mm`);
+    await typeIn('#rc-rough-tool_dia', 10);
+    q = await rp();
+    ok(Math.abs(q.len - 5) < 1e-6 && Number(q.lenBox) === 5 && q.pctBox === '50', `typed as a %, it stays 50% of a 10 mm tool: ${q.lenBox} mm`);
+    await typeIn('#rc-rough-pitch', 2);
+    q = await rp();
+    ok(q.len === 2 && (q.pct === null || q.pct === undefined) && q.pctBox === '20', `typed as a length: 2 mm, shown as ${q.pctBox}%`);
+    await typeIn('#rc-rough-tool_dia', 4);
+    q = await rp();
+    ok(q.len === 2 && q.pctBox === '50', `and it stays 2 mm with a 4 mm tool, now ${q.pctBox}%`);
+    await typeIn('#rc-rough-tool_dia', 6.35); await typeIn('#rc-rough-pitch', 3.5);
     // editing a tool size closes in on the tool; leaving the field puts the view back
     const cam = () => page.evaluate(() => window.RotaryCam.viewer.getCamera());
     const near = (a, b) => a.p.every((v, i) => Math.abs(v - b.p[i]) < 1e-3) && a.t.every((v, i) => Math.abs(v - b.t[i]) < 1e-3);

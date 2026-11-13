@@ -102,7 +102,7 @@ fs.mkdirSync(outDir, { recursive: true });
     j = await job();
     ok(near(j.stock.clamp, 25.4, 0.02) && near(j.tailstock_x + j.stock.clamp, len0, 0.02) && near(Number(await page.$eval('#rc-tailstock_x', (e) => e.value)) * U, len0, 0.03), `more in the jaws, same stock: the tailstock centre comes in to X${j.tailstock_x.toFixed(2)} mm, the length stays ${len0.toFixed(2)} mm`);
     h = await hl();
-    ok(h && h.key === 'stock.clamp' && h.parts > 0 && h.dims > 0, 'Clamping distance lights up the stock with a dimension into the jaws ' + JSON.stringify(h));
+    ok(h && h.key === 'stock.clamp' && h.parts === 0 && h.onPart > 0 && h.dims > 0, 'Clamping distance lights up just the end in the jaws (not the whole stock), with a dimension ' + JSON.stringify(h));
     let span = await page.evaluate(() => window.RotaryCam.viewer.stockSpan());
     ok(near(span.x0, -25.4, 0.05) && near(span.x1, j.tailstock_x, 0.05), `the 3D stock starts ${(-span.x0).toFixed(1)} mm inside the jaws and ends at the centre (X${span.x1.toFixed(1)})`);
     await shot('clamp');
