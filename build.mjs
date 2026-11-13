@@ -29,6 +29,8 @@ const files = ['manifest.json', 'config.html', 'icon.png', 'README.md', 'MANUAL.
 try { execFileSync('zip', ['-q', '-9', zip, ...files]); }
 catch (e) {
   if (e.code !== 'ENOENT') throw e;
-  execFileSync('tar', ['-a', '-c', '-f', zip, ...files]); // no zip (Windows): its tar writes a .zip from the name
+  // no zip (Windows): its own tar (bsdtar, not Git's GNU tar) writes a .zip from the name
+  const tar = process.platform === 'win32' ? (process.env.SystemRoot || 'C:\\Windows') + '\\System32\\tar.exe' : 'bsdtar';
+  execFileSync(tar, ['-a', '-c', '-f', zip, ...files]);
 }
 console.log(`${zip} (build ${tag})`);
