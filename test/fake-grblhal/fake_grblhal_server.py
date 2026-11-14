@@ -132,7 +132,7 @@ class Machine:
     def status_line(self, rx_free):
         state = self.status
         if self.alarm is not None:
-            state = "Alarm"
+            state = f"Alarm:{self.alarm}"   # grblHAL style: ncSender reads the code from here
         elif self.status == "Home":
             state = "Home"
         elif self.hold:
