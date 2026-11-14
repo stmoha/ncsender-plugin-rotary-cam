@@ -49,7 +49,8 @@ Needs ncSender 2.0.88 or later (Pro 2.0.149), grblHAL, and a rotary A axis paral
 - **Work zero: X0 = chuck jaw face, Y0 and Z0 = rotary centreline.** Z in the program is
   the tool-tip radius, so Z0 must be the axis, not the top of the stock. The 3D view marks
   it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Work zero —
-  from a corner of the rotary** sets it from a corner you can touch off (below).
+  probe the chuck or a corner** finds it by probing the chuck, or sets it from a corner
+  you can touch off (below).
 - Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
 - The rotary passes keep the tool tip above the axis, except where a spot can only be
   reached by going past it (see **Deepest below the axis** under Stock & rotary).
@@ -226,7 +227,24 @@ wrong mirrors anything asymmetric.
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
-9. **Work zero — from a corner of the rotary:** for setting the zero after the rotary goes
+9. **Work zero — probe the chuck or a corner.** **Probe the chuck…** finds the zero for
+   you with a 3D probe, or the bit and a clip, in a dialog laid out like ncSender's own
+   probe dialog (connection test, jog pad, Start Probe). **Probing** picks X, Y and Z, Y
+   and Z, or any one. It touches both sides of the chuck body and goes to the middle (Y0),
+   touches the top there (Z0 is half the **Chuck body diameter** below it: measure the
+   round body behind the jaws with calipers), then turns A to 0 and touches the front of
+   the jaw that's up (X0; set A0 with a jaw straight up first, **A0 here** does it). Each
+   touch goes through ncSender's probe runner (fast, back off, slow, at ncSender's own
+   feeds), and the work offset is set with `G10 L20` where it touched, in mm and back to
+   the units the controller was in. **Half turn** (on by default) does the sides and the
+   top again with A turned 180° and averages them, so a chuck that doesn't run true still
+   gives the true axis, and it says how far off true it runs. It works out how deep beside
+   the chuck the collet nut (or the probe's body) lets the tip go, moves to and from the
+   chuck with moves that stop if they touch anything, says what the chuck measured across
+   (and warns if that's well off what you typed), and updates the rotary zero for tool
+   changes. Details in the [manual](MANUAL.md).
+
+   **From a corner of the rotary:** for setting the zero after the rotary goes
    back on the table. Measure once, in machine coordinates, how far the work zero (jaw
    face, on the axis) is from a corner you can touch off, such as the top front corner of
    the headstock housing: **X, Y and Z, corner to the zero** (the zero minus the corner;
@@ -497,6 +515,8 @@ node test/below-test.js                                    # past the axis only 
 node test/flat-test.js                                     # finishing and Indexed with flat end mills: simulated, never below a fresh drop
 node test/make_coil.js test/coil.stl                       # test part: a coil open down the middle
 node test/coil-test.js                                     # the core cleared from past the axis: kept, drawn, checked; walls split
+node test/probe-test.js                                    # Probe the chuck against a pretend machine (test/harness/probe-machine.cjs)
+node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part

@@ -5,6 +5,8 @@ import http from 'node:http';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+const { makeMachine } = createRequire(import.meta.url)('./probe-machine.cjs');
 
 const PORT = Number(process.argv[2] || 8777);
 const PLUGIN_DIR = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -40,6 +42,27 @@ let UPDATED = 0;
 // (kept in mm, the way $# reports them). noExpr: a controller without expressions.
 let CTRL = { metric: true, params: {}, noExpr: false };
 const COMMANDS = [];
+// a rotary on the table to probe (POST /__test/probe { world }): moves, G10 L20, the probe
+// input and ncSender's /api/probe/start go to it, and the machine state comes from it
+let SIM = null, PROBED = [];
+function simSync() {
+  if (!SIM) return;
+  const st = SIM.state();
+  MACHINE.MPos = st.MPos; MACHINE.g54 = st.g54; MACHINE.WCO = st.WCO; MACHINE.status = st.status;
+  MACHINE.Pn = SIM.touch ? 'P' : st.Pn;
+}
+function simLine(line) {
+  // expressions and the units go to the controller stand-in as before (G90 / G21 too)
+  const l = String(line).trim();
+  if (/#<|G\[/i.test(l)) return runLine(l);
+  // G10 L2 from Move zero: keep the simulated offset in step
+  if (/G10\s*L2(?!\d)/i.test(l)) { const r = runLine(l); const g = MACHINE.g54.split(',').map(Number); Object.assign(SIM.S.wco, { x: g[0], y: g[1], z: g[2] }); return r; }
+  runLine(l);
+  const r = SIM.exec(l);
+  simSync();
+  if (r.error) return { status: 'error', errorMessage: r.error };
+  return { status: 'success' };
+}
 function runLine(line) {
   const l = String(line).trim(), err = (e) => ({ status: 'error', errorMessage: e });
   let m = l.match(/^#<(_?\w+)>\s*=\s*\[(.*)\]$/);
@@ -108,13 +131,32 @@ http.createServer(async (req, res) => {
   if (p === `/api/plugins/${ID}/update` && req.method === 'POST') { UPDATED++; return json(res, { success: true }); }
   if (p === '/__test/update' && req.method === 'POST') { UPDATE = Object.assign(UPDATE, JSON.parse(await body(req))); return json(res, { UPDATE, UPDATED }); }
   if (p === '/__test/updated') return json(res, { UPDATED });
-  if (p === '/api/send-command' && req.method === 'POST') { const b = JSON.parse(await body(req)); COMMANDS.push(b.command); return json(res, Object.assign({ id: String(COMMANDS.length), command: b.command }, runLine(b.command))); }
+  if (p === '/api/send-command' && req.method === 'POST') { const b = JSON.parse(await body(req)); COMMANDS.push(b.command); return json(res, Object.assign({ id: String(COMMANDS.length), command: b.command }, SIM ? simLine(b.command) : runLine(b.command))); }
+  // ProbeService.cs: each line in turn; an alarm leaves the rest unsent (the lines aren't checked)
+  if (p === '/api/probe/start' && req.method === 'POST') {
+    const b = JSON.parse(await body(req));
+    if (!SIM) return json(res, { error: 'Controller not connected' }, 400);
+    PROBED.push(b.commands);
+    for (const c of b.commands || []) { const r = simLine(c); if (SIM.S.alarm || r.status === 'error') break; }
+    MACHINE.isProbing = false;
+    return json(res, { success: true });
+  }
+  if (p === '/api/probe/stop' && req.method === 'POST') { if (SIM) SIM.S.alarm = 0; return json(res, { success: true }); }
+  if (p === '/__test/probe' && req.method === 'POST') {
+    const b = JSON.parse(await body(req));
+    if (b.world) { SIM = makeMachine(b.world); if (b.start) Object.assign(SIM.S.m, b.start); if (b.wco) Object.assign(SIM.S.wco, b.wco); PROBED = []; }
+    if (b.touch !== undefined && SIM) SIM.touch = !!b.touch;
+    if (b.at && SIM) Object.assign(SIM.S.m, b.at);
+    simSync();
+    return json(res, { ok: true });
+  }
+  if (p === '/__test/probe') return json(res, SIM ? { m: SIM.S.m, wco: SIM.S.wco, crash: SIM.S.crash, alarm: SIM.S.alarm, jawFace: SIM.jawFace(), jobs: PROBED, log: SIM.S.log.slice(-40), metric: CTRL.metric, abs: SIM.S.abs } : {});
   if (p === '/__test/commands') return json(res, { commands: COMMANDS, metric: CTRL.metric, machine: MACHINE });
   if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.ctrl) CTRL = Object.assign(CTRL, b.ctrl); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
   if (p === '/__test/units' && req.method === 'POST') { UNITS = (await body(req)).trim(); return json(res, { units: UNITS }); }
   if (p === '/api/tools') return json(res, LIBRARY);
   if (p === '/api/firmware') return json(res, FIRMWARE);
-  if (p === '/api/server-state') return json(res, { machineState: MACHINE, senderStatus: 'idle' });
+  if (p === '/api/server-state') { simSync(); return json(res, { machineState: MACHINE, senderStatus: 'idle' }); }
   if (p === '/api/gcode-files/file') {
     const path = url.searchParams.get('path');
     if (saved.has(path)) return json(res, { path, content: saved.get(path) });

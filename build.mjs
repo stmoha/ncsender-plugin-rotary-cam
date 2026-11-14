@@ -23,7 +23,7 @@ const release = process.argv.includes('--release'), test = process.argv.includes
 const zip = release || test ? `dist/${manifest.id}_v${manifest.version}${test ? '-test' : ''}.zip` : `dist/rotary-cam-${manifest.version}.zip`;
 rmSync(zip, { force: true });
 const files = ['manifest.json', 'config.html', 'icon.png', 'README.md', 'MANUAL.md', 'LICENSE',
-  'lib/cam-core.js', 'lib/cam-sim.js', 'lib/cam-worker.js', 'lib/rcam-project.js', 'lib/rotary-ui.js', 'lib/rotary-viewer.js', 'lib/ocl.js',
+  'lib/cam-core.js', 'lib/cam-sim.js', 'lib/cam-worker.js', 'lib/rcam-project.js', 'lib/chuck-probe.js', 'lib/rotary-ui.js', 'lib/rotary-viewer.js', 'lib/ocl.js',
   'lib/occt-import-js.js', 'lib/occt-import-js.wasm',
   'licenses/OpenCAMLib-COPYING.txt', 'licenses/three.js-LICENSE.txt', 'licenses/OpenCascade-LICENSE.txt', 'licenses/occt-import-js-LICENSE.txt'];
 try { execFileSync('zip', ['-q', '-9', zip, ...files]); }

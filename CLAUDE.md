@@ -47,6 +47,9 @@ commands: README › Development.
 - `lib/cam-worker.js`: drop-cutter work in workers (OpenCAMLib WASM `lib/ocl.js`).
 - `lib/cam-sim.js`: stock simulation and what indexed passes should clean up.
 - `lib/rotary-ui.js`: the whole plugin UI (fields, form, checks, generate, save).
+- `lib/chuck-probe.js`: Probe the chuck (the touches and the maths; the dialog is in
+  rotary-ui.js). Tested against `test/harness/probe-machine.cjs`, a pretend rotary that
+  also answers the harness's `/api/probe/start`.
 - `viewer/src/viewer.js`: the 3D view. `cd viewer && npm ci && node build.mjs`
   writes `lib/rotary-viewer.js`, which is committed.
 - `config.html` + `manifest.json`: the plugin entry. `build.mjs` packages it.
