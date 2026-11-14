@@ -214,6 +214,7 @@ def main():
         c.read_until(lambda: any("Grbl" in m for m in c.msgs), 2)
         st = c.status()
         ok(st["state"].startswith("Alarm"), "reset while moving -> Alarm: " + st["state"])
+        ok(any(m == "ALARM:3" for m in c.msgs), "it says ALARM:3 (ncSender reads the alarm number from it)")
         c.cmd("G0 X0")
         ok(any(m == "error:9" for m in c.msgs), "moves are refused in Alarm (error:9)")
         c.cmd("$X")

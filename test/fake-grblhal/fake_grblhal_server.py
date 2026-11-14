@@ -259,6 +259,7 @@ class Controller:
             if was_moving or m.status == "Home":
                 m.alarm, m.homed = 3, False
                 m.status = "Idle"
+                await self.send("ALARM:3\r\n")
             await self.send(GREETING)
             if m.alarm == 3:
                 await self.send("[MSG:'$H'|'$X' to unlock]\r\n")
