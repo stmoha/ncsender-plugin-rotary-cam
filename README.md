@@ -6,11 +6,17 @@ clean up under overhangs with indexed (3+1) passes, and simulate the program aga
 the stock, then load the G-code straight into ncSender. This is the X/Z/A
 wrapping-around kind of rotary work that Fusion keeps behind the Machining Extension.
 
-![Rotary CAM in ncSender: a knight placed in square stock between the chuck and the tailstock, wrapped in the orange roughing spiral, with the settings on the left and the program checks below](docs/images/knight-roughing.png)
+![Rotary CAM in ncSender: a knight placed in square stock between the chuck and the tailstock, wrapped in the orange roughing spiral, with the settings on the left and the program checks on the right](docs/images/knight-roughing.png)
 
-*A knight in 1½ in square stock: the roughing spiral (orange) wraps the part, the chuck,
-tailstock and spindle are drawn to scale, and below them are the checks Rotary CAM runs
+*A knight in 1.7 in square stock: the roughing spiral (orange) wraps the part, the chuck,
+tailstock and spindle are drawn to scale, and beside them are the checks Rotary CAM runs
 on every program before you cut.*
+
+<p align="center"><img src="docs/images/helix-finishing.png" width="49%" alt="A helix open down the middle, its finishing spiral (blue) going through the middle of the coil, past the rotary axis"> <img src="docs/images/helix-simulated.png" width="49%" alt="The same helix simulated: the coil comes out clean, open down the middle"></p>
+
+*Parts open down the middle: on this helix, roughing and finishing go past the rotary axis
+to clear the inside of the coil (left), and Simulate shows it carved, open all the way
+through (right).*
 
 **New to it? Start with [MANUAL.md](MANUAL.md):** setting up the controller and the rotary, and what to check before the first carve.
 
