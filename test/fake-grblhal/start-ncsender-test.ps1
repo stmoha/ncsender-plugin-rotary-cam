@@ -1,5 +1,8 @@
 # Start ncSender for testing on this PC, with the fake grblHAL controller so it
 # connects (Ethernet / Telnet, 127.0.0.1:8000) and plugins and settings open.
+# The fake controller lives at https://github.com/stmoha/fake-grblhal: this
+# fetches its latest fake_grblhal_server.py next to itself each run (and uses the
+# copy already there if GitHub can't be reached).
 #
 #   .\start-ncsender-test.ps1             fake controller + the patched ncSender
 #                                         (source build: server + 3D view) + browser
@@ -20,6 +23,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $fake = Join-Path $here 'fake_grblhal_server.py'
+
+try {
+  $ProgressPreference = 'SilentlyContinue'
+  Invoke-WebRequest 'https://raw.githubusercontent.com/stmoha/fake-grblhal/main/fake_grblhal_server.py' -OutFile "$fake.new" -TimeoutSec 15
+  Move-Item -Force "$fake.new" $fake
+} catch {
+  Remove-Item "$fake.new" -ErrorAction SilentlyContinue
+  if (-not (Test-Path $fake)) { throw "Couldn't download the fake controller and there's no copy in $here" }
+  Write-Host "Fake controller: couldn't check GitHub for a newer copy, using the one here."
+}
 
 function Test-Port([int]$port) {
   [bool](Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)

@@ -22,16 +22,16 @@ commands: README › Development.
   changes get an air cut first; say so when a change touches toolpaths.
 - **Running ncSender on his laptop** (Desktop Commander device `CAST-stefan_L24`, Windows):
   always start the fake controller with it, so ncSender connects and plugins and settings
-  open. `test/fake-grblhal/start-ncsender-test.ps1` does it all (fake grblHAL on
-  127.0.0.1:8000, XYZA, plus the patched ncSender source build and the browser);
-  `-FakeOnly` for his installed ncSender, `-Axes 3` for a plain XYZ machine, `-Speed 10`
-  for jobs 10x faster. The fake homes, runs jobs in real time (planner, Ln, G93, arcs),
-  holds, resets into Alarm 3, probes; `python3 test/fake-grblhal/fake-test.py [prog.nc]`
-  checks it after any change to it. His saved
-  connection is already Ethernet / Telnet 127.0.0.1:8000. On the laptop the scripts live
-  in `C:\Users\stefa\ncsender-a-preview\`. Installed and source ncSender share
-  `%APPDATA%\ncSender`: back it up before running a source build, and only one can
-  run at a time (both use port 8090).
+  open. The fake controller has its own repo, `stmoha/fake-grblhal` (homes, runs jobs in
+  real time with Ln and G93, holds, resets into Alarm 3, probes, rotary A); after changing
+  it, run its `python test_fake_grblhal.py`. `test/fake-grblhal/start-ncsender-test.ps1`
+  here fetches its latest script and starts it (127.0.0.1:8000, XYZA) plus the patched
+  ncSender source build and the browser; `-FakeOnly` for his installed ncSender, `-Axes 3`
+  for a plain XYZ machine, `-Speed 10` for jobs 10x faster. His saved connection is
+  already Ethernet / Telnet 127.0.0.1:8000. On the laptop the scripts live in
+  `C:\Users\stefa\ncsender-a-preview\`. Installed and source ncSender share
+  `%APPDATA%\ncSender`: back it up before running a source build, and only one can run
+  at a time (both use port 8090).
 
 ## Releasing (details in RELEASING.md)
 - Bump `manifest.json` `version` **and** `lib/cam-core.js` `VERSION` (the Tests
