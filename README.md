@@ -8,7 +8,7 @@ wrapping-around kind of rotary work that Fusion keeps behind the Machining Exten
 
 ![Rotary CAM in ncSender: a knight placed in square stock between the chuck and the tailstock, wrapped in the orange roughing spiral, with the settings on the left and the program checks on the right](docs/images/knight-roughing.png)
 
-*A knight in 1.7 in square stock: the roughing spiral (orange) wraps the part, the chuck,
+*A knight in 1½ in square stock: the roughing spiral (orange) wraps the part, the chuck,
 tailstock and spindle are drawn to scale, and beside them are the checks Rotary CAM runs
 on every program before you cut.*
 
