@@ -24,7 +24,10 @@ commands: README › Development.
   always start the fake controller with it, so ncSender connects and plugins and settings
   open. `test/fake-grblhal/start-ncsender-test.ps1` does it all (fake grblHAL on
   127.0.0.1:8000, XYZA, plus the patched ncSender source build and the browser);
-  `-FakeOnly` for his installed ncSender, `-Axes 3` for a plain XYZ machine. His saved
+  `-FakeOnly` for his installed ncSender, `-Axes 3` for a plain XYZ machine, `-Speed 10`
+  for jobs 10x faster. The fake homes, runs jobs in real time (planner, Ln, G93, arcs),
+  holds, resets into Alarm 3, probes; `python3 test/fake-grblhal/fake-test.py [prog.nc]`
+  checks it after any change to it. His saved
   connection is already Ethernet / Telnet 127.0.0.1:8000. On the laptop the scripts live
   in `C:\Users\stefa\ncsender-a-preview\`. Installed and source ncSender share
   `%APPDATA%\ncSender`: back it up before running a source build, and only one can

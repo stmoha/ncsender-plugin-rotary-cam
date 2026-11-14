@@ -6,11 +6,13 @@
 #   .\start-ncsender-test.ps1 -FakeOnly   just the fake controller, for your
 #                                         installed ncSender: start that yourself
 #   .\start-ncsender-test.ps1 -Axes 3     plain XYZ machine (no rotary A)
+#   .\start-ncsender-test.ps1 -Speed 10   jobs run 10x faster than real time
 #
 # Each part runs in its own window: close the windows to stop.
 param(
   [switch]$FakeOnly,
   [ValidateSet(3, 4)][int]$Axes = 4,
+  [double]$Speed = 1,
   [int]$FakePort = 8000,
   [string]$SourceDir = "$env:USERPROFILE\ncsender-a-preview\ncSender-claude-lucid-cray-296q4g\src",
   [string]$DotnetDir = "$env:LOCALAPPDATA\Microsoft\dotnet10"
@@ -30,8 +32,8 @@ function Start-Window([string]$title, [string]$command) {
 if (Test-Port $FakePort) {
   Write-Host "Fake controller: something is already listening on port $FakePort, using that."
 } else {
-  Start-Window "Fake grblHAL :$FakePort (close to stop)" "python '$fake' --port $FakePort --axes $Axes"
-  Write-Host "Fake controller: started on port $FakePort ($(if ($Axes -eq 4) {'XYZA'} else {'XYZ'}))."
+  Start-Window "Fake grblHAL :$FakePort (close to stop)" "python '$fake' --port $FakePort --axes $Axes --speed $Speed"
+  Write-Host "Fake controller: started on port $FakePort ($(if ($Axes -eq 4) {'XYZA'} else {'XYZ'}), speed x$Speed)."
 }
 if ($FakeOnly) {
   Write-Host "Now start your installed ncSender. Its connection must be Ethernet / Telnet, 127.0.0.1:$FakePort."
