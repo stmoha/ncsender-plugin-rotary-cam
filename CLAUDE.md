@@ -10,6 +10,13 @@ commands: README › Development.
   `node build.mjs --test`, send him `dist/com.cncdocs.rotary-cam_vX.Y.Z-test.zip`.
   He installs it in ncSender (Settings › Plugins › Install Plugin, then Ctrl+F5).
   Merge to `main` (fast-forward) only after he says it's good.
+- **Install each test ZIP for him** into his ncSender at `http://ncsender:8090` (the
+  shop machine, 192.168.1.35), the same way Install Plugin does:
+  `curl -F "plugin=@dist/com.cncdocs.rotary-cam_vX.Y.Z-test.zip" http://ncsender:8090/api/plugins/install`,
+  then check the build tag it serves:
+  `curl -s "http://ncsender:8090/api/plugins/com.cncdocs.rotary-cam/icon?file=lib/rotary-ui.js" | grep -o "var BUILD = '[^']*'"`.
+  He still presses Ctrl+F5 in ncSender to load it. (`localhost:8090` on his PC is a
+  different ncSender, a debug build from another session: not the one he tests on.)
 - **Automate everything you can.** He clicks only what this session can't do:
   Publish release (prefilled link), registry pull requests (prefilled link), repo
   settings and secrets.
