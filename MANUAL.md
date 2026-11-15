@@ -319,7 +319,7 @@ Then zero (or measure) Z with the first tool, as above.
    jaws included) and **Clamping distance** (how far it goes into the jaws). The header
    shows the stock against what the part needs; red is too small. Either keep the part's
    size and click **Size the stock to fit the part** (bottom of Stock & rotary), then cut a
-   blank that size, or keep your blank and click **Scale to fit the stock** (Part placement).
+   blank that size, or keep your blank and click **Scale model to fit the stock** (Part placement).
    **Deepest below the axis** is empty (auto) to start: the tool goes past the rotary axis
    only where a spot can't be reached any other way (a slot or hole through the part, the
    inside of a curl). Set it to 0 to keep the tool above the axis everywhere.

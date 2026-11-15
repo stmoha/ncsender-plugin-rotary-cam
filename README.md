@@ -91,7 +91,7 @@ wrong mirrors anything asymmetric.
      **Set Part starts at X to …** button. Settings from before 0.11.5 are converted so the
      part stays where it was.
    - **Scale** (Part placement): the part's size against the model as drawn (100%). A model
-     drawn in inches but read as millimetres needs 2540%. **Scale to fit the stock** picks
+     drawn in inches but read as millimetres needs 2540%. **Scale model to fit the stock** picks
      the largest size that fits the stock with 1 mm to spare all round and fits between
      where the part starts and the tailstock, leaving the tailstock end tenon's length (or
      the tools' room) and the keep-away; the message says what set the size and where each
@@ -105,7 +105,7 @@ wrong mirrors anything asymmetric.
    stock length less the clamping distance from the jaw face; changing the clamping
    distance keeps the stock length, so the centre moves. The 3D stock goes into the jaws by
    the clamping distance. If the part doesn't fit, it turns red. **Size the stock to fit the
-   part** (bottom of the section) is the other way round from Scale to fit the stock: the
+   part** (bottom of the section) is the other way round from Scale model to fit the stock: the
    part keeps its size and the stock is set for it, 1 mm to spare all round (rounded up to
    a whole mm, or a tenth of an inch) and long enough for the part, the tailstock end tenon
    (or the tools' room) and the keep-away from the tailstock. The clamping distance stays.
@@ -205,7 +205,10 @@ wrong mirrors anything asymmetric.
    - **Parting:** after finishing, cuts each tenon down to its diameter along its whole
      length (spiralling in), ready to cut the part free. The tenons set where and how thin
      (Tenons: ends, diameter, length), so Parting only has its tool, feeds and depth per
-     turn, and needs Tenons on. Off until you tick it.
+     turn, and needs Tenons on. Off until you tick it. The tailstock end is cut first: the
+     chuck end drives the part, so it stays whole until the other end is done. **One cut
+     only** cuts a single slot, a cutter wide, right beside the part and leaves the rest of
+     the tenon thick: quicker, and enough to saw the part off.
    Toolpaths reach the ends of the part: the cutter runs past an end until its contact
    point gets there, as long as that end goes all the way round the rotary axis (a tenon
    does). An end that sits off to one side with no tenon keeps the whole cutter over the

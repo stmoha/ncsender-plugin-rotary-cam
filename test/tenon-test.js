@@ -66,6 +66,21 @@ ok(ce && near(ce.r, 5) && ce.cols.every((x) => x - r6 >= ts[0].x0 - 1e-6 && x + 
 const tt = ts.find((t) => t.side === 'tailstock');
 ok(te && near(te.r, 4) && te.cols.length >= 1 && te.cols.every((x) => x - r6 >= mb.max[0] && x + r6 <= tt.x1 + 1e-6), 'tailstock end, auto length: cut inside the tenon, to Ø8 (tenon ' + (tt.x1 - mb.max[0]).toFixed(2) + ' mm)');
 ok(core.tenonExt(job, 'tailstock') >= job.parting.tool_dia + 1, 'with Parting on, an auto tenon is at least a parting cutter long');
+ok(pp.ends.length === 2 && pp.ends[0].side === 'tailstock' && pp.ends[1].side === 'chuck', 'the tailstock end is cut first, the chuck end (it drives the part) last');
+ok(ce.cols.length > 1, 'the 30 mm chuck end tenon takes several slots (' + ce.cols.length + ')');
+{
+  // One cut only: a single slot beside the part at each end, whatever the tenon's length
+  const j1 = fresh({ parting: { enabled: true, single: true }, tenons: { same: false, chuck: { len: 30, dia: 10 }, tailstock: { dia: 8 } }, tailstock_x: 300 });
+  const m1 = core.placeMesh(raw, j1.model, core.chuckLead(j1)), p1 = P(j1, m1);
+  const c1 = p1.ends.find((e) => e.side === 'chuck'), t1 = p1.ends.find((e) => e.side === 'tailstock');
+  ok(p1.ends.length === 2 && p1.ends[0] === t1 && c1.cols.length === 1 && t1.cols.length === 1 && c1.full && t1.full && !p1.skipped.length, 'One cut only: one slot at each end, tailstock end first');
+  ok(near(c1.cols[0], m1.min[0] - 0.05 - r6) && near(t1.cols[0], m1.max[0] + 0.05 + r6), 'each slot is right beside the part (a hair off its end face)');
+  // a tenon set to the cutter's width: the tools' room makes it a little longer, which took two slots
+  const j2 = fresh({ parting: { enabled: true }, tenons: { chuck: { len: 6.35, dia: 12.7 } }, tailstock_x: 300 });
+  const m2 = core.placeMesh(raw, j2.model, core.chuckLead(j2));
+  const two = P(j2, m2).ends.map((e) => e.cols.length), one = P(Object.assign({}, j2, { parting: Object.assign({}, j2.parting, { single: true }) }), m2).ends.map((e) => e.cols.length);
+  ok(two.every((n) => n === 2) && one.every((n) => n === 1), 'a tenon set to the cutter\u2019s width (' + core.tenonExt(j2, 'chuck').toFixed(2) + ' mm with the tools\u2019 room): ' + two.join(' and ') + ' slots, and ' + one.join(' and ') + ' with One cut only');
+}
 rr = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
 ok(rr[0] > mb.min[0] - 15, 'with Parting on, roughing leaves the 30 mm tenon thick past the tools’ room (from X' + rr[0].toFixed(2) + ', part at X' + mb.min[0] + ')');
 job = fresh({ parting: { enabled: true }, tenons: { enabled: false } });
