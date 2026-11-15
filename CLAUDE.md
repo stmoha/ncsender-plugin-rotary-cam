@@ -21,17 +21,20 @@ commands: README › Development.
 - He tests on his own machine (an "Altfinity", grblHAL, rotary A along X). Toolpath
   changes get an air cut first; say so when a change touches toolpaths.
 - **Running ncSender on his laptop** (Desktop Commander device `CAST-stefan_L24`, Windows):
-  always start the fake controller with it, so ncSender connects and plugins and settings
-  open. The fake controller has its own repo, `stmoha/fake-grblhal` (homes, runs jobs in
-  real time with Ln and G93, holds, resets into Alarm 3, probes, rotary A); after changing
-  it, run its `python test_fake_grblhal.py`. `test/fake-grblhal/start-ncsender-test.ps1`
-  here fetches its latest script and starts it (127.0.0.1:8000, XYZA) plus the patched
-  ncSender source build and the browser; `-FakeOnly` for his installed ncSender, `-Axes 3`
-  for a plain XYZ machine, `-Speed 10` for jobs 10x faster. His saved connection is
-  already Ethernet / Telnet 127.0.0.1:8000. On the laptop the scripts live in
-  `C:\Users\stefa\ncsender-a-preview\`. Installed and source ncSender share
-  `%APPDATA%\ncSender`: back it up before running a source build, and only one can run
-  at a time (both use port 8090).
+  always start a stand-in controller with it, so ncSender connects and plugins and settings
+  open. Both live in `stmoha/fake-grblhal`. Default is **`grblhal-sim/`**: the real grblHAL
+  firmware (grblHAL/Simulator + `virtual-machine.patch`) built as a copy of his Altfinity
+  from its Web Builder `job.ini` (`machines/stefan-altfinity.flags`): his settings, planner,
+  rotary A, homing on virtual switches, a probe that touches 3 mm in. It keeps settings in
+  `EEPROM.DAT` next to it. The Python `fake_grblhal_server.py` is the quick alternative.
+  After changing either, run its test (`grblhal-sim/test_sim.py`, `test_fake_grblhal.py`).
+  `test/fake-grblhal/start-ncsender-test.ps1` here fetches the latest and starts it on
+  127.0.0.1:8000 plus the patched ncSender source build and the browser; `-FakeOnly` for
+  his installed ncSender, `-Controller fake` for the Python one, `-Speed 10` for 10x.
+  His machine: home back-right, `a_sign = -1`, imperial UI, RapidChange ATC (8 tools), TLS,
+  AutoZero touch probe. On the laptop the scripts live in `C:\Users\stefa\ncsender-a-preview\`.
+  Installed and source ncSender share `%APPDATA%\ncSender`: back it up before running a
+  source build, and only one can run at a time (both use port 8090).
 
 ## Releasing (details in RELEASING.md)
 - Bump `manifest.json` `version` **and** `lib/cam-core.js` `VERSION` (the Tests
