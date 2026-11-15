@@ -324,8 +324,10 @@ Then zero (or measure) Z with the first tool, as above.
    only where a spot can't be reached any other way (a slot or hole through the part, the
    inside of a curl). Set it to 0 to keep the tool above the axis everywhere.
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
-4. **Operations:** Corners (square stock), Roughing, Finishing, Indexed, Parting. Pick
-   each tool from ncSender's Tool Library where you can. Indexed cleans up what the rotary
+4. **Operations:** Corners (square stock), Roughing, Finishing, Rest finishing, Indexed,
+   Parting. Pick each tool from ncSender's Tool Library where you can. **Rest finishing**
+   runs a second tool (a small flat end mill after a tapered ball, say) only where finishing
+   couldn't reach: air-cut it the first time. Indexed cleans up what the rotary
    passes couldn't reach; **Finish the whole side it faces** adds one even finishing pass
    over each side instead of only the spots, for a smoother result.
    - **Finishing › Pattern:** *Round the part* is one long spiral (A turns all the time,

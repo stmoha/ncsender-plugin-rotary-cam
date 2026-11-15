@@ -1,7 +1,8 @@
 # Rotary CAM (ncSender plugin)
 
 Simultaneous 4th-axis rotary CAM inside ncSender. Open an STL or STEP part, rough it
-with a flat end mill in spiral layers, finish it with one continuous spiral (ball, flat or tapered ball end mill),
+with a flat end mill in spiral layers, finish it with one continuous spiral (ball, flat or tapered ball end mill), follow it with a
+second tool only where the first couldn't reach,
 clean up under overhangs with indexed (3+1) passes, and simulate the program against
 the stock, then load the G-code straight into ncSender. This is the X/Z/A
 wrapping-around kind of rotary work that Fusion keeps behind the Machining Extension.
@@ -139,7 +140,9 @@ wrong mirrors anything asymmetric.
    - Reach the tenon past any thin or off-centre spot near the end (a chess knight's nose);
      otherwise only that spot holds the part. The tenons show green in the 3D view, the
      side profile and the simulation.
-5. **Operations**, in the order they run (each can be ticked off):
+5. **Operations**, in the order they run (each can be ticked off). Each heading says what
+   it does, with its tool on the right (*T2 · 1/8″ tapered ball*); hover over it for more,
+   and for which tools suit it.
    - **Corners** (square and rectangular stock only): locks A with each corner up and faces
      it flat with straight X passes, stepping in Y (3+1), turning the square into an
      octagon. Roughing then starts from the octagon, so it spends far less time in air.
@@ -171,6 +174,19 @@ wrong mirrors anything asymmetric.
      can reach it), the stock past what roughing cut is treated as a wall the cone can't run
      into, roughing clears a little further past the ends to make room, and the keep-away
      distances from the chuck and tailstock are measured from the shank.
+   - **Rest finishing** (off until you tick it): a second tool on the same spiral as
+     finishing, cutting only where finishing left something this tool can reach (rest
+     machining). The usual pair: a tapered ball finish for the detail, then a small flat end
+     mill for the square shoulders, flat floors and corners its cone keeps out of; or a big
+     ball, then a smaller one for the creases. It plays the program to the end of finishing
+     to see what's left, drops the tool only near that, and cuts where it would take off at
+     least **Only where at least** (0.2 mm to start). Gaps shorter than two tool widths it
+     rides over, staying down on the surface (no stippling), and where a lot is left it goes
+     down in layers a **Stepdown** apart, each one the last pass lifted, so no layer goes
+     lower than the last pass. Any shape: flat end mill (to start), ball or tapered ball. Its
+     own tool number, stickout and feeds; a short stickout near the chuck keeps it up off the
+     part there (it says where). Indexed, when it's on, comes after it and works on what both
+     left. After Generate a message says where it cuts and the most it takes off in one spot.
    - **Indexed** (off until you tick it): finishes what the rotary passes couldn't reach.
      It plays the program to the end of finishing to see what's left on the part:
      material hidden under the part from every line through the axis (under a chin or a
@@ -565,6 +581,7 @@ node test/make_coil.js test/coil.stl                       # test part: a coil o
 node test/coil-test.js                                     # the core cleared from past the axis: kept, drawn, checked; walls split
 node test/probe-test.js                                    # Probe the chuck against a pretend machine (test/harness/probe-machine.cjs)
 node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
+node test/finish2-test.js                                  # rest finishing: a flat end mill after a tapered ball takes most of what it left, nothing cut into the part
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
 node test/lines-test.js                                    # Finishing along the part: the lines' angles follow the part's width, there and back, no gouges
@@ -583,6 +600,7 @@ node test/e2e-v24.cjs test/chin_test.step out/             # tool sizes and pass
 node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the inside of a part open down the middle
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
+node test/e2e-v29.cjs test/slot_test.step out/             # Rest finishing: its section, Generate, the message, Simulate with nothing cut into the part
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

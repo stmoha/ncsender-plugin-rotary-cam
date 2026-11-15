@@ -44,7 +44,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 900000, polling: 1000 });
     const probs = await page.evaluate(() => window.RotaryCam.__state.problems);
     ok(!probs.length, 'generated' + (probs.length ? ': ' + probs[0] : ''));
-    const n = (await notices()).find((s) => /doesn.t go round the rotary axis/.test(s)) || '';
+    const n = (await notices()).find((s) => /doesn.t go all the way round it/.test(s)) || '';
     ok(/open in the middle/.test(n) && /Fine if it.s meant to be open/.test(n) && !/Simulate can/.test(n), 'the check says a part open down the middle is fine, and nothing about Simulate: ' + n.slice(0, 120));
 
     await page.click('[data-tab=sim]');

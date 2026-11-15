@@ -8,7 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const DEG = Math.PI / 180;
-export const OP_COLORS = { corners: '#a78bfa', rough: '#f59e0b', finish: '#38bdf8', index: '#facc15', parting: '#f472b6' };
+export const OP_COLORS = { corners: '#a78bfa', rough: '#f59e0b', finish: '#38bdf8', finish2: '#2dd4bf', index: '#facc15', parting: '#f472b6' };
 export const TENON_COLOR = '#4ade80';
 
 function textSprite(text, color, size = 34) {
@@ -866,7 +866,7 @@ export function create(container, opts = {}) {
   let zoomBack = null, camMoved = false;
   function highlight(key, text, refit = true, zoom = false) {
     hl.key = key || null; hl.text = text || '';
-    const detail = !!key && DETAIL.test(key.replace(/^(corners|rough|finish|index|parting)\./, 'op.'));
+    const detail = !!key && DETAIL.test(key.replace(/^(corners|rough|finish|finish2|index|parting)./, 'op.'));
     if (zoomBack && (!key || (zoom && !detail))) { if (!camMoved) setCamera(zoomBack); zoomBack = null; }
     let any = false;
     try { any = applyHighlight(refit); } catch (e) { clearHighlight(); hl.key = null; requestRender(); return false; }
@@ -906,7 +906,7 @@ export function create(container, opts = {}) {
     const td = tool && tool.userData.dims, tp = tool && tool.position;
     const toolParts = (want) => (tool ? tool.children.filter((c) => want(c.userData.part)) : []);
     // the tool on show is the operation being edited (a setting of another operation, only hovered, draws nothing on it)
-    const kop = (key.match(/^(corners|rough|finish|index|parting)\./) || [])[1], mine = !kop || kop === op;
+    const kop = (key.match(/^(corners|rough|finish|finish2|index|parting)./) || [])[1], mine = !kop || kop === op;
     const cutter = (p) => p !== 'nut' && p !== 'spindle', tc0 = mine && tool ? tool.userData.cut : null, st = (setup.steps && setup.steps[op]) || {};
     // a see-through outline of the cutter's end at (x, y), tip at z: where the next pass or layer goes
     const ghost = (x, y, z, h = Math.max(tc0.tr, 1)) => {
@@ -918,7 +918,7 @@ export function create(container, opts = {}) {
       const r = tc0.tr, m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, Math.max(0.05, z1 - z0), 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.accent), transparent: true, opacity: 0.6, depthTest: false }));
       m.rotation.x = Math.PI / 2; m.position.set(x, y, (z0 + z1) / 2); m.renderOrder = 29; hlGroup.add(m);
     };
-    const k = key.replace(/^(corners|rough|finish|index|parting)\./, 'op.');
+    const k = key.replace(/^(corners|rough|finish|finish2|index|parting)./, 'op.');
     const box = (b, which) => (b ? (targets.push(...(refs[which] || [])), b) : null);
     switch (k) {
       case 'rig.chuck.dia': if (box(ch, 'chuck')) { const x = (ch.x0 + ch.x1) / 2; dim([x, 0, ch.r], [x, -ch.r - 14, ch.r], [x, -ch.r - 14, -ch.r], [x, 0, -ch.r], text); } break;

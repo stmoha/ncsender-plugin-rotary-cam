@@ -33,3 +33,4 @@ jobs:
           node test/coil-test.js
           node test/lines-test.js
           node test/probe-test.js
+          node test/finish2-test.js

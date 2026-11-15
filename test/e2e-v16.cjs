@@ -97,7 +97,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const shown = Number(await page.$eval('#rc-tailstock_x', (e) => e.value));
     ok(/^Stock length/.test(lab) && near(shown * U, len0, 0.02), `"${lab.replace('?', '')}" shows the whole stock: ${shown} = clamping + jaw face to the centre`);
     let b = await box();
-    ok(new RegExp('long, ' + (metric ? '12\\.7 mm' : '0\\.5(00)? in') + ' in the jaws').test(b.l1), 'the header gives the stock length and how much is in the jaws: ' + b.l1);
+    ok(new RegExp('long, ' + (metric ? '12\\.7 mm' : '0\\.5(00)?″') + ' in the jaws').test(b.l1), 'the header gives the stock length and how much is in the jaws: ' + b.l1);
     await page.focus('#rc-stock-clamp'); await typeIn('#rc-stock-clamp', D(25.4));
     j = await job();
     ok(near(j.stock.clamp, 25.4, 0.02) && near(j.tailstock_x + j.stock.clamp, len0, 0.02) && near(Number(await page.$eval('#rc-tailstock_x', (e) => e.value)) * U, len0, 0.03), `more in the jaws, same stock: the tailstock centre comes in to X${j.tailstock_x.toFixed(2)} mm, the length stays ${len0.toFixed(2)} mm`);
@@ -174,10 +174,13 @@ fs.mkdirSync(outDir, { recursive: true });
     const foc = await page.evaluate(() => ({ id: document.activeElement && document.activeElement.id, ph: document.activeElement && document.activeElement.placeholder, open: document.querySelector('#rcam-root details[data-sec=toolchange]').open }));
     ok(foc.id === 'rc-rig-tc-zso' && foc.open && /^auto [\d.]+$/.test(foc.ph), 'it opens Tool changes at "Stickout of the tool in the spindle": ' + JSON.stringify(foc));
     await shot('zso-field');
-    await typeIn('#rc-rig-tc-zso', D(12));
+    // short enough that even the spindle nose is below the stock (the stock is sized to the
+    // part, so work it out from this stock and Z rather than assume one size)
+    const shortSo = await page.evaluate(() => { const S = window.RotaryCam.__state, zf = window.RotaryCamCore.zFit(S.job); return Math.round((zf.need + 0.5 - zf.ztop - 2) * 10) / 10; });
+    await typeIn('#rc-rig-tc-zso', D(shortSo));
     j = await job(); p = await probs();
     const typedMsg = p.find((q) => /^Z travel/.test(q)) || '';
-    ok(near(j.rig.tc.zso, 12, 0.03) && j.rig.tc.typed.zso && /as typed under Tool changes/.test(typedMsg) && /even the spindle nose is only [\d.]+ (in|mm) above/.test(typedMsg) && !/Too long/.test(typedMsg), 'a 12 mm tool typed in: then even the spindle nose can\u2019t clear the stock: ' + typedMsg.split('\n')[0]);
+    ok(shortSo > 0.5 && near(j.rig.tc.zso, shortSo, 0.03) && j.rig.tc.typed.zso && /as typed under Tool changes/.test(typedMsg) && /even the spindle nose is only [\d.]+(″| in| mm) above/.test(typedMsg) && !/Too long/.test(typedMsg), 'a ' + shortSo + ' mm tool typed in: then even the spindle nose can\u2019t clear the stock: ' + typedMsg.split('\n')[0]);
     await typeIn('#rc-rig-tc-zso', D(70));
     p = await probs();
     const z70 = p.find((q) => /^Z travel/.test(q)) || '';
