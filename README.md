@@ -228,8 +228,8 @@ wrong mirrors anything asymmetric.
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
 9. **Work zero — probe the chuck or a corner.** **Probe the chuck…** finds the zero for
-   you in a dialog laid out like ncSender's own probe dialog (connection test, jog pad with
-   the red stop in the middle, Start Probe). Touch with a round **pin** and a clip (a dowel
+   you in a dialog laid out like ncSender's own probe dialog (jog pad with the red stop in
+   the middle, the connection test beside Start Probe). Touch with a round **pin** and a clip (a dowel
    pin or drill blank), a **3D probe**, or a **fluted bit** and a clip: a bit standing
    still isn't round, so it stops for you to turn it by hand (edges front and back for the
    sides, left and right for the top and the jaw face; 2 or 4 flutes for the sides).
@@ -241,11 +241,16 @@ wrong mirrors anything asymmetric.
    (move it to miss a key hole); the dialog says the most the collet nut (or the probe's
    body) allows, down to the axis. For X: **Jaw face in front by** (from where you start),
    **Clear of the jaw face by** (the gap left before it comes down) and **Touch the jaw
-   at** (raised by itself if the collet nut would otherwise come down on the jaw). An
+   at** (how far below the top of the chuck; raised by itself if the collet nut would
+   otherwise come down on the jaw). The tip comes down over the stock, so with **Stock in
+   the chuck** on it has to stop 2 mm or more above it: lower is refused. An
    **End view** and a **Side view**, at one scale with the axis at the same height, drawn
    from the chuck, stock, collet nut and these settings, show where the tip touches and
    the way to the jaw face; every setting has its dimension, the one being typed in lights
-   up, and the picture follows as you type. It also says in plain numbers how far it moves
+   up, and the picture follows as you type. A click on a dimension or a part goes to its
+   setting. The tool is drawn in a colour for each part of the run (the start, the chuck
+   body, the jaw face), the steps have the same colours, and pointing at a step makes its
+   part stand out. It also says in plain numbers how far it moves
    in X before it comes down to the jaw. In portrait the picture comes first. Each touch goes through ncSender's probe
    runner (fast, back off, slow, at ncSender's own feeds), and the work offset is set with
    `G10 L20` where it touched, in mm and back to the units the controller was in. **Half

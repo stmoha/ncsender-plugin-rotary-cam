@@ -81,5 +81,11 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
   `.rc-toasts` and `.rc-msgs`.
 - A field's change fires on blur. A click on a message's button right after typing
   can be lost if the list rebuilds, so blur the field first in tests.
+- Some old browser tests fail on `main` too and aren't from new work: `e2e-3d`, `e2e-v10`,
+  `e2e-v16`, `e2e-v18` (and one check in `e2e-v11`). Compare with the last commit before
+  chasing them.
+- The probe dialog's picture (`probePic` in rotary-ui.js): every dimension and part has
+  `data-h` (the setting it goes to on a click); the tools have `data-t` and a `ph-` class
+  for the part of the run. `test/e2e-v26.cjs` reads sizes back from it.
 - The CI tests are in `.github/workflows/tests.yml`. Before a test ZIP, run them
   plus the e2e tests that touch what changed.

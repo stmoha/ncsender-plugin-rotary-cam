@@ -193,8 +193,9 @@ or let Rotary CAM find it.
 ### Probe the chuck
 
 **Probe the chuck…** opens a dialog laid out like ncSender's own probe dialog: the
-settings on the left, the connection test, a picture and a jog pad (with ncSender's red
-stop in the middle) on the right. It touches both sides of the chuck body and goes to the
+settings on the left, a picture and a jog pad (with ncSender's red stop in the middle) on
+the right, and the connection test at the bottom beside the **Start Probe** button it holds
+back. It touches both sides of the chuck body and goes to the
 middle (Y0), touches the top there (Z0 is half the chuck's diameter below it), then turns A
 to 0 and touches the front of the jaw that's up (X0). **Probing** sets all three, Y and Z,
 or any one on its own.
@@ -203,10 +204,24 @@ The picture shows an **End view** and a **Side view** of the chuck, both at one 
 the rotary axis at the same height, drawn from your chuck, stock and collet nut (Rotary &
 spindle) and the settings here. The end view (looking along the axis, the front of the
 machine on the left) shows the tip touching the front and the back of the chuck, how far
-below the top, and how much room the nut has above the chuck. The side view shows where you
-start, the way to the jaw face (up, X+, down) and the touch on the jaw. Every setting has
-its dimension, and the one you're typing in lights up; the picture follows as you type. On
-a portrait screen the picture comes first, then the settings, the jog controls and the notes.
+below the top, and how much room the nut has above the chuck. The side view shows the way
+to the jaw face (up, X+, down) and the touch on the jaw. Both show where you start. Every
+setting has its dimension, standing clear of the parts, and the one you're typing in lights
+up; the picture follows as you type. **Click a dimension or a part in the picture** (the
+pin, the chuck, the stock) and you're in its setting.
+
+The tool is drawn once for each part of the run, each in its own colour: grey where you
+start, blue for the touches on the chuck body, violet for the touch on the jaw face. The
+numbered steps under the settings have the same coloured dots; point at a step and its part
+of the picture stands out.
+
+On a portrait screen the picture comes first, then the settings, the jog controls and the
+notes. If the settings are taller than the window they scroll on their own, so the picture,
+the jog controls and the buttons stay put.
+
+The same goes for the main 3D view: pointing at a setting lights its part of the setup, and
+**clicking a part of the setup** (the chuck, the tailstock, the stock, the tool, the collet
+nut, a tenon) opens its section and puts you in its setting.
 
 1. **Pick what to touch with.**
    - **Pin (with a clip)**, the simplest: a round pin in the collet (a dowel pin or a drill
@@ -214,7 +229,8 @@ a portrait screen the picture comes first, then the settings, the jog controls a
      touches the same whichever way it's turned. Set its diameter (calipers) and its
      **Stickout** from the collet nut.
    - **3D probe**: its ball diameter, its body diameter, and how far the ball is below the
-     body.
+     body. They start as the common "V6 anti-roll" probe's (a 2 mm ball 26 mm below a body
+     33 mm across); measure yours if it's another.
    - **Fluted bit (with a clip)**: the cutter itself. Standing still, a bit isn't round: what
      touches is whichever part sticks out furthest, and a flute facing the chuck lets it
      get closer before it touches. So it stops before each kind of touch for you to turn it
@@ -241,9 +257,15 @@ a portrait screen the picture comes first, then the settings, the jog controls a
    - **Clear of the jaw face by**: the gap left between the tip and where the jaw face
      should be when it comes down (10 mm unless you set it). Make it bigger if the first
      distance is a rough guess.
-   - **Touch the jaw at**: how far above the axis the tip touches the front of the jaw.
-     Empty, it's 3 mm above the stock, or higher if the collet nut would otherwise come
-     down on the jaw; a height that's too low for the nut is refused, with why.
+   - **Touch the jaw at**: how far below the top of the chuck body the tip touches the
+     front of the jaw (measured the same way as **Touch the sides**). Empty, it's 3 mm
+     above the stock, or higher if the collet nut would otherwise come down on the jaw.
+     Under it the dialog says how far above the stock that is.
+   - **Stock in the chuck** (on unless you turn it off): the tip comes down in front of
+     the jaw, right over the stock. With this on it has to stop at least 2 mm above the
+     stock: a touch that's lower is refused, and the stock and that dimension turn red in
+     the picture. Turn it off only when the stock isn't in the chuck yet. If it finds
+     something on the way down anyway, it stops there and says so.
    The dialog says exactly what X does: it lifts above the jaws, turns A to 0, moves X+ the
    first distance plus half the tip plus the gap, comes down, then feels back toward the
    jaw (up to the gap plus 20 mm). If it comes down on the jaw instead, it stops and says

@@ -149,8 +149,30 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   ok(o.err.some((e) => e.k === 'flutes'), 'a 3-flute bit can\u2019t do the sides');
   o = P.resolve(JOB, Object.assign({}, BIT, { flutes: 3, what: 'x' }));
   ok(!o.err.length, 'but it can do X');
+  // the stock: the tip comes down in front of the jaw, over it
   o = P.resolve(JOB, PIN);
-  ok(near(o.xMove, 30 + 3.175 + 10, 1e-9) && o.xUp === 55 && P.steps(o).some((t) => /Move X\+ 43\.2 mm/.test(t)), 'says how far it moves in X: ' + P.steps(o).find((t) => /Move X/.test(t)));
+  ok(o.stockIn && near(o.xz, 23, 1e-9) && near(o.stockGap, 3, 1e-9) && P.steps(o).some((t) => /3\.0 mm above the stock/.test(t.t)), 'the stock is taken to be in the chuck: the jaw is touched 3 above it');
+  o = P.resolve(JOB, Object.assign({}, PIN, { x_below: 20 }));
+  ok(o.err.some((e) => e.k === 'x_below' && /come down on the stock/.test(e.t) && /18\.0 mm or less/.test(e.t) && /Stock in the chuck off/.test(e.t)), 'touching the jaw at the height of the stock’s top: refused (' + (o.err[0] && o.err[0].t) + ')');
+  o = P.resolve(JOB, Object.assign({}, PIN, { x_below: 19 }));
+  ok(o.err.some((e) => e.k === 'x_below' && /within 2\.0 mm of the stock/.test(e.t)), 'and 1 mm above it: too close, refused');
+  o = P.resolve(JOB, Object.assign({}, PIN, { x_below: 18 }));
+  ok(!o.err.length, '2 mm above it is allowed');
+  o = P.resolve(JOB, Object.assign({}, PIN, { x_below: 22, stock_in: false }));
+  ok(!o.err.length && !o.stockIn, 'Stock in the chuck off: lower is allowed');
+  o = P.resolve({ rig: JOB.rig, stock: { shape: 'round', dia: 94 } }, PIN);
+  ok(o.err.some((e) => e.k === 'stock_in' && /before the stock goes in/.test(e.t)), 'stock nearly as big as the jaws: says to set X0 before it goes in (' + (o.err[0] && o.err[0].t.slice(0, 60)) + '…)');
+  {
+    // told the stock isn't in when it is: it stops on the way down and says what it found
+    const M = machine({ tip: 'flat', tr: 3.175, holderR: 17.5, reach: 38, conductive: 'all' }, { z: -80 + 40 + 6 });
+    const oo = P.resolve(JOB, Object.assign({}, PIN, { what: 'x', x_below: 25, stock_in: false }));
+    M.S.wco = { x: -290, y: -200, z: -80, a: 0 };
+    let er = null;
+    try { await P.run(oo, io(M)); } catch (e) { er = e; }
+    ok(er && /the stock, if it’s in the chuck/.test(er.message) && !M.S.crash, 'stock in the way after all: stops at it, no crash, says so (' + (er && er.message.slice(0, 70)) + '…)');
+  }
+  o = P.resolve(JOB, PIN);
+  ok(near(o.xMove, 30 + 3.175 + 10, 1e-9) && o.xUp === 55 && P.steps(o).some((t) => /Move X\+ 43\.2 mm/.test(t.t) && t.ph === 'x') && P.steps(o)[0].ph === 'yz', 'says how far it moves in X: ' + P.steps(o).find((t) => /Move X/.test(t.t)).t);
   o = P.resolve(JOB, Object.assign({}, BIT, { bit_reach: 2 }));
   ok(o.err.some((e) => e.k === 'bit_reach'), 'a bit too short for the nut to clear: says stick it out further (' + (o.err[0] && o.err[0].t.slice(-40)) + ')');
   o = P.resolve(JOB, Object.assign({}, PROBE3D, { body: null }));
@@ -165,9 +187,9 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   o = P.resolve(JOB, Object.assign({}, PIN, { past: 1 }));
   ok(o.err.some((e) => e.k === 'past'), 'a gap under 2 mm is refused');
   o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 20 }));
-  ok(!o.err.some((e) => e.k === 'x_height') && o.xz === 32 && near(o.jawGap, 2, 1e-9), 'a pin 20 out of the nut: the jaw is touched 32 above the axis (auto), so the nut clears jaws that reach 50 by 2');
-  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 20, x_height: 23 }));
-  ok(o.err.some((e) => e.k === 'x_height' && /come down on the jaw/.test(e.t)), 'typed lower than that: refused, says why (' + (o.err.find((e) => e.k === 'x_height') || {}).t + ')');
+  ok(!o.err.some((e) => e.k === 'x_below') && o.xz === 32 && near(o.jawGap, 2, 1e-9), 'a pin 20 out of the nut: the jaw is touched 32 above the axis (auto), so the nut clears jaws that reach 50 by 2');
+  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 20, x_below: 17 }));
+  ok(o.err.some((e) => e.k === 'x_below' && /come down on the jaw/.test(e.t)), 'typed lower than that: refused, says why (' + (o.err.find((e) => e.k === 'x_below') || {}).t + ')');
   o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 3 }));
   ok(o.err.some((e) => /doesn’t stick out far enough to touch the front of a jaw/.test(e.t)), 'a pin too short to reach the jaw at all');
   o = P.resolve(JOB, Object.assign({}, PIN, { what: 'x', pin_reach: null }));

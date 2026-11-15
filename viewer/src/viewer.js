@@ -261,6 +261,8 @@ export function create(container, opts = {}) {
   // ---------------- machine
   // what each part of the rotary was drawn with, for highlighting the one a setting is about
   let refs = {};
+  // which setting each piece of the machine is drawn from
+  const SETTING = { chuck: 'rig.chuck.dia', head: 'rig.head.len', centre: 'rig.centre.dia', tail: 'rig.tail.len', keepChuck: 'chuck_clearance', keepTail: 'tailstock_clearance' };
   function buildMachine(s) {
     disposeTree(machine); machine.clear();
     disposeTree(stockGroup); stockGroup.clear();
@@ -271,7 +273,7 @@ export function create(container, opts = {}) {
     // gets its own material (the housings and the jaws share theirs otherwise)
     sides = { head: [], tail: [], opacity: { head: 1, tail: 1 } };
     const own = (side, m) => { const c = m.clone(); c.userData.fadeSide = side; return c; };
-    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); const sd = key === 'chuck' || key === 'head' ? 'head' : key === 'centre' || key === 'tail' ? 'tail' : null; if (sd && o.isMesh) sides[sd].push(o); return o; };
+    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); if (SETTING[key]) o.userData.setting = SETTING[key]; const sd = key === 'chuck' || key === 'head' ? 'head' : key === 'centre' || key === 'tail' ? 'tail' : null; if (sd && o.isMesh) sides[sd].push(o); return o; };
     const R = s.stockR, x0 = s.chuckX, fx = s.fixtures || [];
     const F = (name) => fx.find((f) => f.name === name);
     // the rotary at its real size (Rotary & spindle settings)
@@ -294,7 +296,7 @@ export function create(container, opts = {}) {
       const jaw = new THREE.Mesh(new THREE.BoxGeometry(jawLen, w, h), jawMat);
       jaw.position.set(ch.x1 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
       jaw.rotation.x = a - 90 * DEG;
-      jaw.userData.jaw = true;
+      jaw.userData.jaw = true; jaw.userData.setting = 'rig.chuck.jaws';
       refs.chuck.push(jaw); jawGroup.add(jaw); sides.head.push(jaw);
     }
     // a box on the table, reaching y0 (toward you, -Y) to y1 (away, +Y) and up to `top`
@@ -320,7 +322,7 @@ export function create(container, opts = {}) {
     if (s.stockShape === 'round') {
       const stock = xCylinder(R, R, sx0, sx1, mats.stock, 72, true);
       stock.renderOrder = 2;
-      stockGroup.add(stock); refs.stock.push(stock);
+      stockGroup.add(stock); refs.stock.push(stock); stock.userData.setting = 'stock';
       for (const x of [x0, xt]) {
         stockGroup.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 73 }, (_, i) => new THREE.Vector3(x, R * Math.cos(i * 5 * DEG), R * Math.sin(i * 5 * DEG)))), mats.stockEdge));
       }
@@ -329,7 +331,7 @@ export function create(container, opts = {}) {
       geo.translate((sx0 + sx1) / 2, 0, 0);
       const box = new THREE.Mesh(geo, mats.stock);
       box.renderOrder = 2;
-      stockGroup.add(box); refs.stock.push(box);
+      stockGroup.add(box); refs.stock.push(box); box.userData.setting = 'stock';
       stockGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), mats.stockEdge));
     }
     const kR = R + 1.5;
@@ -488,7 +490,7 @@ export function create(container, opts = {}) {
     for (const t of tenonList) {
       if (!(t.r > 0) || !(t.x1 > t.x0)) continue;
       const c = xCylinder(t.r, t.r, t.x0, t.x1, mats.tenon, 64);
-      c.renderOrder = 4; c.userData.side = t.side;
+      c.renderOrder = 4; c.userData.side = t.side; c.userData.setting = 'tenons.' + t.side + '.dia';
       tenonGroup.add(c);
       for (const x of [t.side === 'chuck' ? t.in1 : t.in0]) {
         const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(Array.from({ length: 64 }, (_, i) => new THREE.Vector3(x, t.r * Math.cos(i * 2 * Math.PI / 64), t.r * Math.sin(i * 2 * Math.PI / 64)))), mats.tenonEdge);
@@ -740,7 +742,7 @@ export function create(container, opts = {}) {
     const mark = (q, label, col, part) => {
       const g = new THREE.Group();
       const post = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, hTop, 16), new THREE.MeshStandardMaterial({ color: new THREE.Color(col), roughness: 0.5 }));
-      post.userData.part = part; g.userData.part = part;
+      post.userData.part = part; g.userData.part = part; post.userData.setting = 'rig.tc.' + part + '.x';
       post.rotation.x = Math.PI / 2; post.position.z = hTop / 2 - 20;
       g.add(post);
       const lab = textSprite(label, col, 28);
@@ -1211,6 +1213,38 @@ export function create(container, opts = {}) {
 
   // click (not drag) on the part -> point in the part's frame at A = 0
   let down = null;
+  // ---- a click on a piece of the setup goes to the setting it's drawn from (opts.onPickSetting)
+  // the pieces drawn see-through all round the part: clicked only where the click misses the part
+  const SOFT = { stock: 1, chuck_clearance: 1, tailstock_clearance: 1 };
+  function settingOf(o) {
+    let key = null;
+    for (let p = o; p; p = p.parent) {
+      if (!p.visible) return null;
+      if (key) continue;
+      if (p.userData.setting) key = p.userData.setting;
+      else if (p === tool && o.userData.part) key = { flutes: op + '.tool', shank: op + '.stickout', nut: 'rig.nut.dia', spindle: 'rig.spindle.dia' }[o.userData.part] || null;
+    }
+    return key;
+  }
+  // the nearest solid piece under the pointer, unless the part is in front of it
+  function settingAt(e) {
+    if (simOn || !opts.onPickSetting) return null;
+    const r = renderer.domElement.getBoundingClientRect(), ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const part = partMesh ? ray.intersectObject(partMesh, false)[0] : null;
+    let soft = null;
+    for (const h of ray.intersectObjects([machine, stockGroup, jawGroup, tenonGroup, tcGroup].concat(tool ? [tool] : []), true)) {
+      if (!h.object.isMesh) continue;
+      const key = settingOf(h.object);
+      if (!key) continue;
+      if (SOFT[key]) { if (!soft) soft = key; continue; }
+      const m = h.object.material;
+      if (m && m.transparent && m.opacity < 0.3) continue;      // faded out of the way of the part
+      return part && part.distance < h.distance ? null : key;
+    }
+    return part ? null : soft;
+  }
+  let hoverAt = 0;
   function ghostUnder(e) {
     if (!idx.ghosts.length || simOn) return -1;
     const r = renderer.domElement.getBoundingClientRect(), ray = new THREE.Raycaster();
@@ -1231,7 +1265,13 @@ export function create(container, opts = {}) {
   renderer.domElement.addEventListener('pointermove', (e) => {
     const g = idx.drag;
     if (!g) {
-      if (idx.ghosts.length && !simOn && e.buttons === 0) renderer.domElement.style.cursor = ghostUnder(e) >= 0 ? (idx.opts.editable ? 'grab' : 'pointer') : '';
+      const onGhost = idx.ghosts.length && !simOn && ghostUnder(e) >= 0;
+      if (idx.ghosts.length && !simOn && e.buttons === 0) renderer.domElement.style.cursor = onGhost ? (idx.opts.editable ? 'grab' : 'pointer') : '';
+      // a hand over a piece of the setup that a click goes to the setting of
+      if (e.buttons === 0 && !onGhost && opts.onPickSetting && performance.now() - hoverAt > 70) {
+        hoverAt = performance.now();
+        renderer.domElement.style.cursor = settingAt(e) ? 'pointer' : '';
+      }
       return;
     }
     if (!idx.opts.editable || g.startA === null) return;
@@ -1270,8 +1310,11 @@ export function create(container, opts = {}) {
   renderer.domElement.addEventListener('pointercancel', endDrag);
   renderer.domElement.addEventListener('pointerup', (e) => {
     if (endDrag(e)) return;
-    if (!down || !partMesh || !opts.onPick) return;
+    if (!down) return;
     if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+    const set = settingAt(e);
+    if (set) { opts.onPickSetting(set); return; }
+    if (!partMesh || !opts.onPick) return;
     const r = renderer.domElement.getBoundingClientRect();
     const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, camera);
@@ -1288,6 +1331,15 @@ export function create(container, opts = {}) {
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
     simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost,
     setIndexAngles, setLeftover, setToolChanges, highlight,
+    // the setting a click at a point of the view (client x, y) would go to; where a piece of the setup is on screen
+    settingAt(x, y) { return settingAt({ clientX: x, clientY: y }); },
+    screenOf(key) {
+      const o = ({ chuck: refs.chuck && refs.chuck[0], head: refs.head && refs.head[0], tail: refs.tail && refs.tail[0], centre: refs.centre && refs.centre[0], nut: tool && tool.children.find((c) => c.userData.part === 'nut') })[key];
+      if (!o) return null;
+      camera.updateMatrixWorld(); o.updateMatrixWorld(true);
+      const c = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).project(camera), r = renderer.domElement.getBoundingClientRect();
+      return { x: r.left + (c.x + 1) / 2 * r.width, y: r.top + (1 - c.y) / 2 * r.height };
+    },
     highlighted() { return hl.key ? { key: hl.key, parts: hl.swapped.length, dims: hlGroup.children.length + hlPart.children.length, onPart: hlPart.children.length } : null; },
     toolChangeShown() { return !!(tcData && tcData.change && tcGroup.children.length); },
     toolChangeRoutes() { return tcData && tcData.paths ? tcData.paths.length : 0; },

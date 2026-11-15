@@ -42,13 +42,29 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click('#open');
     await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0, null, { timeout: 30000 });
     await page.waitForTimeout(500);
+    // the 3D view: a click on a piece of the setup goes to its setting
+    {
+      const V = (fn, a) => page.evaluate(([f, x]) => window.RotaryCam.viewer[f](x), [fn, a]);
+      const at = await V('screenOf', 'chuck');
+      const key = at && await page.evaluate((p) => window.RotaryCam.viewer.settingAt(p.x, p.y), at);
+      ok(key === 'rig.chuck.dia' || key === 'rig.chuck.jaws', 'the 3D view knows the chuck is under the pointer (' + key + ')');
+      await page.mouse.move(at.x, at.y); await page.waitForTimeout(150); await page.mouse.move(at.x + 1, at.y); await page.waitForTimeout(150);
+      ok(await page.$eval('#rcam-root .rc-3d canvas', (c) => c.style.cursor) === 'pointer', 'a hand over it');
+      await page.mouse.click(at.x, at.y); await page.waitForTimeout(300);
+      const f = await page.evaluate(() => { const e = document.activeElement; return e ? { k: e.getAttribute('data-k'), open: !!(e.closest('details') && e.closest('details').open), sec: e.closest('details') && e.closest('details').getAttribute('data-sec') } : null; });
+      ok(f && f.k === key && f.open, 'a click on the chuck opens ' + (f && f.sec) + ' and goes to its setting (' + (f && f.k) + ')');
+      await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    }
     await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });
     const title = await page.$eval('#rcam-root details[data-sec=zero] summary', (e) => e.textContent);
     ok(/probe the chuck or a corner/.test(title), 'the Work zero section: ' + title.trim());
     await page.click('#rcam-root [data-act=probe-open]');
     await page.waitForSelector(D + ' .rc-pcard');
     ok(await page.$eval(D + ' .rc-phead p', (e) => getComputedStyle(e).fontStyle === 'italic'), 'italic instructions at the top, like ncSender’s');
-    ok(await page.$(D + ' .rc-pleft [data-pk=tool]') && await page.$(D + ' .rc-pleft [data-pk=what]') && await page.$(D + ' .rc-pright [data-pk=test]') && await page.$(D + ' .rc-pright .rc-pjogpad') && await page.$(D + ' .rc-pright svg'), 'probe type and probing on the left; connection test, picture and jog pad on the right');
+    ok(await page.$(D + ' .rc-pleft [data-pk=tool]') && await page.$(D + ' .rc-pleft [data-pk=what]') && await page.$(D + ' .rc-pright .rc-pjogpad') && await page.$(D + ' .rc-pright svg'), 'probe type and probing on the left; picture and jog pad on the right');
+    const lay = await page.evaluate((D) => { const r = (s) => document.querySelector(D + ' ' + s).getBoundingClientRect(); return { sel: r('[data-pk=tool]').top, pic: r('.rc-ppicbox').top, conn: r('.rc-pconn'), start: r('[data-pact=start]'), close: r('[data-pact=close]'), inFoot: !!document.querySelector(D + ' .rc-pfoot [data-pk=test]') }; }, D);
+    ok(Math.abs(lay.sel - lay.pic) < 1.5, 'the picture’s top lines up with the pull-downs (' + lay.sel.toFixed(1) + ' / ' + lay.pic.toFixed(1) + ')');
+    ok(lay.inFoot && Math.abs((lay.conn.top + lay.conn.bottom) / 2 - (lay.start.top + lay.start.bottom) / 2) < 3 && lay.conn.right <= lay.close.left && lay.close.left - lay.conn.right < 30, 'the connection test sits by the Start Probe button it holds back');
     const types = await page.$$eval(D + ' [data-pk=tool] option', (o) => o.map((e) => e.textContent));
     ok(types.join('|') === 'Pin (with a clip)|3D probe|Fluted bit (with a clip)' && await page.$eval(D + ' [data-pk=tool]', (e) => e.value) === 'pin', 'probe types, a pin to start with: ' + types.join(', '));
     const a0 = await page.$eval(D + ' [data-pact=a0]', (b) => [b.textContent, b.title, b.nextElementSibling && b.nextElementSibling.textContent]);
@@ -68,7 +84,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const geo = () => page.$eval(D + ' .rc-ppic', (svg) => {
       const num = (el, a) => +el.getAttribute(a), k = +svg.dataset.k, ay = +svg.dataset.ay, ex0 = +svg.dataset.ex0, sx0 = +svg.dataset.sx0;
       const tool = (name) => { const g = svg.querySelector(`[data-t=${name}]`); if (!g) return null; const pin = g.querySelector('rect.pin'), nut = g.querySelector('rect.hold'); return { cx: num(pin, 'x') + num(pin, 'width') / 2, tip: num(pin, 'y') + num(pin, 'height'), len: num(pin, 'height'), w: num(pin, 'width'), nutW: num(nut, 'width'), nutBottom: num(nut, 'y') + num(nut, 'height') }; };
-      const dim = (key) => { const g = svg.querySelector(`.rc-pd[data-h=${key}]`); if (!g) return null; const l = g.querySelector('line:not(.w)'), tips = [...g.querySelectorAll('polygon')].map((pg) => pg.getAttribute('points').split(' ')[0].split(',').map(Number)); return { x1: num(l, 'x1'), y1: num(l, 'y1'), x2: num(l, 'x2'), y2: num(l, 'y2'), tips, on: g.classList.contains('on'), label: g.querySelector('text') ? g.querySelector('text').textContent : '' }; };
+      const dim = (key) => { const g = svg.querySelector(`.rc-pd[data-h=${key}]`); if (!g) return null; const l = g.querySelector('line:not(.w):not(.hit)') || g.querySelector('text'), tips = [...g.querySelectorAll('polygon')].map((pg) => pg.getAttribute('points').split(' ')[0].split(',').map(Number)); return { x1: num(l, 'x1'), y1: num(l, 'y1'), x2: num(l, 'x2'), y2: num(l, 'y2'), tips, on: g.classList.contains('on'), label: g.querySelector('text') ? g.querySelector('text').textContent : '' }; };
       const circ = svg.querySelector('circle.rc-pchuck'), side = svg.querySelector('rect.rc-pchuck');
       return { k, ay, ex0, sx0, endR: num(circ, 'r'), endCy: num(circ, 'cy'), sideTop: num(side, 'y'), sideH: num(side, 'height'),
         front: tool('front'), back: tool('back'), start: tool('start'), touch: tool('touch'),
@@ -108,25 +124,84 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(/moves X\+ 49\.2 mm/.test(await page.$eval(D + ' .rc-pxmove', (e) => e.textContent)), 'and the X move grows with it (49.2 mm)');
     await typeIn('past', '');
     g = await geo();
-    ok(eq(g.touch.tip, g.ay - 27 * g.k) && await page.$eval(D + ' [data-pk=x_height]', (e) => e.placeholder) === 'auto 27', 'Touch the jaw at, auto: 27 above the axis, so a nut 25 above the tip clears jaws that reach 50');
-    await typeIn('x_height', 35); g = await geo();
-    ok(eq(g.touch.tip, g.ay - 35 * g.k) && eq(g.dims.xz.y1, g.ay) && eq(g.dims.xz.y2, g.touch.tip) && g.dims.xz.tips.every((t, i) => eq(t[1], i ? g.touch.tip : g.ay)), 'Touch the jaw at 35: the tip moves; its dimension runs from the axis to the tip exactly');
+    ok(eq(g.touch.tip, g.ay - 27 * g.k) && await page.$eval(D + ' [data-pk=x_below]', (e) => e.placeholder) === 'auto 13', 'Touch the jaw at, auto: 13 below the top of the chuck (27 above the axis), so a nut 25 above the tip clears jaws that reach 50');
+    await typeIn('x_below', 8); g = await geo();
+    ok(eq(g.touch.tip, g.ay - 32 * g.k) && eq(g.dims.xz.y1, g.ay - 40 * g.k) && eq(g.dims.xz.y2, g.touch.tip) && g.dims.xz.tips.every((t, i) => eq(t[1], i ? g.touch.tip : g.ay - 40 * g.k)) && /^8 mm/.test(g.dims.xz.label), 'Touch the jaw at 8: the tip moves; its dimension runs from the top of the chuck down to the tip exactly');
     ok(g.lit.join() === 'xz', 'editing it lights only its own dimension, not the X move (' + g.lit.join() + ')');
-    await typeIn('x_height', 23);
+    await typeIn('x_below', 17);
     ok(/would come down on the jaw/.test(await page.$eval(D + ' .rc-perr', (e) => e.textContent).catch(() => '')), 'touching the jaw too low for the nut to clear it: stopped, with why');
-    await typeIn('x_height', '');
-    await page.press(D + ' [data-pk=x_height]', 'Tab'); await page.waitForTimeout(150);
+    await typeIn('x_below', '');
+    await page.press(D + ' [data-pk=x_below]', 'Tab'); await page.waitForTimeout(150);
     ok(!(await page.$(D + ' .rc-perr')), 'back to the settings as they were: nothing wrong');
     await page.focus(D + ' [data-pk=depth]'); await page.waitForTimeout(150);
     ok(await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').classList.contains('rc-plit') && e.placeholder === 'auto 20'), 'the field being edited is marked too; Touch the sides is auto 20 again');
     await shot('depth');
     await page.hover(D + ' .rc-pxmove'); await page.click(D + ' .rc-phead'); await page.hover(D + ' .rc-pxmove'); await page.waitForTimeout(150);
-    ok((await geo()).lit.join() === 'xmove', 'pointing at the X move note lights the way it goes');
+    ok((await geo()).lit.join() === 'xmove,xmove', 'pointing at the X move note lights the way it goes and its dimension');
     await shot('xmove');
     await page.hover(D + ' .rc-phead'); await page.waitForTimeout(150);
     const xm = await page.$eval(D + ' .rc-pxmove', (e) => e.textContent);
-    ok(/moves X\+ 43\.2 mm from where you start/.test(xm) && /lifts to 55 mm above the axis/.test(xm) && /10 mm gap/.test(xm), 'says how far it moves in X before coming down: ' + xm);
+    ok(/moves X\+ 43\.2 mm from where you start/.test(xm) && /lifts to 5 mm above the jaws/.test(xm) && /10 mm gap/.test(xm), 'says how far it moves in X before coming down: ' + xm);
     ok(/collet nut \(Ø35 mm × 20 mm\)/i.test(await page.$eval(D + ' .rc-pnut', (e) => e.textContent)), 'the collet nut from Rotary & spindle');
+    // where you start is drawn in the end view too, over the middle of the chuck
+    g = await geo();
+    const more = await page.$eval(D + ' .rc-ppic', (svg) => {
+      const num = (el, a) => +el.getAttribute(a), box = (sel) => { const r = svg.querySelector(sel); return r ? { x: num(r, 'x'), y: num(r, 'y'), w: num(r, 'width'), h: num(r, 'height') } : null; };
+      const fill = (sel) => getComputedStyle(svg.querySelector(sel)).fill;
+      const se = svg.querySelector('[data-t=start-end]'), pin = se.querySelector('rect.pin');
+      return { startCx: num(pin, 'x') + num(pin, 'width') / 2, startTip: num(pin, 'y') + num(pin, 'height'), frontNut: box('[data-t=front] rect.hold'), backNut: box('[data-t=back] rect.hold'), stock: box('rect.rc-pstock'),
+        labels: [...svg.querySelectorAll('.rc-plab')].map((t) => t.textContent), fills: [fill('[data-t=start] rect.pin'), fill('[data-t=front] rect.pin'), fill('[data-t=touch] rect.pin')] };
+    });
+    ok(eq(more.startCx, g.ex0) && eq(more.startTip, g.ay - 43 * g.k), 'the end view shows where you start too: over the middle, 3 above the chuck');
+    ok(new Set(more.fills).size === 3 && more.labels.join('|') === 'start|back (+Y)|front (−Y)|start|jaw face', 'the tool in its own colour for the start, the sides and the jaw face, each with its name (' + more.labels.join(', ') + ')');
+    // dimensions stand clear of the parts
+    ok(g.dims.depth.x1 < more.frontNut.x - 8 && g.dims.reach.x1 > more.backNut.x + more.backNut.w + 8, 'the depth and stickout dimensions stand clear of the collet nuts, not across them');
+    ok(g.dims.xz.x1 > more.stock.x + more.stock.w + 10, 'Touch the jaw at is dimensioned beyond the end of the stock, not on its edge');
+    // a click on a dimension or a part goes to its setting
+    const focused = () => page.evaluate(() => document.activeElement && document.activeElement.getAttribute('data-pk'));
+    await page.click(D + ' .rc-pd[data-h=past] text'); await page.waitForTimeout(120);
+    ok(await focused() === 'past' && (await geo()).lit.join() === 'past', 'a click on the gap’s dimension goes to Clear of the jaw face by, and it lights');
+    await page.click(D + ' .rc-pd[data-h=depth] text'); await page.waitForTimeout(120);
+    ok(await focused() === 'depth', 'a click on the depth goes to Touch the sides');
+    await page.click(D + ' .rc-pd[data-h=xmove] text'); await page.waitForTimeout(120);
+    ok(await focused() === 'ahead', 'a click on the X move goes to Jaw face in front by');
+    await page.click(D + ' [data-t=touch] rect.pin'); await page.waitForTimeout(120);
+    ok(await focused() === 'pin_dia', 'a click on the pin goes to its diameter');
+    await page.click(D + ' rect.rc-pchuck', { position: { x: 12, y: 12 } }); await page.waitForTimeout(120);
+    ok(await focused() === 'body', 'a click on the chuck goes to its diameter');
+    await page.click(D + ' rect.rc-pstock', { position: { x: 60, y: 30 } }); await page.waitForTimeout(120);
+    ok(await focused() === 'stock_in', 'a click on the stock goes to Stock in the chuck');
+    await page.click(D + ' .rc-phead');
+    // pointing at a step lights its part of the picture, the rest stands back
+    await page.hover(D + ' .rc-psteps li[data-hl=ph-x]'); await page.waitForTimeout(150);
+    const cls = (t) => page.$eval(D + ` [data-t=${t}]`, (e) => e.getAttribute('class'));
+    ok(/lit/.test(await cls('touch')) && /back/.test(await cls('front')) && /back/.test(await cls('start')) && await page.$eval(D + ' .rc-ppath', (e) => /lit/.test(e.getAttribute('class'))), 'pointing at a jaw face step lights the tool at the jaw and its way there; the others stand back');
+    await shot('step-x');
+    await page.hover(D + ' .rc-psteps li[data-hl=ph-yz]'); await page.waitForTimeout(150);
+    ok(/lit/.test(await cls('front')) && /lit/.test(await cls('back')) && /back/.test(await cls('touch')), 'pointing at a chuck body step lights the two side touches');
+    await page.hover(D + ' .rc-phead'); await page.waitForTimeout(150);
+    ok(!/lit|back/.test(await cls('front')), 'and back to normal off the list');
+    // the stock: the tip comes down over it
+    ok(/7 mm above the stock/.test(await page.$eval(D + ' [data-pk=x_below]', (e) => e.closest('.rc-pgroup').textContent)), 'Touch the jaw at says how far above the stock that is');
+    await typeIn('pin_reach', 38); await typeIn('x_below', 20);
+    ok(/would come down on the stock/.test(await page.$eval(D + ' .rc-perr', (e) => e.textContent).catch(() => '')) && await page.$eval(D + ' rect.rc-pstock', (e) => e.classList.contains('bad')) && (await geo()).dims.xz.label && await page.$eval(D + ' .rc-pd[data-h=xz]', (e) => e.classList.contains('bad')), 'touching the jaw at the height of the stock’s top: refused, the stock and that dimension red');
+    await shot('stock-crash');
+    await page.click(D + ' .rc-pswitch[data-hl=stock] .rc-pslider'); await page.waitForTimeout(200);
+    ok(!(await page.$(D + ' .rc-perr')) && !(await page.$(D + ' .rc-pstock')), 'Stock in the chuck off: allowed, and the stock is gone from the picture');
+    await page.click(D + ' .rc-pswitch[data-hl=stock] .rc-pslider'); await page.waitForTimeout(200);
+    await typeIn('x_below', ''); await typeIn('pin_reach', 25);
+    await page.press(D + ' [data-pk=pin_reach]', 'Tab'); await page.waitForTimeout(150);
+    ok(!(await page.$(D + ' .rc-perr')) && await page.$(D + ' rect.rc-pstock'), 'back on, and the settings as they were: nothing wrong');
+    // the jog controls sit centred between the picture and the buttons, whatever the window's
+    // height, and with more settings than fit (they scroll in their own column)
+    for (const [vw, vh, tool] of [[1500, 950, 'pin'], [1500, 760, 'bit'], [1900, 1300, 'pin']]) {
+      await page.setViewportSize({ width: vw, height: vh }); await pick('tool', tool);
+      await page.waitForTimeout(250);
+      const c = await page.evaluate((D) => { const r = (s) => document.querySelector(D + ' ' + s).getBoundingClientRect(); const j = r('.rc-pjogcol'), a = r('.rc-ppicbox').bottom, b = r('[data-pact=start]').top, card = document.querySelector(D + ' .rc-pcard'); return { above: j.top - a, below: b - j.bottom, cardScrolls: card.scrollHeight > card.clientHeight + 1, leftScrolls: (() => { const l = document.querySelector(D + ' .rc-pleft'); return l.scrollHeight > l.clientHeight + 1; })() }; }, D);
+      ok(Math.abs(c.above - c.below) <= 6 && c.above >= 20 && !c.cardScrolls, `${vw}×${vh}, ${tool}: the jog controls are centred between the picture and the buttons (${c.above.toFixed(0)} above, ${c.below.toFixed(0)} below)` + (c.leftScrolls ? '; the settings scroll in their own column' : ''));
+      if (vh === 760) await shot('short');
+    }
+    await page.setViewportSize({ width: 1500, height: 950 }); await pick('tool', 'pin'); await page.waitForTimeout(200);
     // the jog controls: one centred stack
     const mids = await page.$$eval(D + ' .rc-pjogsteps, ' + D + ' .rc-pjogpad', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return r.left + r.width / 2; }));
     ok(mids.length === 2 && Math.abs(mids[0] - mids[1]) < 1.5, 'the jog step sits centred over the jog pad (' + mids.map((v) => v.toFixed(1)).join(', ') + ')');
@@ -137,8 +212,10 @@ fs.mkdirSync(outDir, { recursive: true });
     await shot('touching');
     await H('/__test/probe', { touch: false }); await page.waitForTimeout(700);
     ok(await startOn() && /Tested/.test(await page.$eval(D + ' .rc-pconnmsg', (e) => e.textContent)), 'tested: Start Probe wakes up');
-    const steps = await page.$$eval(D + ' .rc-psteps li', (l) => l.map((e) => e.textContent));
-    ok(steps.length === 7 && /20 mm below the top/.test(steps[0]) && /180/.test(steps[2]) && /Move X\+ 43\.2 mm/.test(steps[5]) && /27 mm above the axis/.test(steps[6]), 'the steps listed: ' + steps.join(' / '));
+    const lis = await page.$$eval(D + ' .rc-psteps li', (l) => l.map((e) => ({ t: e.querySelector('span').textContent, ph: e.getAttribute('data-hl'), dot: getComputedStyle(e.querySelector('.rc-pdot')).backgroundColor })));
+    const steps = lis.slice(1).map((x) => x.t);
+    ok(/^Start/.test(lis[0].t) && lis[0].ph === 'ph-start' && lis[1].ph === 'ph-yz' && lis[7].ph === 'ph-x' && new Set([lis[0].dot, lis[1].dot, lis[7].dot]).size === 3, 'the steps are the key: a dot for the start, the chuck body and the jaw face, each its own colour (' + [lis[0].dot, lis[1].dot, lis[7].dot].join(' / ') + ')');
+    ok(steps.length === 7 && /20 mm below the top/.test(steps[0]) && /180/.test(steps[2]) && /Move X\+ 43\.2 mm/.test(steps[5]) && /13 mm below the top of the chuck/.test(steps[6]), 'the steps listed: ' + steps.join(' / '));
 
     // XYZ with the half turn
     await page.click(D + ' [data-pact=start]');
@@ -163,7 +240,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // X only, the jaw face further than set: stops above the jaw and says why
     await pick('what', 'x');
-    ok(!(await page.$(D + ' [data-pk=body]')) && await page.$(D + ' [data-pk=ahead]'), 'X only: no chuck diameter, the jaw face distance');
+    ok(await page.$(D + ' [data-pk=body]') && await page.$(D + ' [data-pk=ahead]') && !(await page.$(D + ' [data-pk=depth]')) && !(await page.$(D + ' [data-pk=half]')), 'X only: the jaw face distance, the chuck diameter (the jaw touch is measured down from its top); no side depth or half turn');
     await H('/__test/probe', { at: { x: -320, y: -200.3, z: -79.6 + 40 + 6 } });
     await setField('ahead', 20);
     await page.click(D + ' [data-pact=start]');
