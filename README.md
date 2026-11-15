@@ -541,6 +541,7 @@ node test/probe-test.js                                    # Probe the chuck aga
 node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
+node test/lines-test.js                                    # Finishing along the part: the lines' angles follow the part's width, there and back, no gouges
 node test/indexside-test.js                                # Indexed's whole side never rides a tapered ball's cone below the part
 node test/e2e-v13.cjs test/chin_test.step out/            # version + update badge, stock at a glance, Z travel in the UI
 node test/e2e-v14.cjs test/chin_test.step out/            # settings survive reopening and two computers at once
