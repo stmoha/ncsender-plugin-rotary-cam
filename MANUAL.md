@@ -199,11 +199,14 @@ middle (Y0), touches the top there (Z0 is half the chuck's diameter below it), t
 to 0 and touches the front of the jaw that's up (X0). **Probing** sets all three, Y and Z,
 or any one on its own.
 
-The picture is drawn to scale from your chuck, stock and collet nut (Rotary & spindle) and
-the settings here. On the left, looking along the axis, it shows the tip touching the side
-of the chuck and how much room the nut has above it. On the right, from the front, it shows
-where you start and the way to the jaw face. Click into or point at a setting and its
-dimension lights up.
+The picture shows an **End view** and a **Side view** of the chuck, both at one scale with
+the rotary axis at the same height, drawn from your chuck, stock and collet nut (Rotary &
+spindle) and the settings here. The end view (looking along the axis, the front of the
+machine on the left) shows the tip touching the front and the back of the chuck, how far
+below the top, and how much room the nut has above the chuck. The side view shows where you
+start, the way to the jaw face (up, X+, down) and the touch on the jaw. Every setting has
+its dimension, and the one you're typing in lights up; the picture follows as you type. On
+a portrait screen the picture comes first, then the settings, the jog controls and the notes.
 
 1. **Pick what to touch with.**
    - **Pin (with a clip)**, the simplest: a round pin in the collet (a dowel pin or a drill
@@ -232,12 +235,19 @@ dimension lights up.
 5. Jog the tip over the middle of the chuck body (within about 10 mm), a few mm (up to 20)
    above it, at a smooth spot along the body, clear of the key holes: the top and the sides
    are touched there.
-6. **Jaw face in front by**: measure with a rule how far the front of the jaws is in front
-   of (to the right of, +X) the tool where you started it. Within 10 mm is close enough.
-   The dialog says exactly what X does with it: it lifts above the jaws, turns A to 0,
-   moves X+ that much plus the tip's radius plus 10 mm, comes down to **Touch the jaw at**
-   (just above the stock), then feels back toward the jaw (up to 30 mm). If it comes down
-   on the jaw instead, it stops and says to set the distance bigger.
+6. The three X settings, all dimensioned in the side view:
+   - **Jaw face in front by**: measure with a rule how far the front of the jaws is in
+     front of (to the right of, +X) the tool where you started it.
+   - **Clear of the jaw face by**: the gap left between the tip and where the jaw face
+     should be when it comes down (10 mm unless you set it). Make it bigger if the first
+     distance is a rough guess.
+   - **Touch the jaw at**: how far above the axis the tip touches the front of the jaw.
+     Empty, it's 3 mm above the stock, or higher if the collet nut would otherwise come
+     down on the jaw; a height that's too low for the nut is refused, with why.
+   The dialog says exactly what X does: it lifts above the jaws, turns A to 0, moves X+ the
+   first distance plus half the tip plus the gap, comes down, then feels back toward the
+   jaw (up to the gap plus 20 mm). If it comes down on the jaw instead, it stops and says
+   to set the distance bigger.
 7. With **Connection test** on, touch the probe (or the clip to the chuck): the light goes
    green and **Start Probe** wakes up.
 8. **Start Probe.** Each step shows as it runs; **Stop** (or the red stop in the jog pad)

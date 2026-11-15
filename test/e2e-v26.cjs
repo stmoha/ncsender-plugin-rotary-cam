@@ -61,22 +61,76 @@ fs.mkdirSync(outDir, { recursive: true });
     await setField('body', 80);
     await setField('ahead', 30);
     ok(!(await page.$(D + ' .rc-perr')), 'no settings problems once the diameter is in');
-    // the picture is to scale and follows the settings; the one being edited lights up
-    const r80 = await page.$eval(D + ' .rc-ppic circle', (c) => +c.getAttribute('r'));
-    await setField('body', 60); const r60 = await page.$eval(D + ' .rc-ppic circle', (c) => +c.getAttribute('r'));
-    await setField('body', 80);
-    ok(r60 < r80 * 0.9, 'the chuck in the picture follows its diameter (' + r80 + ' \u2192 ' + r60 + ')');
-    ok(/most 31\.5 mm/.test(await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').textContent)) && await page.$eval(D + ' [data-pk=depth]', (e) => e.placeholder) === 'auto 20', 'Touch the sides: auto half way down, says the most: ' + await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').textContent));
+    // ---- the picture: one scale for both views, the axis at one height, and it follows every
+    // setting as it's typed (no blur). Sizes are read back from the drawing and compared with
+    // the settings: pin 6.35, 25 out of a 35 nut; chuck 80 (100 with its jaws); stock 40.
+    const typeIn = async (k, v) => { await page.fill(D + ` [data-pk=${k}]`, String(v)); await page.waitForTimeout(120); };
+    const geo = () => page.$eval(D + ' .rc-ppic', (svg) => {
+      const num = (el, a) => +el.getAttribute(a), k = +svg.dataset.k, ay = +svg.dataset.ay, ex0 = +svg.dataset.ex0, sx0 = +svg.dataset.sx0;
+      const tool = (name) => { const g = svg.querySelector(`[data-t=${name}]`); if (!g) return null; const pin = g.querySelector('rect.pin'), nut = g.querySelector('rect.hold'); return { cx: num(pin, 'x') + num(pin, 'width') / 2, tip: num(pin, 'y') + num(pin, 'height'), len: num(pin, 'height'), w: num(pin, 'width'), nutW: num(nut, 'width'), nutBottom: num(nut, 'y') + num(nut, 'height') }; };
+      const dim = (key) => { const g = svg.querySelector(`.rc-pd[data-h=${key}]`); if (!g) return null; const l = g.querySelector('line:not(.w)'), tips = [...g.querySelectorAll('polygon')].map((pg) => pg.getAttribute('points').split(' ')[0].split(',').map(Number)); return { x1: num(l, 'x1'), y1: num(l, 'y1'), x2: num(l, 'x2'), y2: num(l, 'y2'), tips, on: g.classList.contains('on'), label: g.querySelector('text') ? g.querySelector('text').textContent : '' }; };
+      const circ = svg.querySelector('circle.rc-pchuck'), side = svg.querySelector('rect.rc-pchuck');
+      return { k, ay, ex0, sx0, endR: num(circ, 'r'), endCy: num(circ, 'cy'), sideTop: num(side, 'y'), sideH: num(side, 'height'),
+        front: tool('front'), back: tool('back'), start: tool('start'), touch: tool('touch'),
+        dims: Object.fromEntries(['depth', 'reach', 'body', 'ahead', 'past', 'xz', 'room'].map((q) => [q, dim(q)])),
+        lit: [...svg.querySelectorAll('.rc-pd.on[data-h], .rc-ppath.on')].map((g) => g.getAttribute('data-h')),
+        titles: [...svg.querySelectorAll('.rc-ptitle')].map((t) => t.textContent) };
+    });
+    const eq = (a, b, tol = 0.2) => Math.abs(a - b) <= tol;
+    let g = await geo();
+    ok(g.titles.join('|') === 'End view|Side view', 'the views are called End view and Side view');
+    ok(eq(g.endR, 40 * g.k) && eq(g.sideH, 80 * g.k) && eq(g.endCy, g.ay) && eq(g.sideTop + g.sideH / 2, g.ay), 'both views at one scale, the chuck at the same height in both (' + g.k.toFixed(2) + ' px per mm)');
+    ok(eq(g.front.len, 25 * g.k) && eq(g.front.w, 6.35 * g.k) && eq(g.front.nutW, 35 * g.k), 'the pin, its stickout and the collet nut to scale');
+    // auto: 20 mm below the top; the tip's edge on the chuck there
+    ok(eq(g.front.tip, g.ay - 20 * g.k) && eq(g.front.cx, g.ex0 - (Math.sqrt(40 * 40 - 20 * 20) + 3.175) * g.k) && eq(g.back.cx - g.ex0, g.ex0 - g.front.cx), 'the tips touch the front and the back of the chuck 20 mm below the top');
+    // each setting, typed (not blurred): the drawing moves to match
+    await typeIn('body', 60); g = await geo();
+    ok(eq(g.endR, 30 * g.k) && eq(g.sideH, 60 * g.k) && /60 mm/.test(g.dims.body.label), 'Chuck body diameter 60: both views follow as it’s typed');
+    await typeIn('body', 80);
+    await typeIn('depth', 30); g = await geo();
+    ok(eq(g.front.tip, g.ay - 10 * g.k) && eq(g.back.tip, g.front.tip) && eq(g.front.cx, g.ex0 - (Math.sqrt(40 * 40 - 10 * 10) + 3.175) * g.k), 'Touch the sides 30: both tips 30 below the top, still on the chuck');
+    ok(eq(g.dims.depth.y1, g.ay - 40 * g.k) && eq(g.dims.depth.y2, g.front.tip) && g.dims.depth.tips.every((t, i) => eq(t[1], i ? g.front.tip : g.ay - 40 * g.k)) && /30 mm/.test(g.dims.depth.label), 'its dimension runs from the top of the chuck to the tip, arrowheads ending exactly there');
+    ok(g.dims.depth.on && g.lit.join() === 'depth,room', 'that dimension lights, and the room it leaves under the nut (' + g.lit.join() + ')');
+    await typeIn('depth', 36); g = await geo();
+    ok(g.dims.room === null || /hits|clears/.test(await page.$eval(D + ' .rc-ppic', (e) => e.textContent)), 'deeper than the nut allows still draws');
+    ok(/would come within 2 mm/.test(await page.$eval(D + ' .rc-perr', (e) => e.textContent)) && await page.$eval(D + ' .rc-ppic .rc-pd.bad', (e) => !!e), 'and the room under the nut shows red, with why');
+    await typeIn('depth', '');
+    await typeIn('pin_reach', 38); g = await geo();
+    ok(eq(g.back.len, 38 * g.k) && eq(g.dims.reach.y1, g.back.tip) && eq(g.dims.reach.y2, g.back.nutBottom) && /38 mm/.test(g.dims.reach.label), 'Stickout 38: the pin grows; its dimension runs from the tip to the nut');
+    ok(/most 40 mm/.test(await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').textContent)), 'and the sides may then be touched down to the axis (most 40 mm)');
+    await typeIn('pin_reach', 25);
+    await typeIn('ahead', 45); g = await geo();
+    ok(eq(g.start.cx, g.sx0 - 45 * g.k) && eq(g.dims.ahead.x1, g.start.cx) && eq(g.dims.ahead.x2, g.sx0) && g.dims.ahead.tips.every((t, i) => eq(t[0], i ? g.sx0 : g.start.cx)), 'Jaw face in front by 45: the start moves back; its dimension runs from the start to the jaw face exactly');
+    ok(g.lit.join() === 'ahead', 'only that dimension lights (' + g.lit.join() + ')');
+    await typeIn('ahead', 30);
+    await typeIn('past', 16); g = await geo();
+    ok(eq(g.touch.cx, g.sx0 + (3.175 + 16) * g.k) && eq(g.dims.past.x1, g.sx0) && eq(g.dims.past.x2, g.touch.cx - 3.175 * g.k) && g.lit.join() === 'past', 'Clear of the jaw face by 16: it comes down 16 from the jaw face; that gap is dimensioned and lit');
+    ok(/moves X\+ 49\.2 mm/.test(await page.$eval(D + ' .rc-pxmove', (e) => e.textContent)), 'and the X move grows with it (49.2 mm)');
+    await typeIn('past', '');
+    g = await geo();
+    ok(eq(g.touch.tip, g.ay - 27 * g.k) && await page.$eval(D + ' [data-pk=x_height]', (e) => e.placeholder) === 'auto 27', 'Touch the jaw at, auto: 27 above the axis, so a nut 25 above the tip clears jaws that reach 50');
+    await typeIn('x_height', 35); g = await geo();
+    ok(eq(g.touch.tip, g.ay - 35 * g.k) && eq(g.dims.xz.y1, g.ay) && eq(g.dims.xz.y2, g.touch.tip) && g.dims.xz.tips.every((t, i) => eq(t[1], i ? g.touch.tip : g.ay)), 'Touch the jaw at 35: the tip moves; its dimension runs from the axis to the tip exactly');
+    ok(g.lit.join() === 'xz', 'editing it lights only its own dimension, not the X move (' + g.lit.join() + ')');
+    await typeIn('x_height', 23);
+    ok(/would come down on the jaw/.test(await page.$eval(D + ' .rc-perr', (e) => e.textContent).catch(() => '')), 'touching the jaw too low for the nut to clear it: stopped, with why');
+    await typeIn('x_height', '');
+    await page.press(D + ' [data-pk=x_height]', 'Tab'); await page.waitForTimeout(150);
+    ok(!(await page.$(D + ' .rc-perr')), 'back to the settings as they were: nothing wrong');
     await page.focus(D + ' [data-pk=depth]'); await page.waitForTimeout(150);
-    ok(await page.$(D + ' .rc-ppic .rc-pdim.on[data-h=depth]') && await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').classList.contains('rc-plit')), 'editing Touch the sides lights its dimension and the field');
+    ok(await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').classList.contains('rc-plit') && e.placeholder === 'auto 20'), 'the field being edited is marked too; Touch the sides is auto 20 again');
     await shot('depth');
-    await page.focus(D + ' [data-pk=ahead]'); await page.waitForTimeout(150);
-    ok(await page.$(D + ' .rc-ppic .rc-pdim.on[data-h=ahead]'), 'editing Jaw face in front by lights its dimension');
-    await shot('ahead');
-    await page.click(D + ' .rc-phead'); await page.waitForTimeout(150);
+    await page.hover(D + ' .rc-pxmove'); await page.click(D + ' .rc-phead'); await page.hover(D + ' .rc-pxmove'); await page.waitForTimeout(150);
+    ok((await geo()).lit.join() === 'xmove', 'pointing at the X move note lights the way it goes');
+    await shot('xmove');
+    await page.hover(D + ' .rc-phead'); await page.waitForTimeout(150);
     const xm = await page.$eval(D + ' .rc-pxmove', (e) => e.textContent);
-    ok(/moves X\+ 43\.2 mm from where you start/.test(xm) && /lifts to 55 mm above the axis/.test(xm), 'says how far it moves in X before coming down: ' + xm);
-    ok(/collet nut \(\u00d835 mm \u00d7 20 mm\)/i.test(await page.$eval(D + ' .rc-pnut', (e) => e.textContent)), 'the collet nut from Rotary & spindle');
+    ok(/moves X\+ 43\.2 mm from where you start/.test(xm) && /lifts to 55 mm above the axis/.test(xm) && /10 mm gap/.test(xm), 'says how far it moves in X before coming down: ' + xm);
+    ok(/collet nut \(Ø35 mm × 20 mm\)/i.test(await page.$eval(D + ' .rc-pnut', (e) => e.textContent)), 'the collet nut from Rotary & spindle');
+    // the jog controls: one centred stack
+    const mids = await page.$$eval(D + ' .rc-pjogsteps, ' + D + ' .rc-pjogpad', (els) => els.map((e) => { const r = e.getBoundingClientRect(); return r.left + r.width / 2; }));
+    ok(mids.length === 2 && Math.abs(mids[0] - mids[1]) < 1.5, 'the jog step sits centred over the jog pad (' + mids.map((v) => v.toFixed(1)).join(', ') + ')');
+    ok(await page.$eval(D + ' [data-pact=a0]', (b) => { const r = b.getBoundingClientRect(), f = document.querySelector('#rcam-root .rc-pfoot').getBoundingClientRect(); return r.bottom < f.top; }), 'Zero A is in view without scrolling');
     ok(/Touch the probe/.test(await page.$eval(D + ' .rc-pconnmsg', (e) => e.textContent)) && !(await startOn()), 'connection test on: waits for a touch');
     await H('/__test/probe', { touch: true }); await page.waitForTimeout(700);
     ok(await page.$eval(D + ' .rc-plight', (e) => e.classList.contains('on')), 'the light goes green while the probe touches');
@@ -84,7 +138,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await H('/__test/probe', { touch: false }); await page.waitForTimeout(700);
     ok(await startOn() && /Tested/.test(await page.$eval(D + ' .rc-pconnmsg', (e) => e.textContent)), 'tested: Start Probe wakes up');
     const steps = await page.$$eval(D + ' .rc-psteps li', (l) => l.map((e) => e.textContent));
-    ok(steps.length === 7 && /20 mm below the top/.test(steps[0]) && /180/.test(steps[2]) && /Move X\+ 43\.2 mm/.test(steps[5]), 'the steps listed: ' + steps.join(' / '));
+    ok(steps.length === 7 && /20 mm below the top/.test(steps[0]) && /180/.test(steps[2]) && /Move X\+ 43\.2 mm/.test(steps[5]) && /27 mm above the axis/.test(steps[6]), 'the steps listed: ' + steps.join(' / '));
 
     // XYZ with the half turn
     await page.click(D + ' [data-pact=start]');
@@ -163,6 +217,20 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });
     const zm = await page.$eval('#rcam-root [data-zero=info]', (e) => e.textContent);
     ok(/Probed the chuck/.test(zm), 'the Work zero section says it was probed');
+    // portrait: one column, the picture first, nothing wider than the window
+    await page.click('#rcam-root [data-act=probe-open]'); await page.waitForSelector(D + ' .rc-pcard');
+    for (const [vw, vh] of [[1080, 1920], [820, 1180]]) {
+      await page.setViewportSize({ width: vw, height: vh }); await page.waitForTimeout(300);
+      const pr = await page.evaluate((d) => {
+        const q = (s2) => document.querySelector(d + ' ' + s2).getBoundingClientRect(), card = document.querySelector(d + ' .rc-pcard'), c = card.getBoundingClientRect();
+        const pic = q('[data-part=pic]'), form = q('[data-part=form]'), jog = q('[data-part=jog]'), notes = q('[data-part=derived]'), foot = q('.rc-pfoot');
+        return { order: pic.top < form.top && form.top < jog.top && jog.top < notes.top, fits: card.scrollWidth <= card.clientWidth + 1 && pic.left >= c.left && pic.right <= c.right + 1 && form.right <= c.right + 1, picW: pic.width, cardW: c.width, footIn: foot.bottom <= window.innerHeight + 1 };
+      }, D);
+      ok(pr.order && pr.fits && pr.footIn && pr.picW > pr.cardW * 0.85, `portrait ${vw}×${vh}: the picture, then the settings, the jog controls, the notes; nothing off the side; the buttons in view ` + JSON.stringify(pr));
+      await shot('portrait-' + vw);
+    }
+    await page.setViewportSize({ width: 1500, height: 950 }); await page.waitForTimeout(200);
+    await page.keyboard.press('Escape'); await page.waitForTimeout(200);
     // in inches: the fields show inches, and what's typed is kept in mm
     await fetch(`http://localhost:${PORT}/__test/units`, { method: 'POST', body: 'imperial' });
     await page.goto('about:blank'); await page.goto(`http://localhost:${PORT}/${dark}`);

@@ -159,6 +159,25 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   ok(o.err.some((e) => e.k === 'body'), 'a body wider than the chuck with its jaws');
   o = P.resolve(JOB, Object.assign({}, PROBE3D, { what: 'x', body: null }));
   ok(!o.err.length, 'X alone needs no chuck diameter');
+  // the X touch: the gap left to the jaw face is a setting; the nut mustn't come down on the jaw
+  o = P.resolve(JOB, Object.assign({}, PIN, { past: 16 }));
+  ok(near(o.xMove, 30 + 3.175 + 16, 1e-9) && o.xSearch === 36 && !o.err.length, 'Clear of the jaw face by 16: X moves ' + o.xMove.toFixed(3) + ', feels back up to ' + o.xSearch);
+  o = P.resolve(JOB, Object.assign({}, PIN, { past: 1 }));
+  ok(o.err.some((e) => e.k === 'past'), 'a gap under 2 mm is refused');
+  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 20 }));
+  ok(!o.err.some((e) => e.k === 'x_height') && o.xz === 32 && near(o.jawGap, 2, 1e-9), 'a pin 20 out of the nut: the jaw is touched 32 above the axis (auto), so the nut clears jaws that reach 50 by 2');
+  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 20, x_height: 23 }));
+  ok(o.err.some((e) => e.k === 'x_height' && /come down on the jaw/.test(e.t)), 'typed lower than that: refused, says why (' + (o.err.find((e) => e.k === 'x_height') || {}).t + ')');
+  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 3 }));
+  ok(o.err.some((e) => /doesn’t stick out far enough to touch the front of a jaw/.test(e.t)), 'a pin too short to reach the jaw at all');
+  o = P.resolve(JOB, Object.assign({}, PIN, { what: 'x', pin_reach: null }));
+  ok(o.err.some((e) => e.k === 'pin_reach'), 'X alone needs the stickout too');
+  {
+    // jaws that really reach 50, a nut 35 across, the pin 20 out: it comes down clear and finds the face
+    const M = machine({ tip: 'flat', tr: 3.175, holderR: 17.5, reach: 20, conductive: 'chuck', jawOut: 50 }); M.S.wco.y = -200; M.S.wco.z = -80;
+    let e = null; try { await P.run(P.resolve(JOB, Object.assign({}, PIN, { what: 'x', pin_reach: 20, past: 6 })), io(M)); } catch (x) { e = x; }
+    ok(!e && !M.S.crash && near(M.S.wco.x, M.jawFace(), 0.002), 'run on a machine with those jaws: no crash, X0 on the jaw face' + (e ? ': ' + e.message : ''));
+  }
   // the holder: every touch with the nut clear in the bit case was checked by the machine (crashes throw)
   console.log(fails ? fails + ' failed' : 'all passed');
   process.exit(fails ? 1 : 0);

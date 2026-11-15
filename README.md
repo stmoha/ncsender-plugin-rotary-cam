@@ -239,10 +239,14 @@ wrong mirrors anything asymmetric.
    A to 0 and touches the front of the jaw that's up (X0; turn a jaw straight up and press
    **Zero A** first). **Touch the sides** sets how far below the top the sides are touched
    (move it to miss a key hole); the dialog says the most the collet nut (or the probe's
-   body) allows, down to the axis. A picture drawn to scale from the chuck, stock, collet
-   nut and these settings shows where the tip touches and the way to the jaw face, and the
-   setting being edited lights up its dimension. It also says in plain numbers how far it
-   moves in X before it comes down to the jaw. Each touch goes through ncSender's probe
+   body) allows, down to the axis. For X: **Jaw face in front by** (from where you start),
+   **Clear of the jaw face by** (the gap left before it comes down) and **Touch the jaw
+   at** (raised by itself if the collet nut would otherwise come down on the jaw). An
+   **End view** and a **Side view**, at one scale with the axis at the same height, drawn
+   from the chuck, stock, collet nut and these settings, show where the tip touches and
+   the way to the jaw face; every setting has its dimension, the one being typed in lights
+   up, and the picture follows as you type. It also says in plain numbers how far it moves
+   in X before it comes down to the jaw. In portrait the picture comes first. Each touch goes through ncSender's probe
    runner (fast, back off, slow, at ncSender's own feeds), and the work offset is set with
    `G10 L20` where it touched, in mm and back to the units the controller was in. **Half
    turn** (on by default) does the sides and the top again with A turned 180° and averages
