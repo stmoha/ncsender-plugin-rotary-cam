@@ -237,8 +237,11 @@ nut, a tenon) opens its section and puts you in its setting.
      by hand, cutting edges **front and back** for the sides, **left and right** for the
      top and the jaw face, then **Continue**. With 2 or 4 flutes the two sides are the
      same; a 1- or 3-flute bit can't find the middle (use a pin), but it can do X or Z.
-   With a pin or a 3D probe, Z0 is for the pin or the probe: measure the cutter on the tool
-   setter afterwards, or zero Z with the first tool. With the bit, Z0 is right for that bit.
+   **If you use a tool setter, measure the pin, probe or bit on it before you start**, and
+   the cutter when it goes in. Z0 is set with the length the machine has for the tool that
+   touched: if it never measured that tool, Z0 is off by the difference in length as soon as
+   the next tool is measured, and Generate then says a tool can't reach, or has no room,
+   when it looks like it has plenty. No tool setter: zero Z again with the cutter in.
 2. **Measure the chuck body with calipers**: the round body behind the jaws, not the jaws.
    Type it in as **Chuck body diameter**. Z0 depends on it: 0.2 mm wrong puts Z0 0.1 mm off.
 3. **Touch the sides**: how far below the top of the chuck the sides are touched. Empty, it
@@ -382,6 +385,7 @@ Then zero (or measure) Z with the first tool, as above.
 | Indexed cuts the opposite side (the neck instead of under the chin), 180° off | **A+90 turns the top of the stock** set the wrong way | Machine → **Turn A +90°**, answer which way it went, generate again |
 | The part is a mirror image of the model | Same: A direction setting | As above |
 | ncSender says the program goes out of Z bounds when loading | Z not zeroed on the axis with the tool that's in, or a tool longer than the Z travel allows | Zero Z on the axis with the first tool in, generate again; shorter stickouts |
+| A red *Danger* says an operation asks Z to go lower than the machine can (or can't rise enough), but the spindle looks like it has the room and the simulation is fine | Z0 isn't on the rotary axis. Most often: Z was zeroed with a probe, pin or bit the tool setter never measured, so Z0 moved when the next tool was measured | Measure the probing tool on the tool setter, zero Z on the axis again (**Probe the chuck**), put the cutter in and measure it, then **Read from ncSender** and generate again. To check: jog Z all the way down clear of the rotary and see whether the tip is where the message says |
 | Generate is off with a Z travel message | A tool (or the tool in the spindle) sticks out more than the Z travel allows | Shorter stickouts; set **Stickout of the tool in the spindle** if the guess is wrong; check on the machine as the message says |
 | Grbl alarm partway through, on A | Soft limits with A travel (`$133`) smaller than the program's A | Soft limits off for the job, or raise `$133` |
 | Collet nut or spindle near the chuck or tailstock | Stickout too short for where it has to reach | The message says how much stickout would reach; or move the part further from the jaws |

@@ -125,10 +125,15 @@ function zs(gcode) {
   ok(r.warns.some((w) => /^To stay inside the Z travel, \d+ rapids? in Roughing/.test(w)) && !r.warns.some((w) => /^!!/.test(w)), 'it says the rapids were kept lower, still clear of the stock: ' + r.warns.find((w) => /Z travel/.test(w)));
   // the holder needing more than there is: danger
   r = await program({ rig: { tc: { ztop: 26, zbot: -80 } }, _hold: { rough: 32 } });
-  ok(r.warns.some((w) => /^!!Roughing \(T1, 31\.0 mm stickout\) can only rise 25\.5 mm above the rotary axis/.test(w) && /collet nut and spindle/.test(w)), 'when the collet nut needs more room than Z has, it’s marked as a danger');
+  ok(r.warns.some((w) => /^!!Roughing \(T1, 31\.0 mm stickout\) can only rise 25\.5 mm above the rotary axis/.test(w) && /collet nut and spindle/.test(w) && /check Z0 first/.test(w) && /use a shorter stickout, or smaller stock\.$/.test(w)), 'when the collet nut needs more room than Z has, it’s marked as a danger (check Z0 first, then a shorter stickout)');
   // below the bottom
   r = await program({ rig: { tc: { ztop: 60, zbot: 12 } } });
-  ok(r.warns.some((w) => /^!!Finishing .* below the bottom of Z travel/.test(w)), 'cutting below the bottom of the travel is marked as a danger: ' + (r.warns.find((w) => /bottom/.test(w)) || '').slice(0, 120));
+  ok(r.warns.some((w) => /^!!Finishing .* asks Z to go lower than the machine can: it cuts down to [\d.]+ mm (above|below) the rotary axis, and with this tool Z is at the bottom of its travel [\d.]+ mm above the rotary axis/.test(w)), 'cutting below the bottom of the travel is marked as a danger: ' + (r.warns.find((w) => /bottom/.test(w)) || '').slice(0, 170));
+  {
+    const low = r.warns.filter((w) => /asks Z to go lower/.test(w)), dz = r.warns.filter((w) => /^!!/.test(w) && /Z0/.test(w));
+    ok(low.length && low.every((w) => /how far Z can travel, not something in the way, so the simulation looks fine/.test(w) && /use a longer stickout or move the rotary up\.$/.test(w)), 'it says it\u2019s the Z travel and not something in the way, and what to do');
+    ok(dz.length === r.warns.filter((w) => /^!!/.test(w)).length && /check Z0 first: it has to be on the rotary axis\. With a tool setter, zeroing Z with a probe or a bit that was never measured/.test(dz[0]) && dz.slice(1).every((w) => /Check Z0 first, as the first Z travel message says/.test(w) && !/never measured/.test(w)), `it says to check Z0 first (a tool the tool setter never measured): in full once, pointed back to in the other ${dz.length - 1}`);
+  }
   // Z0 at the top of the travel (not zeroed on the axis yet): nothing is limited or blocked, it's said
   job = fresh({ stock: { dia: 44 }, rig: { tc: { ztop: 0, zbot: -130 } } });
   ok(core.zRoom(job, 'rough') === null && core.zNotOnAxis(job) && !core.check(job, mb).some((p) => /Z travel/.test(p)), 'Z0 at the top of the travel: not taken as the room, Generate isn\u2019t stopped');

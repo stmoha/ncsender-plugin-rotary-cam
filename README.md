@@ -378,7 +378,10 @@ wrong mirrors anything asymmetric.
    - Rapids that wanted to go higher than the travel allows are kept at the top of Z; if
      that still clears the stock, the message just says so. If the collet nut and spindle
      needed more room than that, or a cut would go below the bottom of the travel, it's a
-     red *Danger* message.
+     red *Danger* message. It's about how far Z can travel, not about hitting something,
+     so the simulation looks fine. It says to check Z0 first: Z zeroed with a probe or a
+     bit the tool setter never measured is off by the difference in length once the next
+     tool is measured, and that looks just like too little travel.
 12. **Save project…** keeps the whole job in one `.rcam` file; **Open…** brings it back:
    the part, every setting, the tools, and the G-code and toolpaths if they were generated,
    ready to simulate or load without calculating again. The rotary, spindle and tool change
