@@ -87,5 +87,12 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
 - The probe dialog's picture (`probePic` in rotary-ui.js): every dimension and part has
   `data-h` (the setting it goes to on a click); the tools have `data-t` and a `ph-` class
   for the part of the run. `test/e2e-v26.cjs` reads sizes back from it.
+- The part and its toolpaths are shared between computers through ncSender: a project
+  file at `.rotary-cam/last-job.rcam.b64` in its G-code folder (hidden: the File Manager
+  skips names that start with a dot) and `session` beside `job` in the plugin settings
+  (`touchSession`, `publishSession`, `noteSession` in rotary-ui.js; `test/e2e-v28.cjs`).
+  Anything that writes the settings must send `session` along, or it's lost.
+- Finishing has two patterns (`finish.pattern`): the map's columns are `plan.finDx` apart
+  for lines, one per turn for the spiral. Read them with `core.finColX` / `finColAt`.
 - The CI tests are in `.github/workflows/tests.yml`. Before a test ZIP, run them
   plus the e2e tests that touch what changed.

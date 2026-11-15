@@ -146,6 +146,19 @@ wrong mirrors anything asymmetric.
      It can use a bigger end mill than roughing; the same tool number means no tool change.
    - **Roughing:** flat end mill, spiral layers, leaving an allowance for finishing.
    - **Finishing:** one continuous spiral, with extra points on sharp features.
+     **Pattern** picks which way it cuts:
+     - *Round the part (spiral)*: A turns all the time while the tool creeps along X, one
+       **Stepover per turn**. The stepover is a distance along the part, so it's the same at
+       any diameter; on a surface that slopes along X the turns are further apart on the
+       surface (1.4 times at 45°). On a blank whose grain runs along the rotary, the cut
+       runs across the grain.
+     - *Along the part (lines)*: the tool runs the length of the part and back, and A turns a
+       **Stepover between lines** each time, so the cut runs along the grain (cleaner on
+       wood) and A only goes round once. How far A turns between two lines follows how wide
+       the part is along them: a stepover on the surface at the widest spot, so the lines are
+       never further apart than the stepover whatever the diameter, and a thin part gets
+       fewer lines than a thick one. Each line is dropped at its own angle. Air-cut it first,
+       like any new toolpath.
      Finishing and Indexed take any end mill (Shape): a **ball** for smooth curves, a
      **flat end mill** for flat faces, square shoulders and corners (on curves it leaves
      small steps, so use a fine stepover; the Tool list has the library's flat end mills too,
@@ -226,7 +239,12 @@ wrong mirrors anything asymmetric.
    the stock ends up below the part (red), any cut into a tenon, and the collet nut or
    spindle running into the stock or the chuck, headstock, live centre or tailstock. The
    tool shows with its nut and spindle. The result shows
-   with the checks. From the start of Indexed the view shows the part inside a see-through
+   with the checks. Where the stock is cut down to the part, the part itself is drawn, so a
+   finished surface looks finished; what's still drawn in the stock's colours is material
+   that is left. (The stock is modelled as rays out from the axis, which can't draw a face
+   they run along, such as the flank of a coil or an end face: those used to show as steps
+   and teeth though the cut part is smooth.) If anything is cut below the part, the whole
+   stock is drawn the old way so the red can't hide. From the start of Indexed the view shows the part inside a see-through
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
@@ -437,6 +455,14 @@ runs the same) and says why. Set `$376=1` to get inch programs (check `$103`, `$
 toolpaths and view. The part and its toolpaths are also kept in this browser, so they
 come back after a page reload. A calculation keeps running if you close the dialog.
 
+**On another computer:** the settings are kept in ncSender, and so are the part and its
+toolpaths: each time a part or a project is opened or toolpaths are generated, they're put
+in ncSender (one project file, in a folder its File Manager doesn't list), and any other
+computer that opens Rotary CAM on that ncSender gets them, with a note saying so. One
+that's already open takes them in within a few seconds. Open the part and generate at the
+machine, then simulate on the laptop, or the other way round. A part opened before this
+was added (0.12.0) isn't shared until something changes: open it or press Generate once.
+
 The dialog only closes from **Close**, Escape, or a full click on the dark area around
 it; a drag that starts in the 3D view and ends outside doesn't close it.
 
@@ -555,6 +581,8 @@ node test/e2e-v22.cjs test/slot_test.step out/             # Deepest below the a
 node test/e2e-v23.cjs test/chin_test.step out/             # flat end mills for finishing and Indexed: Shape, the Tool list, Generate
 node test/e2e-v24.cjs test/chin_test.step out/             # tool sizes and pass settings dimensioned in 3D; the view closes in and goes back
 node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the inside of a part open down the middle
+node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
+node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

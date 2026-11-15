@@ -328,6 +328,15 @@ Then zero (or measure) Z with the first tool, as above.
    each tool from ncSender's Tool Library where you can. Indexed cleans up what the rotary
    passes couldn't reach; **Finish the whole side it faces** adds one even finishing pass
    over each side instead of only the spots, for a smoother result.
+   - **Finishing › Pattern:** *Round the part* is one long spiral (A turns all the time,
+     X creeps along a stepover per turn). *Along the part* runs the tool the length of the
+     part and back, turning A a stepover between lines: the cut follows the grain of a
+     blank whose grain runs along the rotary, which leaves wood cleaner. The turn between
+     lines follows the part's width, so the lines are a stepover apart at the widest spot
+     at any diameter. Air-cut a new pattern before the first real cut.
+   - **Parting** cuts the tailstock end first: the chuck end drives the part, so it stays
+     whole until the other end is done. **One cut only** makes a single slot, a cutter
+     wide, right beside the part, and leaves the rest of the tenon thick.
    - **One tool number is one tool.** A stickout or flute length changed for one operation
      goes to every operation with the same number. Two different stickouts for one number
      stop Generate with a button for each.
@@ -338,7 +347,9 @@ Then zero (or measure) Z with the first tool, as above.
    - **Danger** (red): the program can hit something.
    - **Check** (amber): worth knowing before you run it.
 6. **Simulate** plays the program against the stock and checks it: rapids into the stock,
-   cuts below the part, the collet nut and spindle against the rotary.
+   cuts below the part, the collet nut and spindle against the rotary. Where the stock is
+   cut down to the part it draws the part itself; anything still in the stock's colours is
+   material that's left.
 7. **Load into ncSender** (or Save to File Manager, Download .nc).
 
 ---
