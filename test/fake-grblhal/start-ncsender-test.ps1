@@ -5,8 +5,10 @@
 #
 # The controller (-Controller):
 #   sim  (default)  the real grblHAL firmware built as a copy of the Altfinity
-#                   (grblhal-sim): its settings, planner, rotary A, homing and probe.
-#                   Keeps its settings in .\grblhal-sim\EEPROM.DAT.
+#                   (grblhal-sim): its firmware, planner, rotary A, homing and probe,
+#                   loaded with the machine's own $$ settings (machines\NAME.settings)
+#                   the first time and whenever that file changes. Keeps them in
+#                   .\grblhal-sim\EEPROM.DAT.
 #   fake            the quick Python stand-in (acts like Grbl)
 #
 #   .\start-ncsender-test.ps1             controller + the patched ncSender
@@ -62,6 +64,28 @@ if (Test-Port $FakePort) {
   New-Item -ItemType Directory -Force $simDir | Out-Null
   $running = Get-Process -Name ([IO.Path]::GetFileNameWithoutExtension($simExe)) -ErrorAction SilentlyContinue
   if (-not $running) { Get-Latest "$base/grblhal-sim/bin/grblHAL_sim-$Machine.exe" $simExe }
+  $settingsFile = Join-Path $simDir "$Machine.settings"
+  $loader = Join-Path $simDir 'load_settings.py'
+  $marker = Join-Path $simDir 'settings-loaded.txt'
+  try {
+    Get-Latest "$base/grblhal-sim/machines/$Machine.settings" $settingsFile
+    Get-Latest "$base/grblhal-sim/load_settings.py" $loader
+  } catch { Write-Host "No $Machine.settings to load: the simulator keeps its firmware defaults." }
+  if ((Test-Path $settingsFile) -and (Test-Path $loader)) {
+    $hash = (Get-FileHash $settingsFile).Hash
+    if (-not (Test-Path $marker) -or (Get-Content $marker -Raw).Trim() -ne $hash) {
+      # Load the machine's own settings into a simulator nothing else is connected to, then
+      # restart it: start-up settings take effect, and the sender is its first client.
+      Write-Host "Controller: loading the machine's own settings into the simulator (first time, or they changed)..."
+      $tmp = Start-Process -FilePath $simExe -ArgumentList '-n', '-p', $FakePort, '-b', 'NUL', '-s', 'NUL' -WorkingDirectory $simDir -WindowStyle Hidden -PassThru
+      $deadline = (Get-Date).AddSeconds(15)
+      while (-not (Test-Port $FakePort) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 300 }
+      python $loader $settingsFile --port $FakePort
+      Stop-Process -Id $tmp.Id -Force
+      Set-Content $marker $hash
+      Start-Sleep -Seconds 2
+    }
+  }
   Start-Process powershell -WorkingDirectory $simDir -ArgumentList '-NoExit', '-Command', "`$host.UI.RawUI.WindowTitle='grblHAL simulator - $Machine :$FakePort (close to stop)'; & '$simExe' -n -p $FakePort -t $Speed -b NUL -s NUL"
   Write-Host "Controller: grblHAL simulator ($Machine) on port $FakePort, speed x$Speed. It starts in Alarm until homed, like the machine."
 } else {

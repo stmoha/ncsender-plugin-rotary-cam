@@ -26,7 +26,8 @@ commands: README › Development.
   firmware (grblHAL/Simulator + `virtual-machine.patch`) built as a copy of his Altfinity
   from its Web Builder `job.ini` (`machines/stefan-altfinity.flags`): his settings, planner,
   rotary A, homing on virtual switches, a probe that touches 3 mm in. It keeps settings in
-  `EEPROM.DAT` next to it. The Python `fake_grblhal_server.py` is the quick alternative.
+  `EEPROM.DAT` next to it, loaded with his live `$$` (`machines/stefan-altfinity.settings`,
+  via `load_settings.py`; load, then restart the simulator before ncSender connects). The Python `fake_grblhal_server.py` is the quick alternative.
   After changing either, run its test (`grblhal-sim/test_sim.py`, `test_fake_grblhal.py`).
   `test/fake-grblhal/start-ncsender-test.ps1` here fetches the latest and starts it on
   127.0.0.1:8000 plus the patched ncSender source build and the browser; `-FakeOnly` for
