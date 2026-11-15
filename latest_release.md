@@ -27,6 +27,15 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - *Scale to fit the stock* is now **Scale model to fit the stock**.
 - *Work zero — from a corner of the rotary* is still there, under the probing, for a rotary that comes off the table and goes back.
 
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/finish-along-the-part.png" width="700" alt="Rotary CAM in dark mode with Finishing set to Pattern: Along the part. The blue finishing lines run the length of a helix, side by side round it."></p>
+<p align="center"><sub>Finishing along the part: lines along the grain, a stepover apart on the surface.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/simulate-finished.png" width="700" alt="Simulate in dark mode: the helix carved smooth, with one parting cut at each end of the part."></p>
+<p align="center"><sub>Simulate shows the finished part as finished, here with Parting’s One cut only at each end.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/another-computer.png" width="700" alt="Rotary CAM in dark mode on a second computer, with the note: Picked up coil.stl and its toolpaths from another computer."></p>
+<p align="center"><sub>The same job on another computer: the part and its toolpaths follow you through ncSender.</sub></p>
+
 **Since 0.2.0**
 - 0.11.6: cutting past the rotary axis only where it’s needed; finishing and Indexed take any end mill; stepovers as a length or a %; Simulate shows parts open down the middle; Size the stock to fit the part
 - 0.11.5: checks for stock that’s too thin or too short name the field and set it; Part starts at X includes the chuck end tenon; Parting cuts the tenons
