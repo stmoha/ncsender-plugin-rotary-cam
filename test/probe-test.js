@@ -10,7 +10,8 @@ const ok = (c, m) => { if (!c) { fails++; console.log('  FAIL ' + m); } else con
 
 const JOB = { rig: { chuck: { dia: 100 }, nut: { dia: 35 } }, stock: { shape: 'round', dia: 40 } };
 const PROBE3D = { what: 'xyz', tool: '3d', ball: 2, probe_dia: 25, probe_reach: 30, body: 80, ahead: 30, half: false };
-const BIT = { what: 'xyz', tool: 'bit', bit_dia: 6.35, bit_shape: 'flat', bit_reach: 30, body: 80, ahead: 30, half: false };
+const BIT = { what: 'xyz', tool: 'bit', bit_dia: 6.35, bit_shape: 'flat', flutes: 2, bit_reach: 30, body: 80, ahead: 30, half: false };
+const PIN = { what: 'xyz', tool: 'pin', pin_dia: 6.35, pin_reach: 38, body: 80, ahead: 30, half: false };
 
 // start above the body, 15 mm behind its face, off the middle, a few mm above the top
 function machine(w, start) {
@@ -21,9 +22,10 @@ function machine(w, start) {
   return M;
 }
 function io(M) {
-  const steps = [];
+  const steps = [], asked = [];
   return {
-    steps,
+    steps, asked,
+    ask(t) { asked.push(t); return Promise.resolve(); },
     job(lines) {
       for (const l of lines) {
         const r = M.exec(l);
@@ -38,14 +40,14 @@ function io(M) {
 }
 async function go(name, w, p, start) {
   console.log(name);
-  const M = machine(w, start), o = P.resolve(JOB, p);
+  const M = machine(w, start), o = P.resolve(JOB, p), I = io(M);
   if (o.err.length) { console.log('  settings: ' + o.err.map((e) => e.t).join(' / ')); return { M, o, err: new Error('settings') }; }
-  try { const res = await P.run(o, io(M)); return { M, o, res }; } catch (e) { return { M, o, err: e }; }
+  try { const res = await P.run(o, I); return { M, o, res, I }; } catch (e) { return { M, o, err: e, I }; }
 }
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
 
 (async () => {
-  let r;
+  let r, o;
   r = await go('3D probe, XYZ, a chuck that runs true', { tip: 'ball', tr: 1, holderR: 12.5, reach: 30, conductive: 'all', axisY: -200.37, axisZ: -78.9 }, PROBE3D);
   ok(!r.err, 'runs' + (r.err ? ': ' + r.err.message : ''));
   if (!r.err) {
@@ -118,8 +120,38 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   r = await go('start 25 off the middle', { tip: 'ball', tr: 1, conductive: 'all' }, Object.assign({}, PROBE3D, { what: 'yz' }), { y: -175 });
   ok(r.err && /middle/.test(r.err.message) && !r.M.S.crash, 'stops before it hits anything, says start nearer the middle (' + (r.err ? r.err.message.slice(0, 70) : 'ran') + ')');
 
+  // a pin, 1.5" out of the nut: deep enough to touch the sides at the axis
+  const NUT = { tip: 'flat', tr: 3.175, holderR: 17.5, reach: 38, conductive: 'chuck', axisY: -200.2, axisZ: -79.7 };
+  r = await go('pin, sides touched at the axis', NUT, Object.assign({}, PIN, { depth: 40 }));
+  ok(!r.err && near(r.M.S.wco.x, r.M.jawFace(), 0.002) && near(r.M.S.wco.y, -200.2, 0.002) && near(r.M.S.wco.z, -79.7, 0.002), 'pin: X0 Y0 Z0 right' + (r.err ? ': ' + r.err.message : ''));
+  ok(r.o.dmax >= 40 && r.o.d === 40, 'with 38 out of a 35 nut it may go down to the axis (most ' + r.o.dmax + ')');
+  ok(!r.err && near(r.res.dia, 80, 0.01), 'touched at the axis it measures the diameter itself (' + (r.res && r.res.dia.toFixed(3)) + ')');
+  ok(!r.I.asked.length, 'a pin needs no turning by hand');
+  r = await go('pin, auto depth', NUT, PIN);
+  ok(!r.err && r.o.d === 20, 'left empty, half way down to the axis (' + r.o.d + ')');
+  // a fluted bit: it stops to be turned, front-back for the sides, left-right for the top and X
+  r = await go('fluted bit, XYZ with the half turn', { tip: 'flat', tr: 3.175, holderR: 17.5, reach: 30, conductive: 'chuck', runout: 0.1, runPhase: 10 }, Object.assign({}, BIT, { half: true }));
+  ok(!r.err && near(r.M.S.wco.y, -200, 0.002) && near(r.M.S.wco.z, -80, 0.002), 'right' + (r.err ? ': ' + r.err.message : ''));
+  const kinds = (r.I.asked || []).map((t) => (/front and back/.test(t) ? 'FB' : 'LR')).join(' ');
+  ok(kinds === 'FB LR FB LR', 'asks to turn it before each kind of touch: ' + kinds);
+  {
+    const M = machine({ tip: 'flat', tr: 3.175, holderR: 17.5, reach: 30, conductive: 'chuck' }); M.S.wco.y = -200; M.S.wco.z = -80;
+    const I = io(M); await P.run(P.resolve(JOB, Object.assign({}, BIT, { what: 'x' })), I);
+    ok(I.asked.length === 1 && /left and right/.test(I.asked[0]) && near(M.S.wco.x, M.jawFace(), 0.002), 'X alone: one turn (edges left and right), X0 right');
+  }
+
   // settings checks
-  let o = P.resolve(JOB, Object.assign({}, BIT, { bit_reach: 2 }));
+  o = P.resolve(JOB, Object.assign({}, PIN, { depth: 45 }));
+  ok(o.err.some((e) => e.k === 'depth' && /axis/.test(e.t)), 'no lower than the axis: ' + (o.err[0] && o.err[0].t));
+  o = P.resolve(JOB, Object.assign({}, PIN, { pin_reach: 15, depth: 30 }));
+  ok(o.err.some((e) => e.k === 'depth' && /most/.test(e.t)), 'deeper than the nut allows: ' + (o.err[0] && o.err[0].t));
+  o = P.resolve(JOB, Object.assign({}, BIT, { flutes: 3 }));
+  ok(o.err.some((e) => e.k === 'flutes'), 'a 3-flute bit can\u2019t do the sides');
+  o = P.resolve(JOB, Object.assign({}, BIT, { flutes: 3, what: 'x' }));
+  ok(!o.err.length, 'but it can do X');
+  o = P.resolve(JOB, PIN);
+  ok(near(o.xMove, 30 + 3.175 + 10, 1e-9) && o.xUp === 55 && P.steps(o).some((t) => /Move X\+ 43\.2 mm/.test(t)), 'says how far it moves in X: ' + P.steps(o).find((t) => /Move X/.test(t)));
+  o = P.resolve(JOB, Object.assign({}, BIT, { bit_reach: 2 }));
   ok(o.err.some((e) => e.k === 'bit_reach'), 'a bit too short for the nut to clear: says stick it out further (' + (o.err[0] && o.err[0].t.slice(-40)) + ')');
   o = P.resolve(JOB, Object.assign({}, PROBE3D, { body: null }));
   ok(o.err.some((e) => e.k === 'body'), 'asks for the chuck diameter');

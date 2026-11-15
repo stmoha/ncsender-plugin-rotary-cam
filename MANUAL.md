@@ -192,27 +192,56 @@ or let Rotary CAM find it.
 
 ### Probe the chuck
 
-**Probe the chuck…** opens a dialog laid out like ncSender's own probe dialog. It touches
-both sides of the chuck body and goes to the middle (Y0), touches the top there (Z0 is half
-the chuck's diameter below it), then turns A to 0 and touches the front of the jaw that's
-up (X0). **Probing** sets all three, Y and Z, or any one on its own.
+**Probe the chuck…** opens a dialog laid out like ncSender's own probe dialog: the
+settings on the left, the connection test, a picture and a jog pad (with ncSender's red
+stop in the middle) on the right. It touches both sides of the chuck body and goes to the
+middle (Y0), touches the top there (Z0 is half the chuck's diameter below it), then turns A
+to 0 and touches the front of the jaw that's up (X0). **Probing** sets all three, Y and Z,
+or any one on its own.
 
-1. **Measure the chuck body with calipers**: the round body behind the jaws, not the
-   jaws. Type it in as **Chuck body diameter**. Z0 depends on it: 0.2 mm wrong puts Z0
-   0.1 mm off.
-2. **Turn A so a jaw points straight up and press A0 here (a jaw is up).** The X touch
-   turns A to 0 and touches the front of that jaw.
-3. Pick **3D probe** (its ball diameter, and its body diameter and how far the ball is
-   below the body) or **Bit (with a clip)** (the bit's diameter, shape and stickout; empty
-   takes the tool in the spindle). With a bit, the chuck must be wired to the probe input
-   and the clip on the bit. The stickout matters: the collet nut has to clear the chuck
-   while the tip touches its side, and the dialog says if it's too short.
-4. Jog the tip over the middle of the chuck body (within about 10 mm), behind the jaws, a
-   few mm (up to 20) above it. Set **Jaw face in front by** to roughly how far the front of
-   the jaws is in front of the tool (within 10 mm is close enough).
-5. With **Connection test** on, touch the probe (or the clip to the chuck): the light goes
+The picture is drawn to scale from your chuck, stock and collet nut (Rotary & spindle) and
+the settings here. On the left, looking along the axis, it shows the tip touching the side
+of the chuck and how much room the nut has above it. On the right, from the front, it shows
+where you start and the way to the jaw face. Click into or point at a setting and its
+dimension lights up.
+
+1. **Pick what to touch with.**
+   - **Pin (with a clip)**, the simplest: a round pin in the collet (a dowel pin or a drill
+     blank), the probe lead clipped to it, the chuck wired to the probe input. Round, it
+     touches the same whichever way it's turned. Set its diameter (calipers) and its
+     **Stickout** from the collet nut.
+   - **3D probe**: its ball diameter, its body diameter, and how far the ball is below the
+     body.
+   - **Fluted bit (with a clip)**: the cutter itself. Standing still, a bit isn't round: what
+     touches is whichever part sticks out furthest, and a flute facing the chuck lets it
+     get closer before it touches. So it stops before each kind of touch for you to turn it
+     by hand, cutting edges **front and back** for the sides, **left and right** for the
+     top and the jaw face, then **Continue**. With 2 or 4 flutes the two sides are the
+     same; a 1- or 3-flute bit can't find the middle (use a pin), but it can do X or Z.
+   With a pin or a 3D probe, Z0 is for the pin or the probe: measure the cutter on the tool
+   setter afterwards, or zero Z with the first tool. With the bit, Z0 is right for that bit.
+2. **Measure the chuck body with calipers**: the round body behind the jaws, not the jaws.
+   Type it in as **Chuck body diameter**. Z0 depends on it: 0.2 mm wrong puts Z0 0.1 mm off.
+3. **Touch the sides**: how far below the top of the chuck the sides are touched. Empty, it
+   goes half way down to the axis, or as far as the collet nut (or probe body) allows. Under
+   it the dialog says the most it can be: the nut has to stay 2 mm clear of the chuck, so
+   the further the tip sticks out, the lower it can go, down to the axis. Change it to miss
+   a key hole.
+4. **Turn A so a jaw points straight up and press Zero A.** That zeroes A where it is now.
+   The X touch turns A back to 0 to touch the front of that jaw.
+5. Jog the tip over the middle of the chuck body (within about 10 mm), a few mm (up to 20)
+   above it, at a smooth spot along the body, clear of the key holes: the top and the sides
+   are touched there.
+6. **Jaw face in front by**: measure with a rule how far the front of the jaws is in front
+   of (to the right of, +X) the tool where you started it. Within 10 mm is close enough.
+   The dialog says exactly what X does with it: it lifts above the jaws, turns A to 0,
+   moves X+ that much plus the tip's radius plus 10 mm, comes down to **Touch the jaw at**
+   (just above the stock), then feels back toward the jaw (up to 30 mm). If it comes down
+   on the jaw instead, it stops and says to set the distance bigger.
+7. With **Connection test** on, touch the probe (or the clip to the chuck): the light goes
    green and **Start Probe** wakes up.
-6. **Start Probe.** Each step shows as it runs; **Stop** stops the machine (a soft reset).
+8. **Start Probe.** Each step shows as it runs; **Stop** (or the red stop in the jog pad)
+   stops the machine (a soft reset).
 
 **Half turn** (on by default) does the sides and the top again with the chuck turned 180°,
 and averages the two. If the chuck doesn't run true, one pass is off one way and the other
@@ -228,10 +257,6 @@ jaw means the jaw face is further away than you set. Touching something on the w
 beside the chuck means it didn't start over the middle. An **alarm** usually means it
 didn't touch anything within reach (started too high, or the diameter is wrong), or the
 probe was already touching when a move started. **Unlock**, raise Z, and go again.
-
-**Z0 belongs to what was in the spindle.** Probed with the cutter itself (the clip on the
-bit), Z0 is right for that bit. Probed with a 3D probe, measure the cutter's length the way
-you do after probing in ncSender (the tool setter), or zero Z with the first tool.
 
 ### From a corner of the rotary
 
@@ -294,8 +319,9 @@ Then zero (or measure) Z with the first tool, as above.
 - [ ] Rotary & spindle sizes measured; the 3D view looks like the machine.
 - [ ] Zero: X0 at the jaw face, Y0 Z0 on the axis. Jog to X0 Y0 and lower Z near the
       stock's top to check by eye.
-- [ ] If you probed the chuck: its body diameter measured with calipers (not the jaws), A0
-      set with a jaw straight up, and the first run watched with a hand on Stop.
+- [ ] If you probed the chuck: its body diameter measured with calipers (not the jaws), A
+      zeroed with a jaw straight up, a pin (or a bit turned when it asked), and the first run
+      watched with a hand on Stop.
 - [ ] Z zeroed with the first tool in; generated after that; the header's *Z allows ...
       stickout* covers every tool.
 - [ ] Stickouts measured on the actual tools; one stickout per tool number.
@@ -332,7 +358,7 @@ Then zero (or measure) Z with the first tool, as above.
 | Generate takes a long time | Indexed with *Pick the angles for me* tries every 15° first | List your own angles; the progress bar shows which step and how long is left |
 | Indexed looks stippled: lots of little spots, the tool jumping between them | Clean-up only goes where material is left, which on a detailed part is many small spots | Tick **Finish the whole side it faces** (Indexed): one even pass over each side, line by line; or raise **Ignore less than** to skip the thinnest spots |
 | Probe the chuck stops with an alarm | It didn't touch anything within reach (started more than 20 mm above the chuck, or the diameter is wrong), or the probe was already touching when a move started | **Unlock**, raise Z, start a few mm above the middle of the chuck; check the wiring with the connection test |
-| Probe the chuck says the chuck measured a different diameter | The diameter typed is the jaws, or the ball / bit diameter is wrong | Measure the round body behind the jaws with calipers, check the tip's diameter, probe again |
+| Probe the chuck says the chuck measured a different diameter | The diameter typed is the jaws, or the pin / ball / bit diameter is wrong, or a fluted bit wasn't turned when it asked | Measure the round body behind the jaws with calipers, check the tip's diameter, probe again (a pin is simplest) |
 
 ---
 

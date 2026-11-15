@@ -32,7 +32,8 @@ fs.mkdirSync(outDir, { recursive: true });
   const pick = async (k, v) => { await page.selectOption(D + ` [data-pk=${k}]`, v); await page.waitForTimeout(150); };
   const startOn = () => page.$eval(D + ' [data-pact=start]', (b) => !b.disabled).catch(() => false);
   const near = (a, b, tol) => Math.abs(a - b) <= tol;
-  const WORLD = { axisY: -200.3, axisZ: -79.6, bodyR: 40, bodyX1: -300, jawFront: 18, runout: 0.12, runPhase: 40, tip: 'ball', tr: 1, holderR: 12.5, reach: 30, conductive: 'all' };
+  // a pin (6.35, 25 out of a 35 nut, the defaults) and the clip, the chuck wired to the probe
+  const WORLD = { axisY: -200.3, axisZ: -79.6, bodyR: 40, bodyX1: -300, jawFront: 18, runout: 0.12, runPhase: 40, tip: 'flat', tr: 3.175, holderR: 17.5, reach: 25, conductive: 'chuck' };
   const START = { x: -315, y: -198, z: -79.6 + 40 + 6, a: 0 };
   try {
     await H('/__test/probe', { world: WORLD, start: START, wco: { x: -300, y: -200, z: -80, a: 0 } });
@@ -48,6 +49,10 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForSelector(D + ' .rc-pcard');
     ok(await page.$eval(D + ' .rc-phead p', (e) => getComputedStyle(e).fontStyle === 'italic'), 'italic instructions at the top, like ncSender’s');
     ok(await page.$(D + ' .rc-pleft [data-pk=tool]') && await page.$(D + ' .rc-pleft [data-pk=what]') && await page.$(D + ' .rc-pright [data-pk=test]') && await page.$(D + ' .rc-pright .rc-pjogpad') && await page.$(D + ' .rc-pright svg'), 'probe type and probing on the left; connection test, picture and jog pad on the right');
+    const types = await page.$$eval(D + ' [data-pk=tool] option', (o) => o.map((e) => e.textContent));
+    ok(types.join('|') === 'Pin (with a clip)|3D probe|Fluted bit (with a clip)' && await page.$eval(D + ' [data-pk=tool]', (e) => e.value) === 'pin', 'probe types, a pin to start with: ' + types.join(', '));
+    const a0 = await page.$eval(D + ' [data-pact=a0]', (b) => [b.textContent, b.title, b.nextElementSibling && b.nextElementSibling.textContent]);
+    ok(a0[0] === 'Zero A' && /jaw points straight up/.test(a0[2]) && /G10 L20 P0 A0/.test(a0[1]), 'Zero A, with what it\u2019s for under it: ' + a0[2]);
     const whats = await page.$$eval(D + ' [data-pk=what] option', (o) => o.map((e) => e.textContent));
     ok(whats.join('|') === 'X, Y and Z|Y and Z (centre)|X (jaw face)|Y|Z', 'Probing: all three or any one: ' + whats.join(', '));
     ok(/measure the round body/.test(await page.$eval(D + ' .rc-perr', (e) => e.textContent).catch(() => '')), 'asks for the chuck body diameter first');
@@ -56,6 +61,22 @@ fs.mkdirSync(outDir, { recursive: true });
     await setField('body', 80);
     await setField('ahead', 30);
     ok(!(await page.$(D + ' .rc-perr')), 'no settings problems once the diameter is in');
+    // the picture is to scale and follows the settings; the one being edited lights up
+    const r80 = await page.$eval(D + ' .rc-ppic circle', (c) => +c.getAttribute('r'));
+    await setField('body', 60); const r60 = await page.$eval(D + ' .rc-ppic circle', (c) => +c.getAttribute('r'));
+    await setField('body', 80);
+    ok(r60 < r80 * 0.9, 'the chuck in the picture follows its diameter (' + r80 + ' \u2192 ' + r60 + ')');
+    ok(/most 31\.5 mm/.test(await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').textContent)) && await page.$eval(D + ' [data-pk=depth]', (e) => e.placeholder) === 'auto 20', 'Touch the sides: auto half way down, says the most: ' + await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').textContent));
+    await page.focus(D + ' [data-pk=depth]'); await page.waitForTimeout(150);
+    ok(await page.$(D + ' .rc-ppic .rc-pdim.on[data-h=depth]') && await page.$eval(D + ' [data-pk=depth]', (e) => e.closest('.rc-pgroup').classList.contains('rc-plit')), 'editing Touch the sides lights its dimension and the field');
+    await shot('depth');
+    await page.focus(D + ' [data-pk=ahead]'); await page.waitForTimeout(150);
+    ok(await page.$(D + ' .rc-ppic .rc-pdim.on[data-h=ahead]'), 'editing Jaw face in front by lights its dimension');
+    await shot('ahead');
+    await page.click(D + ' .rc-phead'); await page.waitForTimeout(150);
+    const xm = await page.$eval(D + ' .rc-pxmove', (e) => e.textContent);
+    ok(/moves X\+ 43\.2 mm from where you start/.test(xm) && /lifts to 55 mm above the axis/.test(xm), 'says how far it moves in X before coming down: ' + xm);
+    ok(/collet nut \(\u00d835 mm \u00d7 20 mm\)/i.test(await page.$eval(D + ' .rc-pnut', (e) => e.textContent)), 'the collet nut from Rotary & spindle');
     ok(/Touch the probe/.test(await page.$eval(D + ' .rc-pconnmsg', (e) => e.textContent)) && !(await startOn()), 'connection test on: waits for a touch');
     await H('/__test/probe', { touch: true }); await page.waitForTimeout(700);
     ok(await page.$eval(D + ' .rc-plight', (e) => e.classList.contains('on')), 'the light goes green while the probe touches');
@@ -63,12 +84,13 @@ fs.mkdirSync(outDir, { recursive: true });
     await H('/__test/probe', { touch: false }); await page.waitForTimeout(700);
     ok(await startOn() && /Tested/.test(await page.$eval(D + ' .rc-pconnmsg', (e) => e.textContent)), 'tested: Start Probe wakes up');
     const steps = await page.$$eval(D + ' .rc-psteps li', (l) => l.map((e) => e.textContent));
-    ok(steps.length === 5 && /180/.test(steps[2]) && /jaw up/.test(steps[4]), 'the steps listed: ' + steps.join(' / '));
+    ok(steps.length === 7 && /20 mm below the top/.test(steps[0]) && /180/.test(steps[2]) && /Move X\+ 43\.2 mm/.test(steps[5]), 'the steps listed: ' + steps.join(' / '));
 
     // XYZ with the half turn
     await page.click(D + ' [data-pact=start]');
     await page.waitForSelector(D + ' [data-pact=stop]', { timeout: 5000 });
     ok(true, 'Stop shows while it runs');
+    ok(await page.$eval(D + ' [data-pact=halt]', (b) => !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(220, 38, 38)'), 'the red stop in the middle of the jog pad stays live while it runs');
     await page.waitForFunction((d) => { const m = document.querySelector(d + ' .rc-pmsg'); return m && /Done|Stopped|alarm/.test(m.textContent); }, D, { timeout: 180000, polling: 300 });
     let m = await msg(); console.log('   ' + m);
     let sim = await H('/__test/probe');
@@ -97,6 +119,24 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(await page.$eval(D + ' .rc-pmsg', (e) => e.classList.contains('rc-pwarn')), 'shown as a warning');
     await shot('jaw');
 
+    // a fluted bit: it stops to be turned by hand, with Continue
+    await pick('tool', 'bit'); await pick('what', 'yz');
+    await setField('bit_dia', 6.35); await setField('bit_reach', 25);
+    await page.click(D + ' [data-pk=half]'); await page.waitForTimeout(150);
+    await H('/__test/probe', { at: { x: -315, y: -199, z: -79.6 + 40 + 6 } });
+    await page.click(D + ' [data-pact=start]');
+    await page.waitForSelector(D + ' [data-pact=continue]', { timeout: 30000 });
+    ok(/front and back/.test(await msg()), 'stops: turn the cutting edges front and back: ' + (await msg()).slice(0, 80));
+    await shot('turn');
+    await page.click(D + ' [data-pact=continue]');
+    await page.waitForFunction((d) => { const m = document.querySelector(d + ' .rc-pmsg'); return m && /left and right/.test(m.textContent); }, D, { timeout: 60000, polling: 200 });
+    ok(true, 'then left and right for the top');
+    await page.click(D + ' [data-pact=continue]');
+    await page.waitForFunction((d) => { const m = document.querySelector(d + ' .rc-pmsg'); return m && /Done|Stopped|alarm/.test(m.textContent); }, D, { timeout: 60000, polling: 300 });
+    sim = await H('/__test/probe');
+    ok(/^Done: Y0 and Z0 set/.test(await msg()) && near(sim.wco.y, -200.3, 0.2) && near(sim.wco.z, -79.6, 0.2), 'done with the bit: ' + (await msg()).slice(0, 60));
+    await page.click(D + ' [data-pk=half]'); await pick('tool', 'pin');
+
     // Z only from too high: an alarm, and Start Probe turns into Unlock
     await pick('what', 'z');
     await H('/__test/probe', { at: { x: -320, y: -200.3, z: -79.6 + 40 + 32 } });
@@ -114,8 +154,10 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click(D + ' [data-pjog="X+"]'); await page.waitForTimeout(400);
     sim = await H('/__test/probe');
     ok(sim.m.x > x0, 'the jog pad jogs (X+ ' + (sim.m.x - x0).toFixed(2) + ')');
+    await page.click(D + ' [data-pact=halt]'); await page.waitForTimeout(300);
+    ok((await H('/__test/log')).some((l) => /POST \/api\/probe\/stop/.test(l)), 'the stop in the jog pad sends the soft reset (as ncSender’s does)');
     await page.click(D + ' [data-pact=a0]'); await page.waitForTimeout(400);
-    ok(/A0 is where A is now/.test(await msg()), 'A0 here sets A0');
+    ok(/A is zeroed/.test(await msg()), 'Zero A zeroes A');
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     ok(!(await page.$(D)), 'Escape closes it');
     await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });

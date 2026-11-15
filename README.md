@@ -228,21 +228,28 @@ wrong mirrors anything asymmetric.
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
 9. **Work zero — probe the chuck or a corner.** **Probe the chuck…** finds the zero for
-   you with a 3D probe, or the bit and a clip, in a dialog laid out like ncSender's own
-   probe dialog (connection test, jog pad, Start Probe). **Probing** picks X, Y and Z, Y
-   and Z, or any one. It touches both sides of the chuck body and goes to the middle (Y0),
-   touches the top there (Z0 is half the **Chuck body diameter** below it: measure the
-   round body behind the jaws with calipers), then turns A to 0 and touches the front of
-   the jaw that's up (X0; set A0 with a jaw straight up first, **A0 here** does it). Each
-   touch goes through ncSender's probe runner (fast, back off, slow, at ncSender's own
-   feeds), and the work offset is set with `G10 L20` where it touched, in mm and back to
-   the units the controller was in. **Half turn** (on by default) does the sides and the
-   top again with A turned 180° and averages them, so a chuck that doesn't run true still
-   gives the true axis, and it says how far off true it runs. It works out how deep beside
-   the chuck the collet nut (or the probe's body) lets the tip go, moves to and from the
-   chuck with moves that stop if they touch anything, says what the chuck measured across
-   (and warns if that's well off what you typed), and updates the rotary zero for tool
-   changes. Details in the [manual](MANUAL.md).
+   you in a dialog laid out like ncSender's own probe dialog (connection test, jog pad with
+   the red stop in the middle, Start Probe). Touch with a round **pin** and a clip (a dowel
+   pin or drill blank), a **3D probe**, or a **fluted bit** and a clip: a bit standing
+   still isn't round, so it stops for you to turn it by hand (edges front and back for the
+   sides, left and right for the top and the jaw face; 2 or 4 flutes for the sides).
+   **Probing** picks X, Y and Z, Y and Z, or any one. It touches both sides of the chuck
+   body and goes to the middle (Y0), touches the top there (Z0 is half the **Chuck body
+   diameter** below it: measure the round body behind the jaws with calipers), then turns
+   A to 0 and touches the front of the jaw that's up (X0; turn a jaw straight up and press
+   **Zero A** first). **Touch the sides** sets how far below the top the sides are touched
+   (move it to miss a key hole); the dialog says the most the collet nut (or the probe's
+   body) allows, down to the axis. A picture drawn to scale from the chuck, stock, collet
+   nut and these settings shows where the tip touches and the way to the jaw face, and the
+   setting being edited lights up its dimension. It also says in plain numbers how far it
+   moves in X before it comes down to the jaw. Each touch goes through ncSender's probe
+   runner (fast, back off, slow, at ncSender's own feeds), and the work offset is set with
+   `G10 L20` where it touched, in mm and back to the units the controller was in. **Half
+   turn** (on by default) does the sides and the top again with A turned 180° and averages
+   them, so a chuck that doesn't run true still gives the true axis, and it says how far
+   off true it runs. Moves to and from the chuck stop if they touch anything; it says what
+   the chuck measured across (and warns if that's well off what you typed), and updates
+   the rotary zero for tool changes. Details in the [manual](MANUAL.md).
 
    **From a corner of the rotary:** for setting the zero after the rotary goes
    back on the table. Measure once, in machine coordinates, how far the work zero (jaw
