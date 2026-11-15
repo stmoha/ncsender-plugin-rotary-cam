@@ -77,6 +77,36 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     if (rr > 10 && rr < 13 && s.col[o3 + 2] > 0.8 && s.col[o3] < 0.6) roofPart++;
   }
   ok(roofPart > 200, `the coil's inside, seen from the core, shows as the part (${roofPart} roof points, blue, 11 mm out)`);
+  // Simulate's picture (smooth): where the stock is down to the part, the stock model leaves
+  // its faces out and the part's own mesh is drawn; a ray that only grazes the coil's flank
+  // counts as at the part when what's left on it is thin square to the surface
+  {
+    const all = s.count / 3, isPart = (w) => s.col[w * 3 + 2] > 0.8 && s.col[w * 3] < 0.6, AX = 3 * N;
+    let partFaces = 0;
+    for (let q = 0; q < s.count; q += 3) if ([s.index[q], s.index[q + 1], s.index[q + 2]].every((w) => w >= AX || isPart(w))) partFaces++;
+    sim.smooth = true;
+    const sm = sim.surface();
+    ok(sm.smooth === true && sm.count / 3 === all - partFaces && partFaces > 0.3 * all, `smooth: the ${partFaces} faces at the part are left for the part's mesh, ${sm.count / 3} of ${all} still drawn from the stock`);
+    let left = 0;
+    for (let q = 0; q < sm.count; q += 3) if ([sm.index[q], sm.index[q + 1], sm.index[q + 2]].every((w) => w >= AX || isPart(w))) left++;
+    ok(left === 0, 'none of the faces still drawn is all at the part (' + left + ')');
+    // grazing rays: far more of the coil's flanks count as at the part than by radius alone
+    let graze = 0, radial = 0;
+    for (let i = 0; i < N; i++) {
+      if (!(sim.pr[i] > 0) || sim.r[i] < 0.05) continue;
+      if (sim.offPart(i, sim.r[i]) < 0.12) graze++;
+      if (Math.abs(sim.r[i] - sim.nearHit(i, sim.r[i])) < 0.12) radial++;
+    }
+    ok(graze > radial && radial > 0, `at the part, measured square to the surface: ${graze} rays (${radial} by radius alone)`);
+    // anything cut into the part: everything is drawn from the stock again, so it can't hide
+    let g = -1;
+    for (let i = 0; i < N && g < 0; i++) if (sim.hits[i] === 1 && sim.pr[i] > 8 && sim.r[i] > sim.pr[i] - 0.05) g = i;
+    const was = sim.r[g];
+    sim.r[g] = sim.pr[g] - 1;
+    const gs = sim.surface();
+    ok(g >= 0 && gs.smooth === false && gs.count / 3 >= all, 'a gouge anywhere: the whole stock is drawn again (' + gs.count / 3 + ' faces), nothing under the part\u2019s mesh');
+    sim.r[g] = was; sim.smooth = false; sim.surface();
+  }
   // a rewind brings the gaps back from the checkpoints
   sim.runTo(Math.floor(P.count / 2)); sim.runTo(P.count);
   ok(Math.abs(gaps() - G) <= G * 0.01, `rewound to half way and played on: ${gaps()} rays with a gap (${G} before)`);

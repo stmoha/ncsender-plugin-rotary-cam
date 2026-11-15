@@ -107,7 +107,7 @@ export function create(container, opts = {}) {
   const jawGroup = new THREE.Group(); partGroup.add(jawGroup);       // the chuck's jaws turn with the stock they hold
   let tenonList = [];
   let partMesh = null, pathLines = {}, aSign = 1, aDeg = 0, op = 'finish', tool = null;
-  let simMesh = null, simOn = false, simTool = null, simToolKey = '', ghost = false, ovMesh = null, ovData = null;
+  let simMesh = null, simOn = false, simTool = null, simToolKey = '', ghost = false, ovMesh = null, ovData = null, simSmooth = false;
   let theme = { ink: '#1e2a32', muted: '#5e6b75', accent: '#1abc9c', dark: false };
   const idxGroup = new THREE.Group(); partGroup.add(idxGroup);   // Indexed angles, fixed to the part
   let idx = { list: [], opts: {}, ghosts: [], drag: null }, lvMesh = null;
@@ -137,6 +137,9 @@ export function create(container, opts = {}) {
     mats.partReach = new THREE.MeshStandardMaterial({ color: 0xeef0f2, metalness: 0.0, roughness: 0.7, side: THREE.DoubleSide, shadowSide: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
     mats.shank = new THREE.MeshStandardMaterial({ color: 0xc7ccd2, metalness: 0.8, roughness: 0.25 });
     mats.sim = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.05, roughness: 0.75, side: THREE.DoubleSide });
+    // the part itself in Simulate, where the stock is cut down to it: the key's "At the part"
+    // colour (as the stock model's points have it), a hair behind the stock still on it
+    mats.simPart = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.50, 0.65, 0.86), metalness: 0.05, roughness: 0.75, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
     mats.simGhost = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0.05, roughness: 0.75, side: THREE.DoubleSide, transparent: true, opacity: 0.16, depthWrite: false });
     mats.overlay = new THREE.MeshStandardMaterial({ color: new THREE.Color(OP_COLORS.index), roughness: 0.6, metalness: 0.05 });
     mats.ghost = new THREE.MeshStandardMaterial({ color: new THREE.Color(OP_COLORS.index), transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.5 });
@@ -472,6 +475,7 @@ export function create(container, opts = {}) {
     bounds = geo.boundingBox.clone();
     partBad = !!opt.bad;
     partMesh = new THREE.Mesh(geo, partMat());
+    partMesh.visible = partShown();
     partMesh.castShadow = partMesh.receiveShadow = true;
     partGroup.add(partMesh);
     if (idx.list.length) buildIndex();
@@ -479,7 +483,8 @@ export function create(container, opts = {}) {
     requestRender();
   }
   let partBad = false;
-  const partMat = () => (reach.intensity > 0 ? mats.partReach : partBad ? mats.partBad : mats.part);
+  const partMat = () => (simOn && simSmooth && !ghost ? mats.simPart : reach.intensity > 0 ? mats.partReach : partBad ? mats.partBad : mats.part);
+  const partShown = () => !simOn || ghost || simSmooth;
   function setPartBad(bad) { partBad = !!bad; if (partMesh) { partMesh.material = partMat(); requestRender(); } }
 
   // tenons: [{ x0, x1, r, in0, in1 }]. The cylinder shows wherever it sticks out of the
@@ -595,14 +600,22 @@ export function create(container, opts = {}) {
   function simGhost(on) {
     ghost = !!on;
     if (simMesh) { simMesh.material = ghost ? mats.simGhost : mats.sim; simMesh.renderOrder = ghost ? 5 : 0; }
-    if (partMesh) partMesh.visible = !simOn || ghost;
+    if (partMesh) { partMesh.visible = partShown(); partMesh.material = partMat(); }
+    requestRender();
+  }
+  // Simulate draws the part's own mesh where the stock is cut down to it (the stock model
+  // leaves those faces out: cam-sim.js surface, smooth)
+  function simPart(on) {
+    if (simSmooth === !!on) return;
+    simSmooth = !!on;
+    if (partMesh) { partMesh.visible = partShown(); partMesh.material = partMat(); }
     requestRender();
   }
   function simMode(on) {
     simOn = !!on;
     if (simMesh) simMesh.visible = simOn;
     if (ovMesh) ovMesh.visible = simOn;
-    if (partMesh) partMesh.visible = !simOn || ghost;
+    if (partMesh) partMesh.visible = partShown();
     stockGroup.visible = !simOn;
     tenonGroup.visible = !simOn;
     if (tool) tool.visible = !simOn && !(op === 'index' && idx.list.length);
@@ -1329,7 +1342,7 @@ export function create(container, opts = {}) {
     setSetup(s) { aSign = s.aSign || 1; buildMachine(s); setA(aDeg); },
     setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons,
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
-    simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost,
+    simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost, simPart,
     setIndexAngles, setLeftover, setToolChanges, highlight,
     // the setting a click at a point of the view (client x, y) would go to; where a piece of the setup is on screen
     settingAt(x, y) { return settingAt({ clientX: x, clientY: y }); },
