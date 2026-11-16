@@ -38,9 +38,9 @@ function io(M) {
     step(t) { steps.push(t); }
   };
 }
-async function go(name, w, p, start) {
+async function go(name, w, p, start, job) {
   console.log(name);
-  const M = machine(w, start), o = P.resolve(JOB, p), I = io(M);
+  const M = machine(w, start), o = P.resolve(job || JOB, p), I = io(M);
   if (o.err.length) { console.log('  settings: ' + o.err.map((e) => e.t).join(' / ')); return { M, o, err: new Error('settings') }; }
   try { const res = await P.run(o, I); return { M, o, res, I }; } catch (e) { return { M, o, err: e, I }; }
 }
@@ -55,6 +55,14 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
     ok(near(r.M.S.wco.z, -78.9, 0.002), 'Z0 on the axis (' + r.M.S.wco.z.toFixed(4) + ')');
     ok(near(r.M.S.wco.x, r.M.jawFace(), 0.002), 'X0 at the jaw face (' + r.M.S.wco.x.toFixed(4) + ' / ' + r.M.jawFace() + ')');
     ok(r.res.set.x && r.res.set.y && r.res.set.z, 'says X, Y and Z were set');
+  }
+  // 0.14.0: X0 5/16" in front of the jaw face (the rotary's x0_ahead)
+  r = await go('3D probe, XYZ, X0 5/16" in front of the jaw face', { tip: 'ball', tr: 1, holderR: 12.5, reach: 30, conductive: 'all', axisY: -200.37, axisZ: -78.9 }, PROBE3D, null,
+    { rig: { chuck: { dia: 100 }, nut: { dia: 35 }, x0_ahead: 7.9375 }, stock: { shape: 'round', dia: 40 } });
+  ok(!r.err, 'runs' + (r.err ? ': ' + r.err.message : ''));
+  if (!r.err) {
+    ok(near(r.M.S.wco.x, r.M.jawFace() + 7.9375, 0.002), 'X0 7.9375 mm in front of the jaw face (' + r.M.S.wco.x.toFixed(4) + ' / ' + r.M.jawFace() + ')');
+    ok(near(r.M.S.wco.y, -200.37, 0.002) && near(r.M.S.wco.z, -78.9, 0.002), 'Y0 Z0 still on the axis');
     ok(near(r.res.dia, 80, 0.05), 'measures the chuck about 80 across (' + r.res.dia.toFixed(3) + ')');
     ok(!r.res.notes.length, 'no notes');
     ok(r.M.S.abs && r.M.S.metric, 'leaves the controller in G90 (absolute)');

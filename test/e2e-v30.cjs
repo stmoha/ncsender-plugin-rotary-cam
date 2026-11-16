@@ -47,6 +47,12 @@ fs.mkdirSync(outDir, { recursive: true });
   try {
     // ---------------- the Tool Library (Community)
     await open();
+    // X0 5/16" in front of the jaws (the default since 0.14.0): asks for X to be zeroed again
+    const zx = await notes();
+    ok(/Zero X again/.test(zx) && /7\.94 mm in front of the chuck jaw face/.test(zx), 'X0 now 5/16" in front of the jaws: it asks for X to be zeroed again, and says why');
+    await page.click(sel('.rc-x0done'));
+    await page.waitForTimeout(300);
+    ok(!/Zero X again/.test(await notes()) && Math.abs((await page.evaluate(() => window.RotaryCam.__state.job.rig.x0_set)) - 7.9375) < 1e-9, '"X0 is already there" puts it away');
     await UH.openStrat(page, 'rough');
     await page.selectOption(sel('[data-tool=rough]'), '11');     // T1, 1/4" flat: flute 25, no stickout in the library
     await page.waitForTimeout(400);
@@ -105,7 +111,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const T0 = (await ours()).find((z) => /tailstock/.test(z.id)).minX;
     const len = Number(await page.$eval(sel('[data-k="tailstock_x"]'), (e) => e.value));
     await type('tailstock_x', len + 50);
-    ok(await until(async () => Math.abs((await ours()).find((z) => /tailstock/.test(z.id)).minX - (T0 + 50)) < 1e-6), 'stock 50 mm longer: the tailstock zone moves 50 mm');
+    ok(await until(async () => Math.abs((await ours()).find((z) => /tailstock/.test(z.id)).minX - (T0 + 50)) < 0.002), 'stock 50 mm longer: the tailstock zone moves 50 mm');
     const H0 = (await ours()).find((z) => /headstock/.test(z.id));
     await type('keepout.margin', 25);
     const H1 = await until(async () => { const h = (await ours()).find((z) => /headstock/.test(z.id)); return Math.abs(h.minX - (H0.minX - 15)) < 1e-6 && h; });

@@ -83,8 +83,12 @@ def parse(path):
     stickouts = {}
     moves = []  # (type, op, kind, dia, x0,z0,a0, x1,z1,a1, F or None, y)
     errors = []
+    xoff = 0.0   # X0 in front of the jaw face (since 0.14.0, said in the header): checked from the jaw face
     for n, raw in enumerate(open(path), 1):
         line = raw.strip()
+        xa = re.search(r"\[x0 ahead ([\d.]+) mm\]", line)
+        if xa:
+            xoff = float(xa.group(1))
         m = re.match(r"\(OP (\w+) T\d+ D([\d.]+) (.*)\)", line)
         if m:
             st["op"], st["dia"] = m.group(1), float(m.group(2)) * st["scale"]
@@ -121,7 +125,7 @@ def parse(path):
         y_prev = st["Y"]
         for ax in "XYZA":
             if ax in w:
-                st[ax] = float(w[ax]) * (1.0 if ax == "A" else st["scale"])
+                st[ax] = float(w[ax]) * (1.0 if ax == "A" else st["scale"]) + (xoff if ax == "X" else 0.0)
         if motion == "G1":
             if st["mode"] == "G93" and "F" not in w:
                 errors.append(f"line {n}: G1 in G93 without F")

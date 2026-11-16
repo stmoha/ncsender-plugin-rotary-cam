@@ -228,7 +228,8 @@ fs.mkdirSync(outDir, { recursive: true });
     let sim = await H('/__test/probe');
     ok(/^Done: X0, Y0 and Z0 set/.test(m), 'done');
     ok(!sim.crash, 'nothing hit');
-    ok(near(sim.wco.x, sim.jawFace, 0.003) && near(sim.wco.y, -200.3, 0.003) && near(sim.wco.z, -79.6, 0.003), 'X0 on the jaw face, Y0 Z0 on the true axis: ' + [sim.wco.x, sim.wco.y, sim.wco.z].map((v) => v.toFixed(4)).join(' '));
+    // since 0.14.0 X0 is 5/16" (7.9375 mm) in front of the jaw face by default
+    ok(near(sim.wco.x, sim.jawFace + 7.9375, 0.003) && near(sim.wco.y, -200.3, 0.003) && near(sim.wco.z, -79.6, 0.003), 'X0 5/16" in front of the jaw face, Y0 Z0 on the true axis: ' + [sim.wco.x, sim.wco.y, sim.wco.z].map((v) => v.toFixed(4)).join(' '));
     ok(/runs 0\.12\d? mm off true/.test(m), 'says how far off true the chuck runs');
     ok(/measured 80(\.0)? mm across/.test(m), 'says what the chuck measured');
     ok(sim.metric && sim.abs, 'the controller is back in mm, absolute');

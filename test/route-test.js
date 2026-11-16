@@ -3,7 +3,8 @@
 const core = require('../lib/cam-core.js');
 let fails = 0;
 const ok = (c, what) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + what); };
-const job = (tc, over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, Object.assign({ rig: { tc } }, over)));
+// X0 on the jaw face here (since 0.14.0 it defaults to 5/16" in front of it: zones-test)
+const job = (tc, over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, Object.assign({ rig: { tc, x0_ahead: 0 } }, over)));
 const crosses = (path, rects) => path.some((p, i) => i && rects.some((r) => core.segHitsRect(path[i - 1].x, path[i - 1].y, p.x, p.y, r)));
 const len = (path) => path.reduce((a, p, i) => a + (i ? Math.hypot(p.x - path[i - 1].x, p.y - path[i - 1].y) : 0), 0);
 

@@ -64,7 +64,9 @@ commands: README › Development.
 - `config.html` + `manifest.json`: the plugin entry. `build.mjs` packages it.
 
 ## Machine model
-Rotary axis along X with the chuck at −X. X0 is at the jaw face; Y0 Z0 are on the
+Rotary axis along X with the chuck at −X. Inside Rotary CAM X is from the jaw face; the
+program's X0 is `rig.x0_ahead` (5/16″) in front of it (`core.x0Ahead`, the post's `LX`, the
+`[x0 ahead N mm]` header the simulator and verifier read back). Y0 Z0 are on the
 axis. grblHAL: `$376` bit 0 makes A rotary (if A isn't rotary, inch programs scale
 A by 25.4, so those are posted in mm), and `$103` is A's steps per degree. Which way
 A turns is the job's `a_sign`, set under Machine › Which way A turns.

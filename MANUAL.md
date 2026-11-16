@@ -27,9 +27,15 @@ By installing or using Rotary CAM, you accept all of the above. Now go make chip
 
 ## 1. How the program sees the machine
 
-- **Work zero:** X0 is the chuck's jaw face. Y0 Z0 is the rotary axis, the centreline of
-  the chuck. Every move in the program is relative to that, so Z is "how far above the
-  axis".
+- **Work zero:** X0 is 5/16″ (7.94 mm) in front of the chuck's jaw face, toward the part.
+  Y0 Z0 is the rotary axis, the centreline of the chuck. Every move in the program is
+  relative to that, so Z is "how far above the axis". Why not on the jaw face: ncSender
+  stops a jog at a keep-out zone by the centre of the bit, not its edge. With X0 out in
+  front, Rotary CAM's headstock zone (ncSender Pro) reaches to just short of X0, and a jog
+  toward the chuck stops a bit up to 5/8″ across before it touches the jaws. No cut comes
+  closer to the jaws than X0. Change the distance under Rotary & spindle › **Work zero (X0)
+  in front of the jaws** (0 puts X0 on the jaw face); then zero X again. If you zero by
+  hand: touch the jaw face, set X0 there, then move X0 5/16″ toward the part.
 - **A:** degrees, turning continuously. A roughing or finishing pass turns A many times
   (the stats show *A turns*: often hundreds), so A has to be accurate over hundreds of
   turns, not just one.
@@ -368,8 +374,9 @@ Then zero (or measure) Z with the first tool, as above.
 - [ ] **Which way A turns** checked with **Turn A +90°**; the A+ arrow in 3D points the
       same way the chuck turned.
 - [ ] Rotary & spindle sizes measured; the 3D view looks like the machine.
-- [ ] Zero: X0 at the jaw face, Y0 Z0 on the axis. Jog to X0 Y0 and lower Z near the
-      stock's top to check by eye.
+- [ ] Zero: X0 5/16″ in front of the jaw face (or what Work zero in front of the jaws
+      says), Y0 Z0 on the axis. Jog to X0 Y0 and lower Z near the stock's top to check by
+      eye: the tip should be 5/16″ in front of the jaws.
 - [ ] If you probed the chuck: its body diameter measured with calipers (not the jaws), A
       zeroed with a jaw straight up, a pin (or a bit turned when it asked), and the first run
       watched with a hand on Stop.

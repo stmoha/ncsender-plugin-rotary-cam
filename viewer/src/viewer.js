@@ -364,10 +364,10 @@ export function create(container, opts = {}) {
     aLabel.position.set(ax, -arcR * 0.9 * aSign, arcR * 0.75);
     aLabel.scale.set(8 * aLabel.userData.aspect, 8, 1);
     machine.add(aLabel);
-    // the G-code's zero: X0 at the jaw face, Y0 Z0 on the axis. Drawn through everything,
-    // since it's inside the stock.
+    // the G-code's zero: X0 at the jaw face (or s.x0Ahead in front of it), Y0 Z0 on the axis.
+    // Drawn through everything, since it's inside the stock.
     const org = new THREE.Group(), OL = Math.max(10, Math.min(18, R * 0.55));
-    org.position.set(x0, 0, 0);
+    org.position.set(x0 + (s.x0Ahead || 0), 0, 0);
     [[1, 0, 0, '#d64545', 'X'], [0, 1, 0, '#2fa36b', 'Y'], [0, 0, 1, '#2a78d6', 'Z']].forEach(([x, y, z, col, name]) => {
       const d = new THREE.Vector3(x, y, z);
       const ah = new THREE.ArrowHelper(d, new THREE.Vector3(), OL, new THREE.Color(col).getHex(), 3.4, 2.2);

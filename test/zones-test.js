@@ -4,7 +4,9 @@ const core = require('../lib/cam-core.js');
 let fails = 0;
 const ok = (c, what) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + what); };
 const near = (a, b) => Math.abs(a - b) < 1e-6;
-const job = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
+// X0 on the jaw face for the first checks; X0 in front of it (the default since 0.14.0) below
+const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, { rig: { x0_ahead: 0 } }), over));
+const jobAhead = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
 
 // the boxes, from the setup (defaults: chuck D100 x 45, headstock 110 long, 55 each side;
 // live centre D30 x 28, tailstock 90 long, 35 each side; stock end at X245; margin 10)
@@ -85,6 +87,38 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
   const prog = core.buildProgram(j, p, maps, 'cyl', () => {}, () => {});
   const hits = core.programZoneHits(prog.gcode, core.zonesFor(j, zero, 'x'), zero);
   ok(/M6 T/.test(prog.gcode) && hits.length === 0, `roughing, finishing and two routed tool changes: no crossing of Rotary CAM's own zones ${JSON.stringify(hits)}`);
+}
+// X0 5/16" in front of the jaw face (the default): the headstock zone reaches to 0.1 mm short
+// of X0, programs and tool change positions are in X0's terms, no cut comes closer to the
+// jaws than X0 + 0.1 mm, the simulator reads the program back to the jaw face, and the
+// probe and a corner set X0 out there
+{
+  const A = 7.9375, zero = { x: -300, y: -200, z: -80 };
+  const j = jobAhead({ rig: { tc: { route: true, zero, change: { x: -560, y: -380 }, setter: null, zsafe: -5 } }, units: 'mm' });
+  ok(near(core.x0Ahead(j), A) && near(core.DEFAULTS.rig.x0_ahead, A), 'the default: X0 is 5/16" (7.9375 mm) in front of the jaw face');
+  const [h] = core.zoneBoxes(j);
+  ok(near(h.x1, A - 0.1), `the headstock zone reaches to 0.1 mm short of X0 (${h.x1.toFixed(4)} mm from the jaw face): a jog stops a 1/2" bit's edge ${(h.x1 - 6.35).toFixed(2)} mm off the jaws`);
+  const zs = core.zonesFor(j, zero, 'x');
+  ok(near(zs[0].maxX, -300.1), `in machine terms it ends 0.1 mm short of G54 X (${zs[0].maxX})`);
+  ok(near(core.chuckKeep(j), A + 0.1) && near(core.chuckKeep(jobAhead({ chuck_clearance: 12 })), 12), 'Keep away from the jaws is at least X0 + 0.1 mm (more stays more)');
+  const mb = { min: [15, -10, -10], max: [85, 10, 10], rmax: 14, ends: { lo: true, hi: true }, tris: new Float32Array(0), solid: new Float32Array(0) };
+  const p = core.plan(j, core.workMesh(j, mb));
+  const maps = { roughZ: Array.from({ length: p.nAng }, () => new Float64Array(p.roughX.length).fill(10)), finZ: Array.from({ length: p.nAng }, () => new Float64Array(p.finNrev + 2).fill(10)) };
+  const prog = core.buildProgram(j, p, maps, 'cyl', () => {}, () => {});
+  const g = prog.gcode, L = g.split('\n');
+  const xs = L.filter((l) => /^G1 /.test(l)).map((l) => l.match(/X(-?[\d.]+)/)).filter(Boolean).map((m) => Number(m[1]));
+  ok(/\(Work zero: X0 = 7\.938 mm in front of the chuck jaw face \[x0 ahead 7\.9375 mm\]/.test(g), 'the header says where X0 is');
+  ok(Math.min(...xs) >= 0.1 - 1e-9, `no X in the program below X0.1 (lowest X${Math.min(...xs)})`);
+  const m6 = L.findIndex((l) => /^M6 /.test(l)), lastXY = L.slice(0, m6).reverse().find((x) => /^G0 X/.test(x));
+  ok(/X-260\.000 Y-180\.000/.test(lastXY), `the tool change position is still G54 X-260 Y-180 (machine -560, -380): ${lastXY}`);
+  ok(core.programZoneHits(g, zs, zero).length === 0, 'and the program, from X0 Y0, stays out of both zones');
+  const sim = require('../lib/cam-sim.js'), pr = sim.parseProgram(g, j), p0 = sim.parseProgram(g.replace(/\[x0 ahead [\d.]+ mm\]/, ''), j);
+  let mn = Infinity; for (let i = 0; i < pr.count; i++) if (pr.type[i] === 1) mn = Math.min(mn, pr.x[i]);
+  if (!near(pr.x[pr.count - 1] - p0.x[p0.count - 1], A, 1e-6)) console.log('  sim', pr.count, p0.count, pr.x[pr.count - 1], p0.x[p0.count - 1]);
+  ok(near(pr.x[pr.count - 1] - p0.x[p0.count - 1], A, 1e-6) && mn >= A + 0.1 - 1e-6, `the simulator reads it back to the jaw face (cuts no closer than ${mn.toFixed(3)} mm from it)`);
+  const IN = 25.4, corner = { x: -43.0984 * IN, y: -43.7339 * IN, z: -0.9649 * IN };
+  const cz = core.cornerZero(jobAhead({ rig: { corner: { dx: 4.6023 * IN, dy: 1.4142 * IN, dz: -1.3826 * IN } } }), corner);
+  ok(near(cz.to.x, -38.4961 * IN + A, 1e-6), 'zeroed from a corner: X0 goes 5/16" in front of the jaw face');
 }
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exitCode = fails ? 1 : 0;

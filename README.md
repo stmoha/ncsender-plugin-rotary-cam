@@ -47,10 +47,20 @@ Needs ncSender 2.0.88 or later (Pro 2.0.149), grblHAL, and a rotary A axis paral
 ## Setup it assumes
 
 - A rotates about X. Chuck on the left (−X), tailstock on the right (+X).
-- **Work zero: X0 = chuck jaw face, Y0 and Z0 = rotary centreline.** Z in the program is
-  the tool-tip radius, so Z0 must be the axis, not the top of the stock. The 3D view marks
-  it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Probe the
-  chuck** (beside Generate toolpaths) finds it by touching off the chuck (below).
+- **Work zero: X0 = 5/16″ (7.94 mm) in front of the chuck jaw face, Y0 and Z0 = rotary
+  centreline.** Z in the program is the tool-tip radius, so Z0 must be the axis, not the
+  top of the stock. The 3D view marks it (*G-code zero: X0 Y0 Z0*), drawn through the stock
+  since it's inside it. **Probe the chuck** (beside Generate toolpaths) finds it by touching
+  off the chuck (below). Why X0 isn't on the jaw face: ncSender stops a jog at a keep-out
+  zone by the bit's centre, not its edge, and starts drawing every program at X0. With X0
+  out in front, the headstock zone can reach to 0.1 mm short of it, programs still start,
+  and a jog toward the chuck stops a bit up to 5/8″ across before it touches the jaws. No
+  cut comes closer to the jaws than X0 plus 0.1 mm. **Work zero (X0) in front of the jaws**
+  (Rotary & spindle, Chuck) sets the distance: more for bigger bits, 0 for X0 on the jaw
+  face. Every setting still measures from the jaw face; only the program's X numbers move.
+  Change it and Rotary CAM asks you to zero X again (Probe the chuck, or **X0 is already
+  there**). The program header says where X0 is (*X0 = 7.938 mm in front of the chuck jaw
+  face*).
 - Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
 - The rotary passes keep the tool tip above the axis, except where a spot can only be
   reached by going past it (see **Deepest below the axis** under Stock & rotary).
@@ -84,7 +94,7 @@ wrong mirrors anything asymmetric.
    - **On axis:** what sits on the rotary centreline: the centre of the part, the centre
      of its chuck end (a chess piece's round base), the tailstock end, or the model origin.
    - **A slider:** turns the part and its stock the way the rotary will.
-   - **Part starts at X** (Part placement): from the jaw face (X0) to where the work
+   - **Part starts at X** (Part placement): from the jaw face to where the work
      starts: the chuck end tenon first, then the part. A longer tenon
      moves the part along, so you set this once. Keep it at least **Keep away from the
      jaws**, or the tools can't cut all of the tenon; the check that says so has a
@@ -343,7 +353,7 @@ wrong mirrors anything asymmetric.
    own in ncSender's settings, *Rotary headstock* (chuck and headstock) and *Rotary
    tailstock* (live centre and tailstock), so ncSender won't jog into them or start a program
    that goes through them. They're these boxes plus **Extra room round them** on every side
-   but the one facing the part (they stop 0.1 mm short of the jaw face and the end of the stock: ncSender draws a program from X0, the jaw face, before its first move), placed
+   but the one facing the part (the headstock zone stops 0.1 mm short of X0, which is 5/16″ in front of the jaw face, and the tailstock zone 0.1 mm past the end of the stock: ncSender draws a program from X0 before its first move), placed
    from the rotary's work zero (G54), and they follow the sizes and the stock length as you
    change them. If the work zero moves away (a job on the table, say) they stay put and the
    panel asks before moving them to it. One switched off in ncSender's settings stays off;

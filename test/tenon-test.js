@@ -3,7 +3,8 @@ const core = require('../lib/cam-core.js');
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const near = (a, b, t = 1e-6) => Math.abs(a - b) <= t;
-const fresh = (o) => core.prepareJob(core.deepMerge(core.DEFAULTS, o || {}));
+// X0 on the jaw face here (since 0.14.0 it defaults to 5/16" in front of it: zones-test)
+const fresh = (o) => core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, { rig: { x0_ahead: 0 } }), o || {}));
 const raw = core.cylinderTris(0, 100, 10, 32);               // a 100 mm long, 20 mm bar along X
 
 let job = fresh();

@@ -48,6 +48,9 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click('#open');
     await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0, null, { timeout: 30000 });
     await page.waitForFunction(() => window.RotaryCam.__state.job.rig.tc.zero, null, { timeout: 10000 });
+    // X0 on the jaw face here: this puts the part close to the chuck on purpose (since 0.14.0
+    // X0 defaults to 5/16" in front of the jaws, and no cut comes closer than that)
+    await page.evaluate(() => { const S = window.RotaryCam.__state; S.job.rig.x0_ahead = 0; S.job.rig.x0_set = 0; });
     await page.setInputFiles('#rcam-root input[type=file]', part);
     await page.waitForFunction(() => window.RotaryCam.__state.mesh, null, { timeout: 120000 });
     await page.selectOption('#rcam-root .rc-centre', 'origin');
