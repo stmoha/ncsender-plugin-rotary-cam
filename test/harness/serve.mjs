@@ -26,6 +26,9 @@ const LIBRARY = [
   // a tapered ball the way it has to be entered today: as a V-bit, diameter = shank
   { id: 15, toolId: 15, toolNumber: 5, name: '1mm Tapered Ball 3.6° 1/8" shank', type: 'v-bit', diameter: 3.175, dimensions: { flute_length: 25 } }
 ];
+// Pro only (ApiResponses.cs AppInfoResponse; Pro's settings.keepout): POST /__test/pro { pro, zones }
+let EDITION = 'community';
+let KEEPOUT = { zones: [], parked: [] };
 const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { value: '24000' }, 110: { value: '5000' }, 112: { value: '2500' }, 113: { value: '5400' }, 133: { value: '0' }, 376: { value: '1' } } };
 
 // the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
@@ -124,7 +127,16 @@ http.createServer(async (req, res) => {
     return json(res, { title: b.label, content: html, options: { size: 'large' } });
   }
   if (p === `/api/plugins/${ID}/config-ui`) return json(res, { configUI: readFileSync(join(PLUGIN_DIR, 'config.html'), 'utf8') });
-  if (p === '/api/settings') return json(res, { unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } });
+  if (p === '/api/app-info') return json(res, { edition: EDITION, kiosk: false });
+  // ServerBuilder.cs: PATCH deep-merges objects, arrays are replaced
+  if (p === '/api/settings' && req.method === 'PATCH') {
+    const b = JSON.parse(await body(req));
+    if (b.keepout) KEEPOUT = Object.assign({}, KEEPOUT, b.keepout);
+    return json(res, { success: true });
+  }
+  if (p === '/api/settings') return json(res, Object.assign({ unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } }, EDITION === 'pro' ? { keepout: KEEPOUT } : {}));
+  if (p === '/__test/pro' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.pro !== undefined) EDITION = b.pro ? 'pro' : 'community'; if (b.zones) KEEPOUT.zones = b.zones; return json(res, { EDITION, KEEPOUT }); }
+  if (p === '/__test/pro') return json(res, { EDITION, KEEPOUT });
   if (p === '/api/plugins') return json(res, [{ id: ID, name: 'Rotary CAM', enabled: true }].concat(MTC.installed ? [{ id: 'com.ncsender.manualtoolchange', name: 'Manual Tool Changer', enabled: MTC.enabled }] : []));
   if (p === '/api/plugins/com.ncsender.manualtoolchange/settings') { if (!MTC.installed) { res.writeHead(404); return res.end(); } return json(res, MTC.settings); }
   if (p === `/api/plugins/${ID}/check-update`) return json(res, UPDATE);
@@ -155,6 +167,16 @@ http.createServer(async (req, res) => {
   if (p === '/__test/machine' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.ctrl) CTRL = Object.assign(CTRL, b.ctrl); if (b.machine) MACHINE = Object.assign(MACHINE, b.machine); if (b.mtc) MTC = Object.assign(MTC, b.mtc); if (b.safeZ !== undefined) SAFEZ = b.safeZ; return json(res, { MACHINE, MTC, SAFEZ }); }
   if (p === '/__test/units' && req.method === 'POST') { UNITS = (await body(req)).trim(); return json(res, { units: UNITS }); }
   if (p === '/api/tools') return json(res, LIBRARY);
+  // ToolEndpoints.cs: PUT replaces the whole tool
+  const tm = p.match(/^\/api\/tools\/(\d+)$/);
+  if (tm) {
+    const i = LIBRARY.findIndex((t) => String(t.id) === tm[1]);
+    if (i < 0) { res.writeHead(404); return res.end(); }
+    if (req.method === 'PUT') { const t = JSON.parse(await body(req)); t.id = LIBRARY[i].id; LIBRARY[i] = t; return json(res, t); }
+    return json(res, LIBRARY[i]);
+  }
+  // change a library tool as ncSender or another plugin would: POST { id, dimensions }
+  if (p === '/__test/tool' && req.method === 'POST') { const b = JSON.parse(await body(req)); const t = LIBRARY.find((x) => x.id === b.id); Object.assign(t, b, { dimensions: Object.assign({}, t.dimensions, b.dimensions) }); return json(res, t); }
   if (p === '/api/firmware') return json(res, FIRMWARE);
   if (p === '/api/server-state') { simSync(); return json(res, { machineState: MACHINE, senderStatus: 'idle' }); }
   if (p === '/api/gcode-files/file') {

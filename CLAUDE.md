@@ -82,7 +82,7 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
 - A field's change fires on blur. A click on a message's button right after typing
   can be lost if the list rebuilds, so blur the field first in tests.
 - Some old browser tests fail on `main` too and aren't from new work: `e2e-3d`, `e2e-v10`,
-  `e2e-v16`, `e2e-v18` (and one check in `e2e-v11`). Compare with the last commit before
+  `e2e-v16`, `e2e-v18` (and one check in `e2e-v11`, the two-computer checks in `e2e-v14`). Compare with the last commit before
   chasing them.
 - The probe dialog's picture (`probePic` in rotary-ui.js): every dimension and part has
   `data-h` (the setting it goes to on a click); the tools have `data-t` and a `ph-` class
@@ -94,5 +94,12 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
   Anything that writes the settings must send `session` along, or it's lost.
 - Finishing has two patterns (`finish.pattern`): the map's columns are `plan.finDx` apart
   for lines, one per turn for the spiral. Read them with `core.finColX` / `finColAt`.
+- Tool Library: a library tool's stickout and flute length are written back to it
+  (`libWrite` in rotary-ui.js, PUT of the whole tool) and read every 4 s (`takeLibrary`);
+  `own` is only for tools typed in. Never write TLO, diameter or number.
+- Keep-out zones (ncSender Pro, `/api/app-info` edition `pro`): ours are the ids in
+  `core.ZONE_IDS`, in `settings.keepout.zones` (machine mm), written with PATCH of the whole
+  list (`syncZones`), placed from `job.keepout.at`. Other zones go in `rig.tc.zones` for the
+  routes and `core.programZoneHits`. Harness: `POST /__test/pro { pro, zones }`; `test/e2e-v30.cjs`.
 - The CI tests are in `.github/workflows/tests.yml`. Before a test ZIP, run them
   plus the e2e tests that touch what changed.

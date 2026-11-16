@@ -338,7 +338,19 @@ wrong mirrors anything asymmetric.
    take in the motor and pulley, or the lever and handwheel, without modelling each piece;
    setting the front and back separately means a motor behind the chuck or a lever out the
    back grows the box only on that side, not both. (0.7.0's single width carries over
-   as half to each side.) Click into or hover over any setting and the 3D view lights up
+   as half to each side.)
+   **Keep-out zones in ncSender** (ncSender Pro): Rotary CAM keeps two keep-out zones of its
+   own in ncSender's settings, *Rotary headstock* (chuck and headstock) and *Rotary
+   tailstock* (live centre and tailstock), so ncSender won't jog into them or start a program
+   that goes through them. They're these boxes plus **Extra room round them** on every side
+   but the one facing the part (they end at the jaw face and at the end of the stock), placed
+   from the rotary's work zero (G54), and they follow the sizes and the stock length as you
+   change them. If the work zero moves away (a job on the table, say) they stay put and the
+   panel asks before moving them to it. One switched off in ncSender's settings stays off;
+   deleting both there turns **Keep zones round the rotary** off. Every other zone (an ATC's,
+   ones you drew) is left as it is: tool change routes go round them, and the program is
+   checked against all of them, so a program ncSender would refuse to start is flagged here
+   first. Click into or hover over any setting and the 3D view lights up
    the part of the setup it's about, with a dimension line showing what the number
    measures; if that part is off the screen the view swings round to it. The same goes for
    the stock, the keep-aways, retract height, each tool's stickout, the part's start and
@@ -356,6 +368,12 @@ wrong mirrors anything asymmetric.
    a % of the tool diameter in the box under each; the other follows. Typed as a %, it stays
    that % when you change the tool. Each operation's tool has a **Stickout**: how far it sticks out of the nut
    (from the Tool Library's stickout when it has one, otherwise its flutes plus a little).
+   For a tool picked from the Tool Library, the **Stickout** and **Flute length** live in the
+   library: typing them here saves them there, and a change made there (in another plugin,
+   or on another computer) comes in here within a few seconds, dropping toolpaths that no
+   longer match. ncSender's Tool Library tab doesn't show these two yet; they're kept with
+   the tool all the same. A tool typed in here keeps its own. Nothing else of the tool is
+   written: not its diameter, type, number or tool length offset (TLO, which sets Z zero for it).
    The 3D view draws all of it at size, the tool with its nut and spindle.
    Every operation keeps the whole tool, the nut and the spindle off the chuck, headstock,
    live centre and tailstock, and keeps the nut and spindle off the part, its tenons and
@@ -538,8 +556,8 @@ anything is made or sent. If it means the toolpaths no longer match the settings
 dropped rather than loaded, and the message says which settings changed; a field you're
 typing in is left alone until you leave it. If ncSender can't be reached it keeps trying
 and says so. A stickout or flute length you type for a Tool
-Library tool is kept when Rotary CAM opens again; picking the tool again takes the
-library's values.
+Library tool is saved in the library (since 0.14.0; one typed before that goes there the
+first time Rotary CAM opens), so every computer and plugin sees the same.
 
 ## Known gaps
 
@@ -553,10 +571,11 @@ library's values.
   move between the tool change position and the tool setter can't be steered (it's
   flagged when it crosses the rotary). The program's first move, from wherever the spindle
   is to over the part, is a straight line at Safe Z.
-- ncSender Pro's Keepout Zone is one rectangle in X and Y, and nothing may pass over it at
-  any height. Set around the headstock and chuck, it keeps jogs and ncSender's tool change
-  moves out of them and doesn't get in this program's way; it can't cover the tailstock as
-  well. Rotary CAM doesn't rely on it.
+- ncSender Pro's keep-out zones are rectangles in X and Y, and nothing may pass over them
+  at any height. Rotary CAM's own two (see Rotary & spindle) are updated while it's open:
+  change the setup with Rotary CAM closed and they catch up when you next open it. The
+  collision checks don't rely on them. ncSender's own move between the tool change
+  position and the tool setter isn't checked against zones.
 - The simulation keeps up to three gaps per X and angle and draws the outermost, so a
   pocket hidden behind another one only shows through Indexed's yellow blocks.
 - Tapered balls take about three times as long to calculate as plain balls: OpenCAMLib's
@@ -590,6 +609,7 @@ node test/coil-test.js                                     # the core cleared fr
 node test/probe-test.js                                    # Probe the chuck against a pretend machine (test/harness/probe-machine.cjs)
 node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
 node test/setups-test.js                                   # setups: old jobs become one, any order gives the same moves, rest roughing, two setups
+node test/zones-test.js                                    # keep-out zones: Rotary CAM's two, the program check, routes round other zones
 node test/finish2-test.js                                  # rest finishing: a flat end mill after a tapered ball takes most of what it left, nothing cut into the part
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
@@ -610,6 +630,7 @@ node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the 
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
+node test/e2e-v30.cjs out/                                 # Tool Library stickout and flute length both ways; Pro keep-out zones kept, followed, left off, moved, checked
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

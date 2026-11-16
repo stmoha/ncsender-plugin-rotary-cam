@@ -143,6 +143,14 @@ part up with a dimension.
 - **Tailstock:** body, lock lever and handwheel, as one box, like the headstock.
 - **Collet nut and spindle:** nut diameter and length, spindle diameter.
 - **Keep the holder clear by:** how close the nut and spindle may come to anything.
+- **Keep-out zones in ncSender** (ncSender Pro only): with **Keep zones round the rotary**
+  on, Rotary CAM puts two keep-out zones in ncSender, round the chuck and headstock and round
+  the live centre and tailstock, so ncSender won't jog into them or start a program that
+  goes through them. They follow the sizes above and the stock length, plus **Extra room
+  round them**. They're placed from the work zero, so zero on the rotary first. If you had a
+  zone of your own round the rotary, delete it in ncSender's settings once these look
+  right (ncSender's toolpath view draws every zone). A zone of its own switched off there stays off. The program is
+  checked against every zone in ncSender before you load it.
 
 ---
 
@@ -336,7 +344,9 @@ Then zero (or measure) Z with the first tool, as above.
      goes to every strategy with the same number. Two different stickouts for one number
      stop Generate with a button for each.
    - **Stickout** is how far the tool sticks out of the collet nut. Measure it: it decides
-     what the nut and spindle can reach, and how far Z can go.
+     what the nut and spindle can reach, and how far Z can go. For a tool from the Tool
+     Library, the stickout and flute length you type are saved in the library, so set them
+     once per tool. Change the stickout whenever you put the tool in the collet differently.
 5. **Generate toolpaths.** Read every message:
    - **Fix** (red): Generate is off until it's sorted.
    - **Danger** (red): the program can hit something.

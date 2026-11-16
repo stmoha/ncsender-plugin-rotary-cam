@@ -1,5 +1,5 @@
 // 0.9.1: settings survive. A stickout and flute length typed for a Tool Library tool stay
-// when Rotary CAM opens again (the library re-sync leaves them alone); every change is saved
+// when Rotary CAM opens again (since 0.14.0 they're saved in the library); every change is saved
 // as it's made and on Close; two computers with Rotary CAM open on the same ncSender don't
 // write over each other's changes, and each sees the other's.
 // node test/e2e-v14.cjs <part> <outdir> [--port N]
@@ -59,12 +59,13 @@ fs.mkdirSync(outDir, { recursive: true });
     const A2 = await computer();
     let j = await job(A2.page);
     ok(j.finish.stickout === 33 && j.finish.tool_length === 20 && String(j.finish.library_id) === '12' && j.finish.tool_number === 2, 'opened again: stickout 33 and flutes 20 kept, still linked to T2');
-    // picking the tool again takes the library's values
+    // picking the tool again takes the library's values: since 0.14.0 the ones typed here
     await openSec(A2.page, 'finish');
     await A2.page.selectOption('#rc-finish-tool', ''); await A2.page.waitForTimeout(300);
     await A2.page.selectOption('#rc-finish-tool', '12'); await A2.page.waitForTimeout(500);
     j = await job(A2.page);
-    ok(j.finish.tool_length === 22, 'picking T2 again takes the library’s flutes (22)');
+    const lib2 = (await H('/api/tools')).find((x) => x.id === 12);
+    ok(j.finish.tool_length === 20 && lib2.dimensions.flute_length === 20 && lib2.dimensions.stickout === 33, 'picking T2 again takes the library’s flutes, which are the 20 typed here (and its stickout 33)');
     await typeIn(A2.page, '#rc-finish-stickout', 33); await typeIn(A2.page, '#rc-finish-tool_length', 20);
     // a change saved even when Close comes right after it
     await openSec(A2.page, 'rough');
