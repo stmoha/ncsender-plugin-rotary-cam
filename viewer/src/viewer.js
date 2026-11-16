@@ -956,7 +956,7 @@ export function create(container, opts = {}) {
         tool.position.set(x, y, b.top + 6); tool.visible = true;
         targets.push(tool);
         dot(hlGroup, [x, y, b.top], 2.5);
-        const lab = pill(text || 'jog the spindle to this side'); lab.scale.multiplyScalar(0.7); lab.center.set(0.5, 1.4); lab.position.set(x, y, b.top); hlGroup.add(lab);
+        const lab = pill(text || 'jog the spindle to this side'); lab.scale.multiplyScalar(0.6); lab.center.set(head ? 0.1 : 0.9, 1.4); lab.position.set(x, y, b.top); hlGroup.add(lab);
         n++;
         break;
       }
