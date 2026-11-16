@@ -11,15 +11,15 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
 {
   const j = job();
   const [h, t] = core.zoneBoxes(j);
-  ok(h.id === 'rotary-cam:headstock' && near(h.x0, -45 - 110 - 10) && near(h.x1, 0) && near(h.y0, -65) && near(h.y1, 65),
-    `headstock and chuck: X${h.x0}..${h.x1} Y${h.y0}..${h.y1} (to the jaw face, no margin on the part's side)`);
-  ok(t.id === 'rotary-cam:tailstock' && near(t.x0, 245) && near(t.x1, 245 + 28 + 90 + 10) && near(t.y0, -45) && near(t.y1, 45),
-    `live centre and tailstock: X${t.x0}..${t.x1} Y${t.y0}..${t.y1} (from the end of the stock)`);
+  ok(h.id === 'rotary-cam:headstock' && near(h.x0, -45 - 110 - 10) && near(h.x1, -0.5) && near(h.y0, -65) && near(h.y1, 65),
+    `headstock and chuck: X${h.x0}..${h.x1} Y${h.y0}..${h.y1} (to half a mm short of the jaw face, no margin on the part's side)`);
+  ok(t.id === 'rotary-cam:tailstock' && near(t.x0, 245.5) && near(t.x1, 245 + 28 + 90 + 10) && near(t.y0, -45) && near(t.y1, 45),
+    `live centre and tailstock: X${t.x0}..${t.x1} Y${t.y0}..${t.y1} (from half a mm past the end of the stock)`);
   const j2 = job({ tailstock_x: 300, keepout: { margin: 0 }, rig: { chuck: { dia: 160 }, head: { front: 40, back: 120 } } });
   const [h2, t2] = core.zoneBoxes(j2);
-  ok(near(h2.y0, -80) && near(h2.y1, 120) && near(h2.x0, -155) && near(t2.x0, 300), 'a chuck wider than the headstock and a longer stock: the zones follow');
+  ok(near(h2.y0, -80) && near(h2.y1, 120) && near(h2.x0, -155) && near(t2.x0, 300.5), 'a chuck wider than the headstock and a longer stock: the zones follow');
   const zs = core.zonesFor(j, { x: -300, y: -200 }, 'com.cncdocs.rotary-cam');
-  ok(zs.length === 2 && zs[0].kind === 'keepout' && zs[0].enabled === true && near(zs[0].minX, -465) && near(zs[0].maxX, -300) && near(zs[0].minY, -265) && near(zs[0].maxY, -135) && zs[0].source === 'com.cncdocs.rotary-cam',
+  ok(zs.length === 2 && zs[0].kind === 'keepout' && zs[0].enabled === true && near(zs[0].minX, -465) && near(zs[0].maxX, -300.5) && near(zs[0].minY, -265) && near(zs[0].maxY, -135) && zs[0].source === 'com.cncdocs.rotary-cam',
     `in ncSender's terms, machine coordinates: ${JSON.stringify(zs[0])}`);
 }
 
@@ -39,6 +39,20 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
   ok(core.programZoneHits(['G20', 'G0 X2 Y0', 'G0 X-10 Y-10'].join('\n'), zones, at).length === 1, 'inches: X-10 Y-10 goes in');
   ok(core.programZoneHits(['G21', 'G0 X50 Y0', 'G53 G0 X-550 Y-500'].join('\n'), zones, at).length === 1, 'G53 X Y are machine coordinates');
   ok(core.programZoneHits(['G21', 'G0 X50 Y0', 'G53 G0 Z-5', 'G0 X60'].join('\n'), zones, at).length === 0, 'G53 Z alone moves nothing in XY');
+}
+
+// ncSender draws a program from work X0 Y0 (the jaw face on the axis) before its first move.
+// 0.14.0's first test build ended the headstock zone at the jaw face, and with the work offset
+// rounded it reached a hair past X0: ncSender said the program crossed it (it starts
+// G0 Z / G0 Y0 / M6, no X until later). The zone now stops short, and the check starts at X0 Y0.
+{
+  const at = { x: -870.3586, y: -847.4818 };    // a work offset that came from inches
+  const g = ['G20 G90 G17 G94', 'G0 Z1.3107', 'G0 Y0.0000', 'M6 T1', 'G0 A-45.000', 'G0 X1.1669', 'G0 Y0.2628', 'G1 X4.8699 F78.7'].join('\n');
+  const old = [{ id: 'rotary-cam:headstock', name: 'Rotary headstock', enabled: true, minX: at.x - 165, minY: at.y - 65, maxX: Math.round(at.x * 1000 + 0.6) / 1000, maxY: at.y + 65 }];
+  const hOld = core.programZoneHits(g, old, at);
+  ok(hOld.length === 1 && hOld[0].line === 3, `a zone reaching just past X0: flagged from the start, as ncSender does (line ${hOld[0] && hOld[0].line})`);
+  const now = core.zonesFor(job(), at, 'x');
+  ok(core.programZoneHits(g, now, at).length === 0, `Rotary CAM's zones now (headstock to X${(now[0].maxX - at.x).toFixed(3)}): not crossed`);
 }
 
 // tool change routes go round other zones too, unless the change position or setter is in one
