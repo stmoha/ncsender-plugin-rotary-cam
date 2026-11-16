@@ -11,15 +11,15 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, over));
 {
   const j = job();
   const [h, t] = core.zoneBoxes(j);
-  ok(h.id === 'rotary-cam:headstock' && near(h.x0, -45 - 110 - 10) && near(h.x1, -0.5) && near(h.y0, -65) && near(h.y1, 65),
-    `headstock and chuck: X${h.x0}..${h.x1} Y${h.y0}..${h.y1} (to half a mm short of the jaw face, no margin on the part's side)`);
-  ok(t.id === 'rotary-cam:tailstock' && near(t.x0, 245.5) && near(t.x1, 245 + 28 + 90 + 10) && near(t.y0, -45) && near(t.y1, 45),
-    `live centre and tailstock: X${t.x0}..${t.x1} Y${t.y0}..${t.y1} (from half a mm past the end of the stock)`);
+  ok(h.id === 'rotary-cam:headstock' && near(h.x0, -45 - 110 - 10) && near(h.x1, -0.1) && near(h.y0, -65) && near(h.y1, 65),
+    `headstock and chuck: X${h.x0}..${h.x1} Y${h.y0}..${h.y1} (to 0.1 mm short of the jaw face, no margin on the part's side)`);
+  ok(t.id === 'rotary-cam:tailstock' && near(t.x0, 245.1) && near(t.x1, 245 + 28 + 90 + 10) && near(t.y0, -45) && near(t.y1, 45),
+    `live centre and tailstock: X${t.x0}..${t.x1} Y${t.y0}..${t.y1} (from 0.1 mm past the end of the stock)`);
   const j2 = job({ tailstock_x: 300, keepout: { margin: 0 }, rig: { chuck: { dia: 160 }, head: { front: 40, back: 120 } } });
   const [h2, t2] = core.zoneBoxes(j2);
-  ok(near(h2.y0, -80) && near(h2.y1, 120) && near(h2.x0, -155) && near(t2.x0, 300.5), 'a chuck wider than the headstock and a longer stock: the zones follow');
+  ok(near(h2.y0, -80) && near(h2.y1, 120) && near(h2.x0, -155) && near(t2.x0, 300.1), 'a chuck wider than the headstock and a longer stock: the zones follow');
   const zs = core.zonesFor(j, { x: -300, y: -200 }, 'com.cncdocs.rotary-cam');
-  ok(zs.length === 2 && zs[0].kind === 'keepout' && zs[0].enabled === true && near(zs[0].minX, -465) && near(zs[0].maxX, -300.5) && near(zs[0].minY, -265) && near(zs[0].maxY, -135) && zs[0].source === 'com.cncdocs.rotary-cam',
+  ok(zs.length === 2 && zs[0].kind === 'keepout' && zs[0].enabled === true && near(zs[0].minX, -465) && near(zs[0].maxX, -300.1) && near(zs[0].minY, -265) && near(zs[0].maxY, -135) && zs[0].source === 'com.cncdocs.rotary-cam',
     `in ncSender's terms, machine coordinates: ${JSON.stringify(zs[0])}`);
 }
 

@@ -128,7 +128,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const mv = await page.$(sel('.rc-zonemove:not([hidden]) [data-act=movezones]'));
     ok(!!mv && /has moved/.test(await page.$eval(sel('.rc-zoneinfo'), (e) => e.textContent)), 'and the panel asks whether to move them');
     await mv.click();
-    ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-100.5)) < 1e-6), 'Move the zones to the rotary: they’re placed from the new work zero');
+    ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-100.1)) < 1e-6), 'Move the zones to the rotary: they’re placed from the new work zero');
 
     // the program is checked against every zone
     await H('/__test/pro', { zones: (await zones()).concat([{ id: 'clamp', name: 'Clamp', kind: 'keepout', enabled: true, minX: -60, minY: -60, maxX: -40, maxY: -40 }]) });

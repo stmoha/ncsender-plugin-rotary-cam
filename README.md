@@ -343,7 +343,7 @@ wrong mirrors anything asymmetric.
    own in ncSender's settings, *Rotary headstock* (chuck and headstock) and *Rotary
    tailstock* (live centre and tailstock), so ncSender won't jog into them or start a program
    that goes through them. They're these boxes plus **Extra room round them** on every side
-   but the one facing the part (they stop half a millimetre short of the jaw face and the end of the stock: ncSender draws a program from X0, the jaw face, before its first move), placed
+   but the one facing the part (they stop 0.1 mm short of the jaw face and the end of the stock: ncSender draws a program from X0, the jaw face, before its first move), placed
    from the rotary's work zero (G54), and they follow the sizes and the stock length as you
    change them. If the work zero moves away (a job on the table, say) they stay put and the
    panel asks before moving them to it. One switched off in ncSender's settings stays off;
