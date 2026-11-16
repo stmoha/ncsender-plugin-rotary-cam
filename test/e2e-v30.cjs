@@ -127,6 +127,9 @@ fs.mkdirSync(outDir, { recursive: true });
     // Here: a headstock / tailstock edge from where the spindle is now (G54 at X-300 Y-200)
     await openSec('rig');
     await H('/__test/machine', { machine: { MPos: '-450.000,-120.000,-10.000' } });   // work X-150 Y80
+    await page.hover(sel('[data-grab="rig.head.back"]')); await page.waitForTimeout(500);
+    const hov = await page.evaluate(() => { const r = document.querySelector('#rcam-root [data-grab="rig.head.back"]').closest('.rc-row'); return r.classList.contains('rc-hl'); });
+    ok(hov, 'hovering a target button lights up its setting (and the spindle over that edge in 3D)');
     await page.click(sel('[data-grab="rig.head.len"]')); await page.waitForTimeout(800);
     await page.click(sel('[data-grab="rig.head.back"]')); await page.waitForTimeout(800);
     const gr = await page.evaluate(() => window.RotaryCam.__state.job.rig.head);

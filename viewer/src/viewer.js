@@ -853,6 +853,9 @@ export function create(container, opts = {}) {
   }
   function clearHighlight() {
     (refs.origin || []).forEach((g) => g.children.forEach((c) => { if (c.userData.origin) c.visible = true; }));
+    // the tool moved to an edge of the headstock or tailstock (grab:...): back where it was
+    if (hl.toolAt && tool) { tool.position.copy(hl.toolAt.p); tool.visible = hl.toolAt.v; }
+    hl.toolAt = null;
     hl.swapped.forEach(([m, mat]) => { m.material = mat; });
     hl.swapped = [];
     disposeTree(hlGroup); hlGroup.clear();
@@ -940,6 +943,21 @@ export function create(container, opts = {}) {
         dim([x, 0, b.top], [x, 0, b.top + 14], [x, y, b.top + 14], [x, y, b.top], text);
         dim([x, 0, 0], [x, 0, b.top + 14], [x, 0, b.top + 14], null, '');
         dot(hlGroup, [x, 0, 0], 2);
+        break;
+      }
+      // a Here button: the spindle over that edge of the box, where to jog the bit to
+      case 'grab:rig.head.len': case 'grab:rig.tail.len': case 'grab:rig.head.front': case 'grab:rig.head.back':
+      case 'grab:rig.tail.front': case 'grab:rig.tail.back': {
+        const head = /head/.test(k), b = box(head ? hd : tl, head ? 'head' : 'tail');
+        if (!b || !tool) break;
+        const x = /len$/.test(k) ? (head ? b.x0 : b.x1) : (b.x0 + b.x1) / 2;
+        const y = /front$/.test(k) ? b.y0 : /back$/.test(k) ? b.y1 : (b.y0 + b.y1) / 2;
+        hl.toolAt = { p: tool.position.clone(), v: tool.visible };
+        tool.position.set(x, y, b.top + 6); tool.visible = true;
+        targets.push(tool);
+        dot(hlGroup, [x, y, b.top], 2.5);
+        const lab = pill(text || 'jog the spindle to this side'); lab.scale.multiplyScalar(0.7); lab.center.set(0.5, 1.4); lab.position.set(x, y, b.top); hlGroup.add(lab);
+        n++;
         break;
       }
       case 'rig.head.top': case 'rig.tail.top': {
