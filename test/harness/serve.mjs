@@ -29,6 +29,7 @@ const LIBRARY = [
 // Pro only (ApiResponses.cs AppInfoResponse; Pro's settings.keepout): POST /__test/pro { pro, zones }
 let EDITION = 'community';
 let KEEPOUT = { zones: [], parked: [] };
+let SESSION_OFF = [];
 const FIRMWARE = { protocol: 'grblhal', settings: { 20: { value: '0' }, 30: { value: '24000' }, 110: { value: '5000' }, 112: { value: '2500' }, 113: { value: '5400' }, 133: { value: '0' }, 376: { value: '1' } } };
 
 // the controller and the Manual Tool Changer (MachineState.cs: g54 from $#, MPos, max travel;
@@ -137,6 +138,8 @@ http.createServer(async (req, res) => {
   if (p === '/api/settings') return json(res, Object.assign({ unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } }, EDITION === 'pro' ? { keepout: KEEPOUT } : {}));
   if (p === '/__test/pro' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.pro !== undefined) EDITION = b.pro ? 'pro' : 'community'; if (b.zones) KEEPOUT.zones = b.zones; return json(res, { EDITION, KEEPOUT }); }
   if (p === '/__test/pro') return json(res, { EDITION, KEEPOUT });
+  // Pro: zones switched off for this session (the visualizer's Zones legend)
+  if (p === '/api/keepout/session') { if (EDITION !== 'pro') { res.writeHead(404); return res.end(); } if (req.method === 'POST') { const b = JSON.parse(await body(req)); SESSION_OFF = b.off ? [...new Set([...SESSION_OFF, b.id])] : SESSION_OFF.filter((x) => x !== b.id); } return json(res, { off: SESSION_OFF }); }
   if (p === '/api/plugins') return json(res, [{ id: ID, name: 'Rotary CAM', enabled: true }].concat(MTC.installed ? [{ id: 'com.ncsender.manualtoolchange', name: 'Manual Tool Changer', enabled: MTC.enabled }] : []));
   if (p === '/api/plugins/com.ncsender.manualtoolchange/settings') { if (!MTC.installed) { res.writeHead(404); return res.end(); } return json(res, MTC.settings); }
   if (p === `/api/plugins/${ID}/check-update`) return json(res, UPDATE);

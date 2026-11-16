@@ -137,6 +137,8 @@ fs.mkdirSync(outDir, { recursive: true });
     await type('keepout.margin', 21);
     const hit = await until(async () => /keep-out zone “Clamp” \(line 3/.test(await notes()));
     ok(hit, 'a program through another zone: flagged before ncSender refuses to start it');
+    await fetch(`http://localhost:${PORT}/api/keepout/session`, { method: 'POST', body: JSON.stringify({ id: 'clamp', off: true }) });
+    ok(await until(async () => !/\u201cClamp\u201d/.test(await notes())), 'switched off for this session in ncSender: no longer flagged');
 
     // deleting both of ours in ncSender's settings turns them off
     await H('/__test/pro', { zones: (await zones()).filter((z) => !/^rotary-cam:/.test(z.id)) });
