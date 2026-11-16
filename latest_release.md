@@ -10,6 +10,16 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - **The program is checked against every keep-out zone** before you load it, the ATC's and your own included, so one ncSender would refuse to start is flagged in Rotary CAM, with the line. Tool change routes round the rotary go round the other zones too.
 - Air-cut the first program after updating and zeroing X again: X0 has moved, and the tool change routes can be different.
 
+**Also new since 0.12.0** (0.13.0 didn't come out on its own)
+- **Setups: strategies in any order.** How a part is cut is now a **setup**: a list of strategies (Corners, Roughing, Finishing, Indexed, Parting) that run top to bottom. **+ Add a strategy** adds one; **drag** them into the order you want (or use the arrow keys on the grip); the copy button puts the same again right after it. The same kind can come more than once: a second Finishing with a smaller tool, a second Roughing with a smaller end mill.
+- **Full or Rest.** Roughing and Finishing can each be set to **Rest**: it plays the program up to that point, sees what the strategies above left, and only cuts there, lifting over the rest. A second Finishing set to Rest is what Rest finishing was (a small flat end mill after a tapered ball, say); a second Roughing set to Rest takes a smaller tool into what the big one couldn't reach. A new second Roughing or Finishing starts as Rest with a 1/8″ flat end mill on the next free tool number.
+- **More than one setup per part.** **New** and **Copy** make another setup for the same part, to try a quicker or a more detailed way of cutting it. They share the part, the stock, the tenons and the machine; Generate makes the one on show.
+- **A tidier side panel.** Three groups that open and close as a whole: **Part** (placement, stock & rotary, tenons), **CAM setups** and **Settings** (rotary & spindle, tool changes, machine). Each strategy is a card with its tool, a Full/Rest tag, and its settings when you click it; hover over it for which tools suit it.
+- **Each strategy in its own colour.** Toolpaths, the buttons on the 3D view and Simulate's line all name the strategy (*Finishing 2*), a repeat in a lighter or darker shade of its kind's colour.
+- **Probe the chuck** is a button beside Generate toolpaths. *Work zero from a corner of the rotary* is gone: probe the chuck, or zero it your usual way.
+- Notes in plain words when the order looks wrong: Finishing before Roughing, Corners after Roughing, Parting not last, Rest with nothing before it.
+- Jobs and projects from before 0.13.0 open as one setup of the operations they had on, in the old order. Air-cut the first program, especially a rest pass.
+
 <p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/setups-helix.webp" width="700" alt="Rotary CAM in dark mode: a helix in 1.5 inch square stock with two CAM setups, fine detail and quick rough. Fine detail runs Corners, Roughing, Finishing 1, Finishing 2 set to Rest with a tapered ball, and Parting; the Corners toolpath is on show, and a note says where Finishing 2 cuts."></p>
 <p align="center"><sub>Two setups for one part, five strategies run top to bottom, and rest finishing with a tapered ball only where the first finish couldn't reach.</sub></p>
 
@@ -17,7 +27,6 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 <p align="center"><sub>Rotary CAM's own keep-out zones in ncSender Pro, beside the ATC's.</sub></p>
 
 **Since 0.2.0**
-- 0.13.0: setups, strategies in any order and set to Rest; more than one setup per part; a tidier side panel; each strategy in its own colour
 - 0.12.0: Probe the chuck for the work zero; finishing along the grain; the same job on another computer; Simulate shows a finished part as finished; Parting does the tailstock end first, or one cut only
 - 0.11.6: cutting past the rotary axis only where it’s needed; finishing and Indexed take any end mill; stepovers as a length or a %; Simulate shows parts open down the middle; Size the stock to fit the part
 - 0.11.5: checks for stock that’s too thin or too short name the field and set it; Part starts at X includes the chuck end tenon; Parting cuts the tenons
