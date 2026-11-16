@@ -25,6 +25,8 @@ fs.mkdirSync(outDir, { recursive: true });
   const shot = async (name) => { await sleep(800); await page.screenshot({ path: path.join(outDir, name) }); log('shot', name); };
   const setField = async (k, v) => { await page.fill(sel(`[data-k="${k}"]`), String(v)); await page.press(sel(`[data-k="${k}"]`), 'Tab'); await sleep(300); };
   const openSec = (k, open = true) => page.evaluate(([k, o]) => { const d = document.querySelector(`#rcam-root details[data-sec=${k}]`); if (d) d.open = o; }, [k, open]);
+  // the checks column: shut, or open (it remembers in this browser)
+  const checks = async (open) => { const shut = await page.$eval(sel('.rc-notes'), (n) => n.classList.contains('rc-shut')); if (shut === open) { await page.click(sel('.rc-noteshead')); await sleep(400); } };
   const grp = async (g, open) => { const is = await page.$eval(sel(`.rc-grp[data-grp=${g}]`), (el) => el.classList.contains('open')); if (is !== open) { await page.click(sel(`[data-grp-toggle=${g}]`)); await sleep(250); } };
 
   await page.goto(`http://localhost:${PORT}/#dark`);
@@ -65,10 +67,14 @@ fs.mkdirSync(outDir, { recursive: true });
   if (opened) { await page.click(sel(`[data-strat-open="${opened}"]`)); await sleep(300); }
   await grp('part', false); await grp('settings', false); await grp('setups', true);
   await page.click(sel('[data-view=iso]')); await sleep(600);
+  await checks(false);
   await shot('setups.png');
 
   // 2: rest finishing: only where Finishing 1 couldn't reach
   await page.click(sel('.rc-op:nth-child(3)')); await sleep(800);
+  await checks(true);
+  await page.evaluate(() => { const m = Array.from(document.querySelectorAll('#rcam-root .rc-msgs .rc-msg')).find((x) => /^Finishing 2/.test(x.textContent)); if (m) m.scrollIntoView({ block: 'start' }); });
+  await page.click(sel('[data-view=iso]')); await sleep(600);
   await shot('rest-finishing.png');
 
   // 3: the keep-out zones in ncSender
@@ -78,6 +84,7 @@ fs.mkdirSync(outDir, { recursive: true });
   await openSec('toolchange', false); await openSec('machine', false); await openSec('rig', true);
   await page.click(sel('[data-view=whole]')); await sleep(400);
   await page.$eval(sel('.rc-zoneinfo'), (e) => e.scrollIntoView({ block: 'center' }));
+  await checks(false);
   await page.hover(sel('[data-k="keepout.margin"]'));
   await shot('keepout-zones.png');
 

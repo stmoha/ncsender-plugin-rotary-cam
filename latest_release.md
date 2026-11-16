@@ -9,6 +9,18 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - **The program is checked against every keep-out zone** before you load it, the ATC's and your own included, so one ncSender would refuse to start is flagged in Rotary CAM, with the line. Tool change routes round the rotary go round the other zones too.
 - Air-cut the first program after updating and zeroing X again: X0 has moved, and the tool change routes can be different.
 
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/setups.png" width="700" alt="Rotary CAM in dark mode: a helix in two CAM setups, Detailed and Quick. Detailed runs Roughing, Finishing 1 and Finishing 2 set to Rest; the finishing spiral wraps the part."></p>
+<p align="center"><sub>Two setups for one part, each its own list of strategies, run top to bottom.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/rest-finishing.png" width="700" alt="Finishing 2 set to Rest with a 1/8 inch ball: its toolpath only where Finishing 1 couldn't reach, and a note saying it cuts in short stretches, about 1% of its spiral."></p>
+<p align="center"><sub>Rest finishing: a smaller ball only where the first finish couldn't reach.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/keepout-zones.png" width="700" alt="Settings, Rotary and spindle: Keep-out zones in ncSender, with Rotary CAM's headstock and tailstock zones in machine coordinates and the ATC's zone listed as another zone."></p>
+<p align="center"><sub>Keep-out zones kept in ncSender Pro, sized from the rotary and placed from the work zero.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/tool-library.png" width="700" alt="Roughing with T1 from the Tool Library; its stickout was changed in the library and the open Rotary CAM took it in, with a note saying so."></p>
+<p align="center"><sub>Stickout and flute length live in the Tool Library: a change there comes straight in.</sub></p>
+
 **Since 0.2.0**
 - 0.13.0: setups, strategies in any order and set to Rest; more than one setup per part; a tidier side panel; each strategy in its own colour
 - 0.12.0: Probe the chuck for the work zero; finishing along the grain; the same job on another computer; Simulate shows a finished part as finished; Parting does the tailstock end first, or one cut only
