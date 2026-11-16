@@ -348,7 +348,11 @@ wrong mirrors anything asymmetric.
    take in the motor and pulley, or the lever and handwheel, without modelling each piece;
    setting the front and back separately means a motor behind the chuck or a lever out the
    back grows the box only on that side, not both. (0.7.0's single width carries over
-   as half to each side.)
+   as half to each side.) The box edges can also be taken from the machine: jog the centre
+   of the bit to an edge (a pendant, a phone or another computer lets you jog while you
+   watch it up close) and press the target button beside **Length along X**, **Reach to the
+   front** or **Reach to the back**. It takes where the spindle is now, from the work zero,
+   so probe the chuck first; it says so if the spindle is on the wrong side of that edge.
    **Keep-out zones in ncSender** (ncSender Pro): Rotary CAM keeps two keep-out zones of its
    own in ncSender's settings, *Rotary headstock* (chuck and headstock) and *Rotary
    tailstock* (live centre and tailstock), so ncSender won't jog into them or start a program

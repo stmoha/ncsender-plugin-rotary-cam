@@ -147,6 +147,11 @@ part up with a dimension.
   tailstock body (the cone, then its round body). Empty: the cone goes straight into the
   body.
 - **Tailstock:** body, lock lever and handwheel, as one box, like the headstock.
+- **Taking the boxes from the machine:** probe the chuck first. Then jog the centre of the
+  bit to an edge of the headstock or tailstock (the far end, the front or the back) and
+  press the target button beside that setting: it takes where the spindle is now. A
+  pendant, your phone or another computer lets you jog while you look at the edge up close.
+  It's the quickest way to see the worst case: the zones in ncSender follow at once.
 - **Collet nut and spindle:** nut diameter and length, spindle diameter.
 - **Keep the holder clear by:** how close the nut and spindle may come to anything.
 - **Keep-out zones in ncSender** (ncSender Pro only): with **Keep zones round the rotary**

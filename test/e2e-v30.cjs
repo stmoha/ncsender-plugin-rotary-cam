@@ -124,6 +124,17 @@ fs.mkdirSync(outDir, { recursive: true });
     const off = await until(async () => { const o = await ours(); const h = o.find((z) => /headstock/.test(z.id)); return Math.abs(h.minX - (H0.minX - 10)) < 1e-6 && o; });
     ok(off && off.find((z) => /tailstock/.test(z.id)).enabled === false, 'the tailstock zone switched off in Settings stays off when Rotary CAM updates them');
 
+    // Here: a headstock / tailstock edge from where the spindle is now (G54 at X-300 Y-200)
+    await openSec('rig');
+    await H('/__test/machine', { machine: { MPos: '-450.000,-120.000,-10.000' } });   // work X-150 Y80
+    await page.click(sel('[data-grab="rig.head.len"]')); await page.waitForTimeout(800);
+    await page.click(sel('[data-grab="rig.head.back"]')); await page.waitForTimeout(800);
+    const gr = await page.evaluate(() => window.RotaryCam.__state.job.rig.head);
+    ok(Math.abs(gr.len - (150 - 7.9375 - 45)) < 0.002 && Math.abs(gr.back - 80) < 0.002, `Here: the spindle at X-150 Y80 makes the headstock ${gr.len} long (back of the chuck to it, X0 being 5/16" in front of the jaws) and reach ${gr.back} to the back`);
+    await page.click(sel('[data-grab="rig.tail.front"]')); await page.waitForTimeout(800);
+    ok(/has to be in front of the axis/.test(await notes()) && (await page.evaluate(() => window.RotaryCam.__state.job.rig.tail.front)) === 35, 'Here for the tailstock front with the spindle behind the axis: says so, changes nothing');
+    await H('/__test/machine', { machine: { MPos: '-150.000,-200.000,-10.000' } });
+
     // the work zero moves (a job on the table): the zones stay and it asks
     const before = await ours();
     await H('/__test/machine', { machine: { g54: '-100.000,-50.000,-80.000,0.000', WCO: '-100.000,-50.000,-80.000' } });
