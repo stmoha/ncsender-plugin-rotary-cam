@@ -34,3 +34,4 @@ jobs:
           node test/lines-test.js
           node test/probe-test.js
           node test/finish2-test.js
+          node test/setups-test.js

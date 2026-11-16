@@ -49,9 +49,8 @@ Needs ncSender 2.0.88 or later (Pro 2.0.149), grblHAL, and a rotary A axis paral
 - A rotates about X. Chuck on the left (−X), tailstock on the right (+X).
 - **Work zero: X0 = chuck jaw face, Y0 and Z0 = rotary centreline.** Z in the program is
   the tool-tip radius, so Z0 must be the axis, not the top of the stock. The 3D view marks
-  it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Work zero —
-  probe the chuck or a corner** finds it by probing the chuck, or sets it from a corner
-  you can touch off (below).
+  it (*G-code zero: X0 Y0 Z0*), drawn through the stock since it's inside it. **Probe the
+  chuck** (beside Generate toolpaths) finds it by touching off the chuck (below).
 - Y stays at 0 for the rotary passes (Corners and Indexed move in Y with A locked).
 - The rotary passes keep the tool tip above the axis, except where a spot can only be
   reached by going past it (see **Deepest below the axis** under Stock & rotary).
@@ -140,9 +139,34 @@ wrong mirrors anything asymmetric.
    - Reach the tenon past any thin or off-centre spot near the end (a chess knight's nose);
      otherwise only that spot holds the part. The tenons show green in the 3D view, the
      side profile and the simulation.
-5. **Operations**, in the order they run (each can be ticked off). Each heading says what
-   it does, with its tool on the right (*T2 · 1/8″ tapered ball*); hover over it for more,
-   and for which tools suit it.
+5. **Setups and strategies.** The side panel has three groups that open and close as a
+   whole: **Setups** (how the part is cut), **Part** (Part placement, Stock & rotary,
+   Tenons) and **Settings** (Rotary & spindle, Tool changes, Machine).
+   - A **setup** is one way of cutting the part: a list of **strategies** that run top to
+     bottom. A part can have several (a quick one, a detailed one) and they share
+     everything under Part and Settings. **New**, **Copy** (to try a variation) and
+     **Delete** are beside its name; click a setup's button to show it. **Generate** makes
+     the program for the setup on show.
+   - **+ Add a strategy** picks Corners, Roughing, Finishing, Indexed or Parting. New ones
+     go in above Parting (Corners at the top). The same kind can come more than once: a
+     second Finishing with a smaller tool, say. Repeats are numbered (*Finishing 2*) and
+     draw in a lighter or darker shade of the kind's colour.
+   - **Drag** a strategy by its header to change the order (or focus its grip and press
+     ↑ ↓). The copy button puts the same again right after it; the bin removes it. Each
+     card shows its tool (*T2 · 1/8″ tapered ball*); hover over it for what it does and
+     which tools suit it, and click it for its settings. One is open at a time.
+   - **Full or Rest** (Roughing and Finishing): Full cuts the whole part as if nothing ran
+     before it. Rest plays the program up to it to see what the strategies above left, and
+     cuts only there, lifting over the rest: a second roughing with a smaller tool goes
+     into what the big one couldn't reach, a second finishing (the old Rest finishing) into
+     the corners and creases the first tool couldn't. A new second Roughing or Finishing
+     starts as Rest with a 1/8″ flat end mill on the next free tool number.
+   - Odd orders get a note in plain words under the list: Finishing before Roughing,
+     Corners after Roughing, Parting not last, Rest with nothing before it.
+   - Jobs from before 0.13.0 open as one setup of the operations they had on, in their
+     old order; Rest finishing becomes a second Finishing set to Rest.
+
+   The strategies:
    - **Corners** (square and rectangular stock only): locks A with each corner up and faces
      it flat with straight X passes, stepping in Y (3+1), turning the square into an
      octagon. Roughing then starts from the octagon, so it spends far less time in air.
@@ -174,8 +198,8 @@ wrong mirrors anything asymmetric.
      can reach it), the stock past what roughing cut is treated as a wall the cone can't run
      into, roughing clears a little further past the ends to make room, and the keep-away
      distances from the chuck and tailstock are measured from the shank.
-   - **Rest finishing** (off until you tick it): a second tool on the same spiral as
-     finishing, cutting only where finishing left something this tool can reach (rest
+   - **Finishing set to Rest** (the old Rest finishing): a second tool on a spiral of its
+     own, cutting only where the strategies above left something this tool can reach (rest
      machining). The usual pair: a tapered ball finish for the detail, then a small flat end
      mill for the square shoulders, flat floors and corners its cone keeps out of; or a big
      ball, then a smaller one for the creases. It plays the program to the end of finishing
@@ -242,8 +266,10 @@ wrong mirrors anything asymmetric.
    point gets there, as long as that end goes all the way round the rotary axis (a tenon
    does). An end that sits off to one side with no tenon keeps the whole cutter over the
    part, so the tool never drops down beside the part and cuts through the stock holding it.
-6. **Generate toolpaths.** The **Corners / Roughing / Finishing / Parting** buttons on the
-   view pick which tool and toolpath to show, each in its own colour. **Checks** (what to
+6. **Generate toolpaths** for the setup on show. The bar shows each strategy as it's
+   worked out. The buttons on the view, one per strategy in its colour, pick which tool and
+   toolpath to show (and open its settings); Simulate names the strategy each line belongs
+   to. **Checks** (what to
    fix in red, what to check in amber, how Indexed did in green) show under the view on a
    portrait screen or a narrow window. On a wide landscape screen (1200 px or more) they get
    a column of their own right of the view, so the view keeps its height; click its header
@@ -264,7 +290,7 @@ wrong mirrors anything asymmetric.
    stock, with what the rotary passes left as yellow blocks that disappear as Indexed
    cuts them; anything still yellow at the end is what nothing reached.
 8. **Load into ncSender**, **Save to File Manager** (in `Rotary CAM/`) or **Download .nc**.
-9. **Work zero — probe the chuck or a corner.** **Probe the chuck…** finds the zero for
+9. **Probe the chuck** (beside Generate toolpaths) finds the work zero for
    you in a dialog laid out like ncSender's own probe dialog (jog pad with the red stop in
    the middle, the connection test beside Start Probe). Touch with a round **pin** and a clip (a dowel
    pin or drill blank), a **3D probe**, or a **fluted bit** and a clip: a bit standing
@@ -297,24 +323,6 @@ wrong mirrors anything asymmetric.
    the chuck measured across (and warns if that's well off what you typed), and updates
    the rotary zero for tool changes. Details in the [manual](MANUAL.md).
 
-   **From a corner of the rotary:** for setting the zero after the rotary goes
-   back on the table. Measure once, in machine coordinates, how far the work zero (jaw
-   face, on the axis) is from a corner you can touch off, such as the top front corner of
-   the headstock housing: **X, Y and Z, corner to the zero** (the zero minus the corner;
-   for that corner X and Y are positive and Z negative). These are measured, separate from
-   the headstock's keep-out box, which can stay generous. Then each time:
-   1. Zero X, Y and Z on that corner with a touch block or 3D probe.
-   2. Press **Move zero to the rotary axis**. It shows where the work offset goes, and on
-      **Move it** sends `G10 L2` to add the offsets to the active work offset (G54 to G59),
-      in mm for that one line and back to whatever units the controller was in, the way
-      ncSender's own probe routines do. It checks the move landed and updates the rotary
-      zero used for tool changes.
-   It won't move it twice (it knows where it put it), or while the machine is running.
-   Editing any of the three shows the corner in 3D, with arrows for the way to probe each
-   face and the X, Y and Z legs to the zero dimensioned. **Remember axis** and **Remember
-   corner** work the offsets out for you: zero on the axis the usual way and press
-   Remember axis, then zero on the corner and press Remember corner. Changing them doesn't
-   touch the toolpaths.
 10. **Rotary & spindle — collisions:** the chuck (diameter with the jaws, length), the
    headstock behind it (housing, motor and drive), the live centre (its diameter, the
    length of its cone, and its **Total length** back to the tailstock body: the cone, then
@@ -581,6 +589,7 @@ node test/make_coil.js test/coil.stl                       # test part: a coil o
 node test/coil-test.js                                     # the core cleared from past the axis: kept, drawn, checked; walls split
 node test/probe-test.js                                    # Probe the chuck against a pretend machine (test/harness/probe-machine.cjs)
 node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
+node test/setups-test.js                                   # setups: old jobs become one, any order gives the same moves, rest roughing, two setups
 node test/finish2-test.js                                  # rest finishing: a flat end mill after a tapered ball takes most of what it left, nothing cut into the part
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off
@@ -600,7 +609,7 @@ node test/e2e-v24.cjs test/chin_test.step out/             # tool sizes and pass
 node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the inside of a part open down the middle
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
-node test/e2e-v29.cjs test/slot_test.step out/             # Rest finishing: its section, Generate, the message, Simulate with nothing cut into the part
+node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
 python3 test/make_chin_step.py test/chin_test.step        # test part with a jaw over a gap

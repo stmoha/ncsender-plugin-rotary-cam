@@ -185,14 +185,14 @@ then load.** If you change the tool or zero again, generate again before loading
 
 ---
 
-## 6. Zero: Work zero — probe the chuck or a corner
+## 6. Zero: Probe the chuck
 
 X0 Y0 Z0 has to be the jaw face on the axis. You can touch it off by hand the usual way,
 or let Rotary CAM find it.
 
 ### Probe the chuck
 
-**Probe the chuck…** opens a dialog laid out like ncSender's own probe dialog: the
+**Probe the chuck** (beside Generate toolpaths, at the bottom) opens a dialog laid out like ncSender's own probe dialog: the
 settings on the left, a picture and a jog pad (with ncSender's red stop in the middle) on
 the right, and the connection test at the bottom beside the **Start Probe** button it holds
 back. It touches both sides of the chuck body and goes to the
@@ -293,19 +293,6 @@ beside the chuck means it didn't start over the middle. An **alarm** usually mea
 didn't touch anything within reach (started too high, or the diameter is wrong), or the
 probe was already touching when a move started. **Unlock**, raise Z, and go again.
 
-### From a corner of the rotary
-
-If the rotary comes off the table and goes back, measure once how far a corner you can
-touch off is from the zero (**X, corner to the jaw face**; **Y, corner to the axis**;
-**Z, corner to the axis**), then each time:
-
-1. Zero X, Y and Z on that corner (touch block or 3D probe).
-2. Press **Move zero to the rotary axis**. It shows where the work offset goes; **Move it**
-   adds the offsets with `G10 L2`.
-
-**Remember axis** and **Remember corner** measure the offsets for you. These are measured
-numbers, separate from the headstock's keep-out box.
-
 Then zero (or measure) Z with the first tool, as above.
 
 ---
@@ -324,10 +311,16 @@ Then zero (or measure) Z with the first tool, as above.
    only where a spot can't be reached any other way (a slot or hole through the part, the
    inside of a curl). Set it to 0 to keep the tool above the axis everywhere.
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
-4. **Operations:** Corners (square stock), Roughing, Finishing, Rest finishing, Indexed,
-   Parting. Pick each tool from ncSender's Tool Library where you can. **Rest finishing**
-   runs a second tool (a small flat end mill after a tapered ball, say) only where finishing
-   couldn't reach: air-cut it the first time. Indexed cleans up what the rotary
+4. **Setups:** a setup is a list of strategies that run top to bottom: Corners (square
+   stock), Roughing, Finishing, Indexed, Parting. Add them with **+ Add a strategy**, drag
+   them into order, copy or remove them; the same kind can come twice. A part can have more
+   than one setup (**New**, **Copy**) to try different ways of cutting it; Generate makes
+   the one on show. Pick each tool from ncSender's Tool Library where you can.
+   - **Full or Rest** (Roughing and Finishing): Rest cuts only where the strategies above
+     left something this tool can reach. A second Finishing set to Rest (a small flat end
+     mill after a tapered ball, say) gets into what the first couldn't; a second Roughing
+     set to Rest takes a smaller tool into what the big one couldn't. Air-cut a rest pass
+     the first time. Indexed cleans up what the rotary
    passes couldn't reach; **Finish the whole side it faces** adds one even finishing pass
    over each side instead of only the spots, for a smoother result.
    - **Finishing › Pattern:** *Round the part* is one long spiral (A turns all the time,
@@ -339,8 +332,8 @@ Then zero (or measure) Z with the first tool, as above.
    - **Parting** cuts the tailstock end first: the chuck end drives the part, so it stays
      whole until the other end is done. **One cut only** makes a single slot, a cutter
      wide, right beside the part, and leaves the rest of the tenon thick.
-   - **One tool number is one tool.** A stickout or flute length changed for one operation
-     goes to every operation with the same number. Two different stickouts for one number
+   - **One tool number is one tool.** A stickout or flute length changed for one strategy
+     goes to every strategy with the same number. Two different stickouts for one number
      stop Generate with a button for each.
    - **Stickout** is how far the tool sticks out of the collet nut. Measure it: it decides
      what the nut and spindle can reach, and how far Z can go.
