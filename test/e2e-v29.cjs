@@ -42,7 +42,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // ---- the side panel: three groups; a setup of roughing and finishing to start
     const grps = await page.$$eval('#rcam-root .rc-grp', (gs) => gs.map((g) => g.getAttribute('data-grp') + (g.classList.contains('open') ? '' : ' (shut)')));
-    ok(grps.join() === 'setups,part,settings (shut)', 'groups: ' + grps.join(', '));
+    ok(grps.join() === 'part,setups,settings (shut)', 'groups: ' + grps.join(', '));
     ok(await order() === 'rough,finish', 'a new part starts with roughing and finishing: ' + await order());
     ok(!(await page.$('#rcam-root details[data-sec=zero]')), 'no Work zero section: Probe the chuck is beside Generate');
     ok(await page.$eval('#rcam-root .rc-probechuck', (b) => /Probe the chuck/.test(b.textContent)), 'the Probe the chuck button is at the bottom');

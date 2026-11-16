@@ -140,8 +140,8 @@ wrong mirrors anything asymmetric.
      otherwise only that spot holds the part. The tenons show green in the 3D view, the
      side profile and the simulation.
 5. **Setups and strategies.** The side panel has three groups that open and close as a
-   whole: **Setups** (how the part is cut), **Part** (Part placement, Stock & rotary,
-   Tenons) and **Settings** (Rotary & spindle, Tool changes, Machine).
+   whole: **Part** (Part placement, Stock & rotary, Tenons), **CAM setups** (how the part
+   is cut) and **Settings** (Rotary & spindle, Tool changes, Machine).
    - A **setup** is one way of cutting the part: a list of **strategies** that run top to
      bottom. A part can have several (a quick one, a detailed one) and they share
      everything under Part and Settings. **New**, **Copy** (to try a variation) and

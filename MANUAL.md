@@ -311,7 +311,7 @@ Then zero (or measure) Z with the first tool, as above.
    only where a spot can't be reached any other way (a slot or hole through the part, the
    inside of a curl). Set it to 0 to keep the tool above the axis everywhere.
 3. **Tenons:** a stub at each end that holds the part to the rest of the stock.
-4. **Setups:** a setup is a list of strategies that run top to bottom: Corners (square
+4. **CAM setups:** a setup is a list of strategies that run top to bottom: Corners (square
    stock), Roughing, Finishing, Indexed, Parting. Add them with **+ Add a strategy**, drag
    them into order, copy or remove them; the same kind can come twice. A part can have more
    than one setup (**New**, **Copy**) to try different ways of cutting it; Generate makes
