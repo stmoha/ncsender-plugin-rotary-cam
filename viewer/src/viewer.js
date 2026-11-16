@@ -106,7 +106,9 @@ export function create(container, opts = {}) {
   const tenonGroup = new THREE.Group(); partGroup.add(tenonGroup);   // on the axis, so turning doesn't show
   const jawGroup = new THREE.Group(); partGroup.add(jawGroup);       // the chuck's jaws turn with the stock they hold
   let tenonList = [];
-  let partMesh = null, pathLines = {}, aSign = 1, aDeg = 0, op = 'finish', tool = null;
+  // op: the operation whose tool is shown (its slot: rough, finish...); shown: the toolpath on
+  // show (a strategy's id since setups, else the operation)
+  let partMesh = null, pathLines = {}, pathMats = {}, aSign = 1, aDeg = 0, op = 'finish', shown = 'finish', tool = null;
   let simMesh = null, simOn = false, simTool = null, simToolKey = '', ghost = false, ovMesh = null, ovData = null, simSmooth = false;
   let theme = { ink: '#1e2a32', muted: '#5e6b75', accent: '#1abc9c', dark: false };
   const idxGroup = new THREE.Group(); partGroup.add(idxGroup);   // Indexed angles, fixed to the part
@@ -507,8 +509,9 @@ export function create(container, opts = {}) {
     requestRender();
   }
 
-  // points: Float32Array x, y, z, a per point (tool tip in machine coordinates at that A)
-  function setToolpath(name, pts) {
+  // points: Float32Array x, y, z, a per point (tool tip in machine coordinates at that A);
+  // color: its own colour (a strategy's shade), else the operation's
+  function setToolpath(name, pts, color) {
     if (pathLines[name]) { partGroup.remove(pathLines[name]); pathLines[name].geometry.dispose(); delete pathLines[name]; }
     if (!pts || !pts.length) { requestRender(); return; }
     // NaN points separate passes; draw as segments so passes aren't joined
@@ -525,16 +528,17 @@ export function create(container, opts = {}) {
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(seg), 3));
-    const line = new THREE.LineSegments(geo, mats[name] || mats.finish);
+    const mat = color ? (pathMats[color] || (pathMats[color] = new THREE.LineBasicMaterial({ color: new THREE.Color(color) }))) : (mats[name] || mats.finish);
+    const line = new THREE.LineSegments(geo, mat);
     line.renderOrder = 3;
-    line.visible = name === op && !simOn;
+    line.visible = name === shown && !simOn;
     pathLines[name] = line;
     partGroup.add(line);
     requestRender();
   }
-  function setOp(name) {
-    op = name;
-    Object.keys(pathLines).forEach((k) => { pathLines[k].visible = k === op && !simOn; });
+  function setOp(name, path) {
+    op = name; shown = path || name;
+    Object.keys(pathLines).forEach((k) => { pathLines[k].visible = k === shown && !simOn; });
     buildTool();
     if (hl.key) { try { applyHighlight(false); } catch (e) { clearHighlight(); hl.key = null; } }
     requestRender();
@@ -626,7 +630,7 @@ export function create(container, opts = {}) {
     reach.intensity = simOn ? 0 : (idx.opts.pick >= 0 && idx.list[idx.opts.pick] ? REACH : 0);
     lightsForReach(!simOn && reach.intensity > 0);
     if (partMesh) partMesh.material = partMat();
-    Object.keys(pathLines).forEach((k) => { pathLines[k].visible = k === op && !simOn; });
+    Object.keys(pathLines).forEach((k) => { pathLines[k].visible = k === shown && !simOn; });
     requestRender();
   }
   // the tool doing the cutting at this moment, in machine coordinates
