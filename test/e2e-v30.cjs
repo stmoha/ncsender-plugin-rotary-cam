@@ -135,6 +135,7 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(/has to be in front of the axis/.test(await notes()) && (await page.evaluate(() => window.RotaryCam.__state.job.rig.tail.front)) === 35, 'Here for the tailstock front with the spindle behind the axis: says so, changes nothing');
     await H('/__test/machine', { machine: { MPos: '-150.000,-200.000,-10.000' } });
 
+    ok(!(await page.isVisible(sel('[data-act=movezones]'))), 'no Move the zones button while the work zero is where they were placed');
     // the work zero moves (a job on the table): the zones stay and it asks
     const before = await ours();
     await H('/__test/machine', { machine: { g54: '-100.000,-50.000,-80.000,0.000', WCO: '-100.000,-50.000,-80.000' } });
@@ -142,10 +143,11 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click(sel('[data-act=readmachine]'));
     await page.waitForTimeout(1500);
     ok(JSON.stringify(await ours()) === JSON.stringify(before), 'G54 moved 250 mm: the zones stay where they were');
-    const mv = await page.$(sel('.rc-zonemove:not([hidden]) [data-act=movezones]'));
+    const mv = (await page.isVisible(sel('[data-act=movezones]'))) ? await page.$(sel('[data-act=movezones]')) : null;
     ok(!!mv && /has moved/.test(await page.$eval(sel('.rc-zoneinfo'), (e) => e.textContent)), 'and the panel asks whether to move them');
     await mv.click();
     ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-100.1)) < 1e-6), 'Move the zones to the rotary: they’re placed from the new work zero');
+    ok(await until(async () => !(await page.isVisible(sel('[data-act=movezones]')))), 'and the button goes away');
 
     // the program is checked against every zone
     await H('/__test/pro', { zones: (await zones()).concat([{ id: 'clamp', name: 'Clamp', kind: 'keepout', enabled: true, minX: -60, minY: -60, maxX: -40, maxY: -40 }]) });
