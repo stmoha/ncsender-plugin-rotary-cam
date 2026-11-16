@@ -20,8 +20,8 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - Notes in plain words when the order looks wrong: Finishing before Roughing, Corners after Roughing, Parting not last, Rest with nothing before it.
 - Jobs and projects from before 0.13.0 open as one setup of the operations they had on, in the old order. Air-cut the first program, especially a rest pass.
 
-<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/setups-helix.webp" width="700" alt="Rotary CAM in dark mode: a helix in 1.5 inch square stock with two CAM setups, fine detail and quick rough. Fine detail runs Corners, Roughing, Finishing 1, Finishing 2 set to Rest with a tapered ball, and Parting; the Corners toolpath is on show, and a note says where Finishing 2 cuts."></p>
-<p align="center"><sub>Two setups for one part, five strategies run top to bottom, and rest finishing with a tapered ball only where the first finish couldn't reach.</sub></p>
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/setups-strategies.gif" width="700" alt="Rotary CAM in dark mode, a helix in 1.5 inch square stock with the setup fine detail. The view steps through its five strategies in turn, each with its own toolpath: Corners, Roughing, Finishing 1, Finishing 2 set to Rest with a tapered ball, and Parting."></p>
+<p align="center"><sub>One setup, five strategies run top to bottom: Corners, Roughing, Finishing 1, Finishing 2 (Rest, a tapered ball only where the first finish couldn't reach) and Parting.</sub></p>
 
 <p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/keepout-zones-ncsender.webp" width="700" alt="ncSender Pro's 3D view: Rotary CAM's Rotary headstock and Rotary tailstock keep-out zones beside the ATC zone, Zones 3 of 3."></p>
 <p align="center"><sub>Rotary CAM's own keep-out zones in ncSender Pro, beside the ATC's.</sub></p>
