@@ -6,6 +6,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8817));
@@ -25,7 +26,9 @@ fs.mkdirSync(outDir, { recursive: true });
   const dark = process.argv.includes('--dark') ? '#dark' : '';
   // focus a setting; it lights up (its row too) with what the view drew
   const focus = async (sec, id) => {
-    await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
+    if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) await H.openStrat(page, sec);
+    else await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
+    await page.mouse.move(700, 5);   // off the side panel: a row under the pointer would light up instead
     await page.focus(id); await page.waitForTimeout(500);
     return page.evaluate((i) => {
       const el = document.querySelector(i), row = el && el.closest('.rc-row');
@@ -42,8 +45,8 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.setInputFiles('#rcam-root input[type=file]', part);
     await page.waitForFunction(() => window.RotaryCam.__state.mesh, null, { timeout: 120000 });
     await page.waitForTimeout(400);
-    await page.evaluate(() => { const S = window.RotaryCam.__state; S.job.index.enabled = true; S.job.parting.enabled = true; });
-    await page.evaluate(() => { const h = window.RotaryCam.session.hooks; if (h.renderForm) h.renderForm(); });
+    // 0.13.0: Indexed and Parting are strategies added to the setup
+    await H.addStrat(page, 'index'); await H.addStrat(page, 'parting');
     const list = [
       ['rough', '#rc-rough-tool_dia', 'roughing tool diameter'], ['rough', '#rc-rough-tool_length', 'roughing flute length'],
       ['rough', '#rc-rough-stepdown', 'roughing stepdown'], ['rough', '#rc-rough-pitch', 'roughing advance per turn'], ['rough', '#rc-rough-leave', 'leave for finishing'],
@@ -53,6 +56,7 @@ fs.mkdirSync(outDir, { recursive: true });
       ['stock', '#rc-below_axis', 'Deepest below the axis'], ['stock', '#rc-angle_step_deg', 'angle step'], ['stock', '#rc-stock-shape', 'stock shape'], ['stock', '#rc-stock-clamp', 'clamping distance'], ['stock', '#rc-tailstock_x', 'stock length']
     ];
     for (const [sec, id, what] of list) {
+      if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) await H.openStrat(page, sec);
       if (!(await page.$(id))) { ok(false, what + ': no field ' + id); continue; }
       const r = await focus(sec, id);
       ok(r.lit, what + ' lights up in 3D');
@@ -60,7 +64,7 @@ fs.mkdirSync(outDir, { recursive: true });
       await blur(); await page.waitForTimeout(200);
     }
     // a tapered ball: its shank and taper too
-    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=finish]'); d.open = true; });
+    await H.openStrat(page, 'finish');
     await page.selectOption('#rc-finish-shape', 'taper'); await page.waitForTimeout(500);
     for (const [id, what] of [['#rc-finish-shank_dia', 'tapered ball shank diameter'], ['#rc-finish-taper_deg', 'tapered ball taper'], ['#rc-finish-tool_dia', 'tapered ball tip diameter']]) {
       const r = await focus('finish', id);
@@ -71,13 +75,15 @@ fs.mkdirSync(outDir, { recursive: true });
     // stepovers as a length or a % of the tool's diameter: type either, the other follows
     const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await blur(); await page.waitForTimeout(300); };
     const rp = () => page.evaluate(() => { const j = window.RotaryCam.__state.job.rough; return { len: j.pitch, pct: j.pitch_pct, dia: j.tool_dia, lenBox: document.querySelector('#rc-rough-pitch').value, pctBox: document.querySelector('#rc-rough-pitch-pct').value }; });
-    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=rough]').open = true; });
+    await H.openStrat(page, 'rough');
     let q = await rp();
     ok(q.pctBox === String(Math.round(q.len / q.dia * 1000) / 10), `Roughing Stepover per turn shows as a % too: ${q.lenBox} mm = ${q.pctBox}% of D${q.dia}`);
     for (const k of ['corners', 'finish', 'index']) {
       const key = k === 'finish' ? 'pitch' : 'stepover';
+      if (k !== 'corners') await H.openStrat(page, k);
       ok(await page.evaluate((s) => !!document.querySelector(s), `#rc-${k}-${key}-pct`) || k === 'corners', `${k}: a % box under its stepover`);
     }
+    await H.openStrat(page, 'rough');
     await typeIn('#rc-rough-pitch-pct', 50);
     q = await rp();
     ok(Math.abs(q.len - 3.175) < 1e-6 && q.pct === 50 && Number(q.lenBox) === 3.175, `50% of the 6.35 mm tool: ${q.lenBox} mm`);
@@ -101,11 +107,8 @@ fs.mkdirSync(outDir, { recursive: true });
     const c2 = await cam();
     ok(!near(c0, c1) && Math.hypot(c1.p[0] - c1.t[0], c1.p[1] - c1.t[1], c1.p[2] - c1.t[2]) < Math.hypot(c0.p[0] - c0.t[0], c0.p[1] - c0.t[1], c0.p[2] - c0.t[2]), 'editing Stepdown closes in on the tool');
     ok(near(c0, c2), 'leaving the field puts the view back where it was');
-    // hovering another operation's setting doesn't draw on the tool on show
-    await page.focus('#rc-finish-tool_dia'); await page.waitForTimeout(300); await blur();
-    await page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=rough]'); d.open = true; });
-    await page.hover('#rc-rough-stepdown'); await page.waitForTimeout(900);
-    ok(!(await page.evaluate(() => document.querySelector('#rc-rough-stepdown').closest('.rc-row').classList.contains('rc-hl'))), 'hovering Roughing stepdown with the finishing tool on show: nothing drawn on it');
+    // (0.13.0: one strategy's settings show at a time, and its tool is the one on show, so
+    // hovering another operation's setting with a different tool on show can't happen)
   } catch (e) { ok(false, 'threw: ' + (e && e.stack || e)); }
   ok(!errors.length, 'no console errors' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(fails ? fails + ' FAILED' : 'ALL PASS');

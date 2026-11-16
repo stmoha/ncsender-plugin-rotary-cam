@@ -4,6 +4,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8784));
@@ -22,12 +23,13 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|status of 404/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
-  const rows = (sec) => page.$$eval(`#rcam-root details[data-sec=${sec}] .rc-row label`, (els) => els.map((e) => e.textContent.replace('?', '').trim()));
+  const OPK = ['corners', 'rough', 'finish', 'finish2', 'index', 'parting'];
+  const openSec = async (sec) => { if (OPK.includes(sec)) return H.openStrat(page, sec); await H.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec); };
+  const rows = (sec) => page.$$eval(['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec) ? '#rcam-root .rc-strat.open .rc-row label' : `#rcam-root details[data-sec=${sec}] .rc-row label`, (els) => els.map((e) => e.textContent.replace('?', '').trim()));
   const job = () => page.evaluate(() => window.RotaryCam.__state.job.finish);
   try {
     await page.goto(`http://localhost:${PORT}/${process.argv.includes('--dark') ? '#dark' : ''}`);

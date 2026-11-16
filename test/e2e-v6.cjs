@@ -5,6 +5,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : 8782);
@@ -23,12 +24,13 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|status of 404/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
-  const rows = (sec) => page.$$eval(`#rcam-root details[data-sec=${sec}] .rc-row label`, (els) => els.map((e) => e.textContent.replace('?', '').trim()));
+  const OPK = ['corners', 'rough', 'finish', 'finish2', 'index', 'parting'];
+  const openSec = async (sec) => { if (OPK.includes(sec)) return H.openStrat(page, sec); await H.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec); };
+  const rows = (sec) => page.$$eval(['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec) ? '#rcam-root .rc-strat.open .rc-row label' : `#rcam-root details[data-sec=${sec}] .rc-row label`, (els) => els.map((e) => e.textContent.replace('?', '').trim()));
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(250); };
   const seek = async (frac) => { await page.$eval('#rcam-root .rc-simpos', (el, f) => { el.value = Math.round(f * 1000); el.dispatchEvent(new Event('input', { bubbles: true })); }, frac); await page.waitForTimeout(900); };
   try {
@@ -41,20 +43,20 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForTimeout(300);
     await typeIn('#rc-stock-dia-round', (44 / U).toFixed(metric ? 1 : 4));
 
-    ok(await page.$eval('#rcam-root .rc-op[data-op=index]', (b) => b.hidden), 'Indexed pill hidden while Indexed is off');
+    ok(!(await page.$('#rcam-root .rc-op[data-op=index]')), 'Indexed pill hidden while Indexed is off');
     await openSec('index');
-    await page.check('#rcam-root details[data-sec=index] summary input[type=checkbox]');
+    await H.openStrat(page, 'index');
     await page.waitForTimeout(300);
-    ok(!(await page.$eval('#rcam-root .rc-op[data-op=index]', (b) => b.hidden)), 'Indexed pill shows when it is ticked');
+    ok(!(!(await page.$('#rcam-root .rc-op[data-op=index]'))), 'Indexed pill shows when it is ticked');
     let r = await rows('index');
     ok(r.includes('A angles') && !r.includes('Most angles') && !(await page.$eval('#rc-index-auto', (b) => b.checked)), 'listing your own angles is the default: an A angles field');
     await page.check('#rc-index-auto'); await page.waitForTimeout(300);
     r = await rows('index');
-    const warn = await page.$$eval('#rcam-root details[data-sec=index] .rc-warn', (els) => els.map((e) => e.textContent).join(' '));
+    const warn = await page.$$eval('#rcam-root .rc-strat.open .rc-warn', (els) => els.map((e) => e.textContent).join(' '));
     ok(r.includes('Most angles') && !r.includes('A angles') && /much longer/.test(warn), 'picking them automatically shows Most angles, and warns it takes much longer');
     await page.uncheck('#rc-index-auto'); await page.waitForTimeout(300);
     r = await rows('index');
-    ok(r.includes('A angles') && !r.includes('Most angles') && !(await page.$('#rcam-root details[data-sec=index] .rc-warn')), 'own angles show an A angles field, no warning');
+    ok(r.includes('A angles') && !r.includes('Most angles') && !(await page.$('#rcam-root .rc-strat.open .rc-warn')), 'own angles show an A angles field, no warning');
     await typeIn('#rc-index-angle_list', '90, 270');
     ok(await page.evaluate(() => window.RotaryCamCore.indexAngles(window.RotaryCam.__state.job).join(',')) === '90,270', 'the A angles field is read as 90, 270');
     await page.check('#rc-index-auto'); await page.waitForTimeout(300);
@@ -90,20 +92,20 @@ fs.mkdirSync(outDir, { recursive: true });
         return { busy: window.RotaryCam.__state.busy, done: !!window.RotaryCam.__state.program, probs: window.RotaryCam.__state.problems.length, segs, shown: document.querySelector('#rcam-root .rc-prog').style.display };
       });
       if (st.busy) stages.add(st.busy.replace(/[\d,]+.*$/, '').trim());
-      if (/^Indexed: Planning/.test(st.busy || '')) { bars.push(st); if (!shot1 && st.segs.length === 5 && st.segs[3].w > 5) { shot1 = true; await shot('progress-indexed'); } }
+      if (/^Indexed: Planning/.test(st.busy || '')) { bars.push(st); if (!shot1 && st.segs.length === 4 && st.segs[2].w > 5) { shot1 = true; await shot('progress-indexed'); } }
       if (st.done || (!st.busy && st.probs)) break;
       await page.waitForTimeout(250);
     }
     console.log(ms(), '   stages:', JSON.stringify([...stages]));
-    ok([...stages].some((s) => /Finding what the rotary passes missed/.test(s)) && [...stages].some((s) => /^Indexed:/.test(s)), 'progress shows the Indexed stages');
+    ok([...stages].some((s) => /Indexed: seeing what the strategies above left/.test(s)) && [...stages].some((s) => /^Indexed:/.test(s)), 'progress shows the Indexed stages');
     // the bar: a piece per step; during Indexed the earlier ones are full and Indexed's own moves
-    const ixf = (await page.evaluate(() => window.__prog)).filter((q) => q[0] === 'index').map((q) => q[1]);
+    const ixf = (await page.evaluate(() => window.__prog)).filter((q) => q[0] === 's2').map((q) => q[1]);   // the setup: Roughing (s0), Finishing (s1), Indexed (s2)
     const rising = ixf.every((f, i) => !i || f >= ixf[i - 1] - 1e-9), distinct = new Set(ixf.map((f) => Math.round(f * 100))).size;
-    ok(bars.length && bars.every((b) => b.shown === 'flex' && b.segs.length === 5 && b.segs.slice(0, 3).every((q) => q.w === 100) && b.segs[3].now && /Indexed/.test(b.segs[3].t) && /Writing the program/.test(b.segs[4].t)), `during Indexed the bar shows its 5 steps (the last writing the program), the first 3 done and Indexed's the one going (${bars.length} looks)`);
+    ok(bars.length && bars.every((b) => b.shown === 'flex' && b.segs.length === 4 && b.segs.slice(0, 2).every((q) => q.w === 100) && b.segs[2].now && /Indexed/.test(b.segs[2].t) && /Writing the program/.test(b.segs[3].t)), `during Indexed the bar shows its 4 steps, one per strategy and the last writing the program, the first 2 done and Indexed's the one going (${bars.length} looks)`);
     ok(ixf.length > 10 && rising && distinct >= 10 && ixf[ixf.length - 1] === 1, `Indexed reports its progress ${ixf.length} times, rising through ${distinct} different values to 100%, not pegged`);
     const lastBusy = bars.length ? bars[bars.length - 1].busy : '';
-    ok(/^Indexed: Planning A.*\(\d of \d\)\u2026 \d+% \u00b7 .*so far \u00b7 step 4 of 5$/.test(lastBusy), 'with how far it is, how long so far (and left, once it can tell), and which step: "' + lastBusy + '"');
-    const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, info: s.program && s.program.info.index && { angles: s.program.info.index.angles, target: s.program.info.index.target, removed: s.program.info.index.removed }, n: s.program && s.program.paths.index.length / 4 }; });
+    ok(/^Indexed: Planning A.*\(\d of \d\)\u2026 \d+% \u00b7 .*so far \u00b7 step 3 of 4$/.test(lastBusy), 'with how far it is, how long so far (and left, once it can tell), and which step: "' + lastBusy + '"');
+    const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, info: s.program && s.program.info.index && { angles: s.program.info.index.angles, target: s.program.info.index.target, removed: s.program.info.index.removed }, n: s.program && s.program.paths.find((q) => q.slot === 'index').data.length / 4 }; });
     console.log(ms(), '   generated:', JSON.stringify(st));
     ok(st.info && st.info.angles.length > 0 && st.info.removed / st.info.target > 0.8, `Indexed reaches ${st.info ? Math.round(100 * st.info.removed / st.info.target) : 0}% at A ${st.info && st.info.angles.join(', ')}`);
     const msg = await page.evaluate(() => ['.rc-toasts', '.rc-msgs'].map((s) => document.querySelector('#rcam-root ' + s).innerText).join(' ').replace(/\n/g, ' '));
@@ -167,7 +169,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 1500000, polling: 500 });
     const g2 = await page.evaluate(() => ({ head: window.RotaryCam.__state.program.gcode.slice(0, 400), ask: window.RotaryCam.__state.warnings.some((w) => /which way A turns/.test(w)) }));
     ok(/a_sign=-1/.test(g2.head) && !g2.ask, 'generated with a_sign=-1, and it doesn\u2019t ask again');
-    const n6 = await page.evaluate(() => window.RotaryCam.__state.program.paths.index.length / 4);
+    const n6 = await page.evaluate(() => window.RotaryCam.__state.program.paths.find((q) => q.slot === 'index').data.length / 4);
     ok(n6 > 2 * before6, `the whole side: Indexed runs ${n6} points instead of ${before6}, line by line over each side`);
     await page.click('[data-tab=3d]').catch(() => {}); await page.click('#rcam-root .rc-op[data-op=index]'); await page.waitForTimeout(600);
     await page.click('[data-view=iso]'); await page.waitForTimeout(800);

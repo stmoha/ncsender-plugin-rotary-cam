@@ -4,6 +4,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8800));
@@ -55,7 +56,7 @@ fs.mkdirSync(outDir, { recursive: true });
     a = await session(2);
     let ix = await a.page.evaluate(() => window.RotaryCam.__state.job.index);
     ok(ix.enabled && ix.auto === false && ix.angle_list === '90, 270', 'settings saved with Pick the angles on (the old default) now list the angles: ' + ix.angle_list);
-    await a.page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=index]'); d.open = true; });
+    await UH.openStrat(a.page, 'index');
     ok(await a.page.$eval('#rc-index-auto', (el) => !el.checked) && !!(await a.page.$('#rc-index-angle_list')), 'the A angles field shows, Pick the angles for me is unticked');
     const r1 = await generate(a.page);
     ok(r1.gcode && r1.info && r1.info.angles.length === 2 && r1.workers === 1, `generated with 1 worker in ${r1.seconds.toFixed(1)} s: Indexed at A${r1.info && r1.info.angles.join(', A')}`);
@@ -76,7 +77,7 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(same && r4.info.angles.join() === r1.info.angles.join(), `4 workers give the same program, move for move (${motion(r4.gcode).split('\n').length} lines; ${r4.seconds.toFixed(1)} s here, a 2-core machine)`);
     if (!same) { const A = motion(r1.gcode).split('\n'), B = motion(r4.gcode).split('\n'); const i = A.findIndex((l, k) => l !== B[k]); console.log('   first difference at line', i, ':', A[i], '|', B[i]); }
     // auto, with 4 workers: it still runs and says how it went
-    await b.page.evaluate(() => { const d = document.querySelector('#rcam-root details[data-sec=index]'); d.open = true; });
+    await UH.openStrat(b.page, 'index');
     await b.page.check('#rc-index-auto'); await b.page.waitForTimeout(400);
     await b.page.screenshot({ path: path.join(outDir, 'auto-warning.png') });
     const t0 = Date.now();

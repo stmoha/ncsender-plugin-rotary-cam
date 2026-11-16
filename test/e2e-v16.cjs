@@ -6,6 +6,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8806));
@@ -29,7 +30,7 @@ fs.mkdirSync(outDir, { recursive: true });
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec);
+  const openSec = async (sec) => { if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) return UH.openStrat(page, sec); await UH.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec); };
   const D = (mm) => (mm / U).toFixed(metric ? 2 : 4);
   const near = (a, b, e) => Math.abs(a - b) < (e || 0.01);
   const job = () => page.evaluate(() => JSON.parse(JSON.stringify(window.RotaryCam.__state.job)));
@@ -122,29 +123,35 @@ fs.mkdirSync(outDir, { recursive: true });
     await typeIn('#rc-rough-tool_length', D(20));
     j = await job();
     ok(near(j.corners.tool_length, 20, 0.03) && near(j.parting.tool_length, 20, 0.03), 'and its flute length');
-    // older settings, or another computer, with two stickouts for one tool
-    await page.evaluate(() => { window.RotaryCam.__state.job.corners.stickout = 40; });
+    // older settings, or another computer, with two stickouts for one tool (0.13.0: two
+    // strategies on one tool, a copy of roughing)
+    const r1 = (await UH.strats(page)).find((x) => x.type === 'rough').id;
+    await page.click(`#rcam-root [data-strat-dup="${r1}"]`); await page.waitForTimeout(400);
+    await page.evaluate(() => { const S = window.RotaryCam.__state; window.RotaryCamCore.curSetup(S.job).list.filter((x) => x.type === 'rough')[1].stickout = 40; });
     await nudge();
     let p = await probs();
     const tn = j.rough.tool_number;
-    ok(p.some((q) => new RegExp('^T' + tn + ' sticks out .* for Corners but .* for Roughing\\. One tool number is one tool').test(q)), 'two stickouts for one tool: ' + p.find((q) => /sticks out/.test(q)));
+    ok(p.some((q) => new RegExp('^T' + tn + ' sticks out .* for Roughing 1 but .* for Roughing 2\\. One tool number is one tool').test(q)), 'two stickouts for one tool: ' + p.find((q) => /sticks out/.test(q)));
     const btns = await page.$$eval('#rcam-root .rc-sametool', (els) => els.map((e) => e.textContent));
     ok(btns.length === 2 && btns.every((x) => new RegExp('for all T' + tn + '$').test(x)), 'with a button for each: ' + btns.join(' | '));
     await shot('same-tool');
-    await page.click('#rcam-root .rc-sametool:nth-of-type(2)').catch(async () => { const all = await page.$$('#rcam-root .rc-sametool'); await all[1].click(); });
+    const sb = await page.$$('#rcam-root .rc-sametool'); await sb[0].click();   // Roughing 1's 50.8 mm (the copy's 40 is second)
     await page.waitForTimeout(400);
     j = await job(); p = await probs();
-    ok(near(j.corners.stickout, 50.8, 0.03) && near(j.rough.stickout, 50.8, 0.03) && !p.some((q) => /sticks out/.test(q)), `picking ${btns[1]} sets all of T${tn} and the message goes`);
+    const both = await page.evaluate(() => { const S = window.RotaryCam.__state; return window.RotaryCamCore.curSetup(S.job).list.filter((x) => x.type === 'rough').map((x) => x.stickout); });
+    ok(both.length === 2 && both.every((v) => near(v, 50.8, 0.03)) && !p.some((q) => /sticks out/.test(q)), `picking ${btns[0]} sets all of T${tn} and the message goes`);
+    // back to one roughing
+    const r2 = (await UH.strats(page)).filter((x) => x.type === 'rough')[1].id;
+    await page.click(`#rcam-root [data-strat-del="${r2}"]`); await page.waitForTimeout(400);
     // a library tool another operation already uses comes in as that one is set
     await openSec('index');
-    await page.evaluate(() => { const c = document.querySelector('#rcam-root [data-k="index.enabled"]'); if (!c.checked) c.click(); });
-    await page.waitForTimeout(300); await openSec('index');
+    await page.waitForTimeout(300);
     await page.selectOption('#rc-index-tool', '13'); await page.waitForTimeout(300);
     await typeIn('#rc-index-stickout', D(30));
     await openSec('finish'); await page.selectOption('#rc-finish-tool', '13'); await page.waitForTimeout(300);
     j = await job();
     ok(j.finish.tool_number === 3 && near(j.finish.stickout, 30, 0.03), `finishing picks T3 from the Tool Library, which Indexed already uses at 30 mm: it takes 30 mm, not the library's 22 (${j.finish.stickout.toFixed(2)})`);
-    await openSec('index'); await page.evaluate(() => { const c = document.querySelector('#rcam-root [data-k="index.enabled"]'); if (c.checked) c.click(); }); await page.waitForTimeout(300);
+    await UH.dropStrat(page, 'index'); await page.waitForTimeout(300);
 
     // ---- Z travel: one message, what it took to be in the spindle, how to check it
     await H('/__test/machine', { machine: { tool: 0, WCO: '-300.000,-200.000,-20.000', g54: '-300.000,-200.000,-20.000,0.000' } });

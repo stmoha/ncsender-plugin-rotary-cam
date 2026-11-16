@@ -5,6 +5,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8801));
@@ -30,7 +31,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec);
+  const openSec = async (sec) => { if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) return UH.openStrat(page, sec); await UH.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec); };
   const D = (mm) => (mm / U).toFixed(metric ? 2 : 4);
   const box = () => page.$eval('#rcam-root .rc-stockbox', (b) => ({ l1: b.querySelector('.rc-sb1').textContent, l2: b.querySelector('.rc-sb2').textContent, red: b.querySelectorAll('.rc-short').length }));
   const generate = async () => {

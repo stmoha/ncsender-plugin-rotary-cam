@@ -9,6 +9,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8788));
@@ -31,7 +32,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec);
+  const openSec = async (sec) => { if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) return UH.openStrat(page, sec); await UH.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec); };
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
   const D = (mm) => (mm / U).toFixed(metric ? 2 : 4);
   const msgs = () => page.evaluate(() => ['.rc-toasts', '.rc-msgs'].map((s) => document.querySelector('#rcam-root ' + s).innerText).join(' ').replace(/\n/g, ' '));
@@ -76,9 +77,8 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(Math.abs(fx.find((f) => f.name === 'chuck').r - 50) < 0.01 && Math.abs(fx.find((f) => f.name === 'tailstock').top - 50) < 0.01, 'back to 100 mm; tailstock top 50 mm above the axis');
 
     // ---- a library tool with its stickout
-    for (const s of ['rough', 'finish']) await openSec(s);
-    await page.selectOption('#rc-rough-tool', '11'); await page.waitForTimeout(200);
-    await page.selectOption('#rc-finish-tool', '13'); await page.waitForTimeout(300);
+    await openSec('rough'); await page.selectOption('#rc-rough-tool', '11'); await page.waitForTimeout(200);
+    await openSec('finish'); await page.selectOption('#rc-finish-tool', '13'); await page.waitForTimeout(300);
     j = await job();
     ok(j.finish.stickout === 22 && Math.abs(Number(await page.$eval('#rc-finish-stickout', (el) => el.value)) * U - 22) < 0.01, 'T3 from the library brings its stickout (22 mm) into Finishing');
     ok(j.rough.stickout >= j.rough.tool_length + 2, `T1 has no stickout in the library: at least its flutes plus a little (${j.rough.stickout} mm)`);

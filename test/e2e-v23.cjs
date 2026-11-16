@@ -4,6 +4,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8816));
@@ -22,7 +23,8 @@ fs.mkdirSync(outDir, { recursive: true });
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
   const dark = process.argv.includes('--dark') ? '#dark' : '';
   const job = () => page.evaluate(() => { const j = window.RotaryCam.__state.job; return { f: Object.assign({}, j.finish), i: Object.assign({}, j.index) }; });
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
+  const OPK = ['corners', 'rough', 'finish', 'finish2', 'index', 'parting'];
+  const openSec = async (sec) => { if (OPK.includes(sec)) return H.openStrat(page, sec); await H.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec); };
   try {
     await page.goto('about:blank');
     await page.goto(`http://localhost:${PORT}/${dark}`);

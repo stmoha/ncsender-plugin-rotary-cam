@@ -5,9 +5,10 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const PORT = 8781;
+const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : 8781);
 const metric = process.argv.includes('--metric');
 const U = metric ? 1 : 25.4;   // display units -> mm
 fs.mkdirSync(outDir, { recursive: true });
@@ -23,7 +24,7 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|status of 404/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
@@ -97,10 +98,9 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(tn.list.length === 2 && tn.shown === 2 && !tn.job.same, 'ticking it again brings both back, sizes kept');
 
     // generate with parting
-    await openSec('parting');
-    await page.check('#rcam-root details[data-sec=parting] summary input[type=checkbox]');
-    for (const [s, id] of [['rough', '11'], ['parting', '11']]) { await openSec(s); await page.selectOption(`#rc-${s}-tool`, id); }
-    await openSec('finish'); await page.selectOption('#rc-finish-tool', '13');
+    await H.addStrat(page, 'parting');
+    for (const [s, id] of [['rough', '11'], ['parting', '11']]) { await H.openStrat(page, s); await page.selectOption(`#rc-${s}-tool`, id); }
+    await H.openStrat(page, 'finish'); await page.selectOption('#rc-finish-tool', '13');
     await page.click('#rcam-root .rc-gen');
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 1500000, polling: 1000 });
     const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, warnings: s.warnings, stats: document.querySelector('#rcam-root .rc-stats').innerText.replace(/\n/g, ' ') }; });

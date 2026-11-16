@@ -4,11 +4,12 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const dark = process.argv.includes('--dark');
-const PORT = 8777;
+const PORT = Number(arg('--port', 8777));
 fs.mkdirSync(outDir, { recursive: true });
 
 (async () => {
@@ -34,8 +35,11 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForFunction(() => window.RotaryCam.__state.mesh || (window.RotaryCam.__state.problems || []).length, null, { timeout: 120000 });
     const info = await page.evaluate(() => { const S = window.RotaryCam.__state; return { meta: document.querySelector('#rcam-root .rc-meta').textContent, problems: S.problems }; });
     console.log(ms(), 'loaded:', info.meta, info.problems.length ? info.problems : '');
+    await H.openGroups(page);
     await page.evaluate(() => document.querySelectorAll('#rcam-root details').forEach((d) => { d.open = d.dataset.sec !== 'machine'; }));
+    await H.openStrat(page, 'rough');
     await page.selectOption('#rc-rough-tool', arg('--rough-tool', '11'));
+    await H.openStrat(page, 'finish');
     await page.selectOption('#rc-finish-tool', arg('--finish-tool', '12'));
     // stock that fits the part (the default 40 mm is smaller than the knight)
     const across = await page.evaluate(() => 2 * window.RotaryCam.__state.mesh.rmax);
@@ -74,9 +78,13 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // reopen: settings, the part and the program come back (since 0.3.0), cached build is reused
     await page.click('#open');
-    await page.waitForFunction(() => window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rc-rough-tool option[value="11"]'), null, { timeout: 20000 });
+    await page.waitForFunction(() => window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0, null, { timeout: 20000 });
     await page.waitForTimeout(1500);
-    const back = await page.evaluate(() => ({ rough: document.querySelector('#rc-rough-tool').value, finish: document.querySelector('#rc-finish-tool').value, part: !!window.RotaryCam.__state.mesh }));
+    // the tool picks are each strategy's: open it to see its Tool list
+    await H.openStrat(page, 'rough');
+    const rough = await page.$eval('#rc-rough-tool', (e) => e.value);
+    await H.openStrat(page, 'finish');
+    const back = await page.evaluate((r) => ({ rough: r, finish: document.querySelector('#rc-finish-tool').value, part: !!window.RotaryCam.__state.mesh }), rough);
     console.log(ms(), 'reopened; tool picks restored:', JSON.stringify(back));
     if (back.rough !== '11' || back.finish !== '12' || !back.part) throw new Error('reopened without the tools or the part: ' + JSON.stringify(back));
     console.log('ALL PASS');

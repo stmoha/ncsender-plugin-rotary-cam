@@ -4,9 +4,10 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const PORT = 8780;
+const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : 8780);
 fs.mkdirSync(outDir, { recursive: true });
 
 (async () => {
@@ -20,7 +21,7 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|status of 404/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   const ok = (cond, what) => console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what);
   const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
@@ -30,25 +31,25 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.setInputFiles('#rcam-root input[type=file]', part);
     await page.waitForFunction(() => window.RotaryCam.__state.mesh, null, { timeout: 120000 });
     await page.waitForTimeout(500);
-    ok(await page.$eval('#rcam-root .rc-op[data-op=corners]', (b) => b.hidden), 'Corners pill hidden for round stock');
+    // 0.13.0: a new part's setup is roughing and finishing; Corners is a strategy added for square stock
+    ok(!(await page.$('#rcam-root .rc-op[data-op=corners]')), 'no Corners pill for round stock');
     ok(await page.$eval('[data-tab=sim]', (b) => b.disabled), 'Simulate is off until there are toolpaths');
 
     await page.selectOption('#rc-stock-shape', 'square');
     await page.waitForTimeout(300);
     const fit = await page.$('#rcam-root .rc-fitstock'); if (fit) { await fit.click(); await page.waitForTimeout(300); }
+    await H.addStrat(page, 'corners');
+    ok((await H.strats(page))[0].type === 'corners', 'Corners added for square stock goes first');
     ok(!(await page.$eval('#rcam-root .rc-op[data-op=corners]', (b) => b.hidden)), 'Corners pill shows for square stock');
-    ok(!!(await page.$('#rcam-root details[data-sec=corners]')), 'Corners settings section shows for square stock');
 
-    await openSec('parting');
-    await page.check('#rcam-root details[data-sec=parting] summary input[type=checkbox]');
-    await page.waitForTimeout(300);
+    await H.addStrat(page, 'parting');
     ok(!(await page.$eval('#rcam-root .rc-op[data-op=parting]', (b) => b.hidden)), 'Parting pill shows when Parting is ticked');
-    for (const [sec, id] of [['corners', '11'], ['rough', '11'], ['parting', '11']]) { await openSec(sec); await page.selectOption(`#rc-${sec}-tool`, id); }
-    await openSec('finish'); await page.selectOption('#rc-finish-tool', '13');
+    for (const [sec, id] of [['corners', '11'], ['rough', '11'], ['parting', '11']]) { await H.openStrat(page, sec); await page.selectOption(`#rc-${sec}-tool`, id); }
+    await H.openStrat(page, 'finish'); await page.selectOption('#rc-finish-tool', '13');
 
     await page.click('#rcam-root .rc-gen');
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 1500000, polling: 1000 });
-    const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, warnings: s.warnings, paths: s.program && Object.fromEntries(Object.entries(s.program.paths).map(([k, v]) => [k, v.length / 4])), stats: document.querySelector('#rcam-root .rc-stats').innerText.replace(/\n/g, ' ') }; });
+    const st = await page.evaluate(() => { const s = window.RotaryCam.__state; return { problems: s.problems, warnings: s.warnings, paths: s.program && Object.fromEntries(s.program.paths.map((p) => [p.slot, p.data.length / 4])), stats: document.querySelector('#rcam-root .rc-stats').innerText.replace(/\n/g, ' ') }; });
     console.log(ms(), '   generated:', JSON.stringify(st));
     for (const op of ['corners', 'rough', 'finish', 'parting']) { await page.click(`#rcam-root .rc-op[data-op=${op}]`); await page.waitForTimeout(400); await shot('3-' + op); }
 

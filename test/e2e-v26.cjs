@@ -7,6 +7,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8819));
@@ -55,10 +56,10 @@ fs.mkdirSync(outDir, { recursive: true });
       ok(f && f.k === key && f.open, 'a click on the chuck opens ' + (f && f.sec) + ' and goes to its setting (' + (f && f.k) + ')');
       await page.evaluate(() => document.activeElement && document.activeElement.blur());
     }
-    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });
-    const title = await page.$eval('#rcam-root details[data-sec=zero] summary', (e) => e.textContent);
-    ok(/probe the chuck or a corner/.test(title), 'the Work zero section: ' + title.trim());
-    await page.click('#rcam-root [data-act=probe-open]');
+    // 0.13.0: no Work zero section; Probe the chuck is a button beside Generate
+    const btn = await page.$eval('#rcam-root .rc-probechuck', (e) => e.textContent);
+    ok(/Probe the chuck/.test(btn) && !(await page.$('#rcam-root details[data-sec=zero]')), 'Probe the chuck is a button beside Generate: ' + btn.trim());
+    await page.click('#rcam-root .rc-probechuck');
     await page.waitForSelector(D + ' .rc-pcard');
     ok(await page.$eval(D + ' .rc-phead p', (e) => getComputedStyle(e).fontStyle === 'italic'), 'italic instructions at the top, like ncSender’s');
     ok(await page.$(D + ' .rc-pleft [data-pk=tool]') && await page.$(D + ' .rc-pleft [data-pk=what]') && await page.$(D + ' .rc-pright .rc-pjogpad') && await page.$(D + ' .rc-pright svg'), 'probe type and probing on the left; picture and jog pad on the right');
@@ -291,11 +292,9 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(/A is zeroed/.test(await msg()), 'Zero A zeroes A');
     await page.keyboard.press('Escape'); await page.waitForTimeout(300);
     ok(!(await page.$(D)), 'Escape closes it');
-    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });
-    const zm = await page.$eval('#rcam-root [data-zero=info]', (e) => e.textContent);
-    ok(/Probed the chuck/.test(zm), 'the Work zero section says it was probed');
+    // (the Work zero section that said it was probed is gone in 0.13.0)
     // portrait: one column, the picture first, nothing wider than the window
-    await page.click('#rcam-root [data-act=probe-open]'); await page.waitForSelector(D + ' .rc-pcard');
+    await page.click('#rcam-root .rc-probechuck'); await page.waitForSelector(D + ' .rc-pcard');
     for (const [vw, vh] of [[1080, 1920], [820, 1180]]) {
       await page.setViewportSize({ width: vw, height: vh }); await page.waitForTimeout(300);
       const pr = await page.evaluate((d) => {
@@ -314,8 +313,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click('#open');
     await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0, null, { timeout: 30000 });
     await page.waitForTimeout(500);
-    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=zero]').open = true; });
-    await page.click('#rcam-root [data-act=probe-open]');
+    await page.click('#rcam-root .rc-probechuck');
     await page.waitForSelector(D + ' .rc-pcard');
     await pick('what', 'xyz');
     const inch = await page.$eval(D + ' [data-pk=body]', (e) => [e.value, e.nextElementSibling.textContent]);

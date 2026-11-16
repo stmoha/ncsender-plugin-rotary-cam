@@ -1,4 +1,4 @@
-// 0.8.0 walkthrough: work zero from a corner of the rotary (offsets, the 3D corner and its
+// 0.8.0 walkthrough (the corner zero part is gone since 0.13.0): work zero from a corner of the rotary (offsets, the 3D corner and its
 // dimensions, Move zero to the rotary axis through ncSender, Remember axis / corner); the
 // G-code zero marker; a 4-jaw chuck on square stock that turns with A; the silver headstock;
 // the spindle going see-through from the top; tenon length and scale to fit.
@@ -6,6 +6,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const UH = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8798));
@@ -30,7 +31,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec);
+  const openSec = async (sec) => { if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec)) return UH.openStrat(page, sec); await UH.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) { d.open = true; d.scrollIntoView(); } }, sec); };
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
   const D = (mm) => (mm / U).toFixed(metric ? 3 : 4);
   const V = () => page.evaluate(() => window.RotaryCam.viewer);
@@ -90,73 +91,9 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 900000, polling: 500 });
     ok(await st(() => !!window.RotaryCam.__state.program), 'toolpaths generated');
 
-    // ---- work zero from a corner: Stefan's offsets, in inches
-    await openSec('zero');
-    const sec = await page.$eval('#rcam-root details[data-sec=zero] summary', (e) => e.textContent);
-    ok(/Work zero/.test(sec), 'there is a Work zero section: ' + sec.replace('▶', '').trim());
-    ok(await page.$eval('#rcam-root [data-act=zero-move]', (b) => b.disabled), 'Move zero is off until the offsets are set');
-    const off = { x: 4.6023 * IN, y: 1.4142 * IN, z: -1.3826 * IN };
-    await typeIn('#rc-rig-corner-dx', D(off.x));
-    await typeIn('#rc-rig-corner-dy', D(off.y));
-    await typeIn('#rc-rig-corner-dz', D(off.z));
-    const c = await st(() => window.RotaryCam.__state.job.rig.corner);
-    ok(near(c.dx, off.x, 0.003) && near(c.dy, off.y, 0.003) && near(c.dz, off.z, 0.003), `offsets stored (mm): X${c.dx.toFixed(3)} Y${c.dy.toFixed(3)} Z${c.dz.toFixed(3)}`);
-    ok(await st(() => !!window.RotaryCam.__state.program), 'setting the corner offsets keeps the toolpaths');
-    const fxBefore = JSON.stringify(await st(() => window.RotaryCam.viewer.fixtures()));
-    for (const k of ['dx', 'dy', 'dz']) {
-      await page.focus('#rc-rig-corner-' + k); await page.waitForTimeout(300);
-      const h = await hl();
-      ok(h && h.key === 'rig.corner.' + k && h.dims >= 8, `editing ${k}: the corner, its legs to the zero and their sizes show in 3D (${h && h.dims} pieces)`);
-      if (k === 'dx') await shot('corner-dx');
-    }
-    ok(JSON.stringify(await st(() => window.RotaryCam.viewer.fixtures())) === fxBefore, 'the keep-out boxes don’t change with the corner offsets');
-
-    // zeroed on the corner (his sheet's machine coordinates); Move zero to the rotary axis
-    const corner = { x: -43.0984 * IN, y: -43.7339 * IN, z: -0.9649 * IN }, axis = { x: -38.4961 * IN, y: -42.3197 * IN, z: -2.3475 * IN };
-    await setG54(corner);
-    const n0 = (await H('/__test/commands')).commands.length;
-    await act('zero-move'); await page.waitForTimeout(500);
-    const ask = await page.$eval('#rcam-root [data-zero=info]', (e) => e.textContent);
-    ok(/Move G54 from/.test(ask) && (await page.$('#rcam-root [data-act=zero-go]')) && (await H('/__test/commands')).commands.length === n0, 'it asks first, with the numbers, and sends nothing yet');
-    await shot('zero-confirm');
-    await act('zero-go');
-    await page.waitForFunction(() => !window.RotaryCam.__state.zeroBusy && /Moved|Didn/.test(window.RotaryCam.__state.zeroMsg || ''), null, { timeout: 15000 });
-    let cm = await H('/__test/commands'), sent = cm.commands.slice(n0), g = await g54();
-    ok(sent.length === 3 && /^#<_rcam_units> = \[20 \+ #<_metric>\]$/.test(sent[0]) && /^G21 G10 L2 P1 X-?[\d.]+ Y-?[\d.]+ Z-?[\d.]+$/.test(sent[1]) && sent[2] === 'G[#<_rcam_units>]', 'sent like ncSender’s probe routines: ' + sent.join(' | '));
-    ok(near(g[0], axis.x, 0.002) && near(g[1], axis.y, 0.002) && near(g[2], axis.z, 0.002), `G54 is now on his axis point: X${(g[0] / IN).toFixed(4)} Y${(g[1] / IN).toFixed(4)} Z${(g[2] / IN).toFixed(4)} in`);
-    ok(cm.metric === false, 'the controller is back in inches (G20) afterwards');
-    const tz = await st(() => window.RotaryCam.__state.job.rig.tc.zero);
-    ok(near(tz.x, axis.x, 0.002) && near(tz.y, axis.y, 0.002), 'the rotary zero for tool changes follows');
-    ok(/Moved G54 to the rotary axis/.test(await zeroMsg()), 'it says so: ' + (await zeroMsg()));
-    await shot('zero-moved');
-    // pressing it again would add the offsets twice
-    await act('zero-move'); await page.waitForTimeout(600);
-    ok(/already on the axis/.test(await zeroMsg()) && (await H('/__test/commands')).commands.length === n0 + 3 && !(await page.$('#rcam-root [data-act=zero-go]')), 'pressing it again is refused: ' + (await zeroMsg()));
-    // not while the machine is running
-    await setG54(corner); await H('/__test/machine', { machine: { status: 'Run' } });
-    await act('zero-move'); await page.waitForTimeout(600);
-    ok(/machine is Run/.test(await zeroMsg()) && !(await page.$('#rcam-root [data-act=zero-go]')), 'not while the machine is running: ' + (await zeroMsg()));
-    await H('/__test/machine', { machine: { status: 'Idle' } });
-
-    // a controller without expressions: set in mm, then back to the units ncSender shows
-    await H('/__test/machine', { ctrl: { noExpr: true, metric: !metric ? false : true } });
-    const n1 = (await H('/__test/commands')).commands.length;
-    await act('zero-move'); await page.waitForTimeout(500); await act('zero-go');
-    await page.waitForFunction(() => !window.RotaryCam.__state.zeroBusy && /Moved|Didn/.test(window.RotaryCam.__state.zeroMsg || ''), null, { timeout: 15000 });
-    cm = await H('/__test/commands'); sent = cm.commands.slice(n1); g = await g54();
-    ok(near(g[0], axis.x, 0.002) && near(g[2], axis.z, 0.002) && /^G21 G10 L2/.test(sent[1]) && sent[2] === (metric ? undefined : 'G20') && cm.metric === metric, 'no expressions on the controller: still lands, units put back (' + sent.join(' | ') + ')');
-    await H('/__test/machine', { ctrl: { noExpr: false } });
-
-    // working the offsets out: Remember axis, then Remember corner
-    await setG54(axis);
-    await act('zero-axis'); await page.waitForTimeout(500);
-    const other = { x: corner.x - 10, y: corner.y + 3, z: corner.z + 7 };
-    await setG54(other);
-    await act('zero-corner'); await page.waitForTimeout(500);
-    const c2 = await st(() => window.RotaryCam.__state.job.rig.corner);
-    ok(near(c2.dx, axis.x - other.x, 0.002) && near(c2.dy, axis.y - other.y, 0.002) && near(c2.dz, axis.z - other.z, 0.002), `Remember axis then Remember corner fills the offsets: X${c2.dx.toFixed(3)} Y${c2.dy.toFixed(3)} Z${c2.dz.toFixed(3)} mm`);
-    await page.focus('#rc-rig-corner-dy'); await page.waitForTimeout(300);
-    await shot('corner-measured');
+    // ---- work zero: 0.13.0 dropped the corner method (Move zero to the rotary axis, Remember
+    // axis / corner); the work zero is the Probe the chuck button beside Generate (e2e-v26)
+    ok(!(await page.$('#rcam-root details[data-sec=zero]')) && !!(await page.$('#rcam-root .rc-probechuck')), 'no Work zero section: Probe the chuck is a button beside Generate');
 
     // ---- tenon length, and scale to fit leaving it
     await openSec('tenons');

@@ -6,6 +6,7 @@
 const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8786));
@@ -25,11 +26,12 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('console', (m) => { if ((m.type() === 'error' || m.type() === 'warning') && !/ReadPixels|status of 404|GPU stall/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
-  const openSec = (sec) => page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec);
+  const OPK = ['corners', 'rough', 'finish', 'finish2', 'index', 'parting'];
+  const openSec = async (sec) => { if (OPK.includes(sec)) return H.openStrat(page, sec); await H.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec); };
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(300); };
   const st = () => page.evaluate(() => { const S = window.RotaryCam.__state; return { scale: S.job.model.scale, len: S.mesh && S.mesh.max[0] - S.mesh.min[0], rmax: S.mesh && S.mesh.rmax, stockR: S.job.stock_radius, auto: S.job.index.auto, list: S.job.index.angle_list, prog: !!S.program, a: S.ui.a, sel: S.ui.idxSel, ghosts: window.RotaryCam.viewer.indexAngleCount(), reach: window.RotaryCam.viewer.indexReach(), left: window.RotaryCam.viewer.leftoverCount(), problems: S.problems, busy: S.busy }; });
   const msgs = () => page.evaluate(() => ['.rc-toasts', '.rc-msgs'].map((s) => document.querySelector('#rcam-root ' + s).innerText).join(' ').replace(/\n/g, ' '));
@@ -68,7 +70,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // ---- Indexed angles in 3D
     await openSec('index');
-    await page.check('#rcam-root details[data-sec=index] summary input[type=checkbox]');
+    await H.openStrat(page, 'index');
     await page.waitForTimeout(300);
     // (listing the angles is the default from 0.9.0: this part is about picking them)
     await page.check('#rc-index-auto'); await page.waitForTimeout(300);
@@ -146,7 +148,7 @@ fs.mkdirSync(outDir, { recursive: true });
     ok(/\.rcam$/.test(proj) && ['project.json', 'part.stl', 'program.nc', 'result.json', 'result.bin'].every((n) => listing.includes(n)) && /source\/.*\.step/i.test(listing), 'Save project downloads a .rcam with the part, the STEP it came from, settings, G-code and toolpaths');
     ok(/Saved .*\.rcam/.test(await msgs()), 'the message says where it went');
     const pj = JSON.parse(execFileSync('unzip', ['-p', proj, 'project.json'], { maxBuffer: 1 << 26 }).toString());
-    ok(pj.format === 'rotary-cam-project' && pj.job.index.angle_list === '90, 270' && pj.tools.some((x) => x.op === 'index' && x.library && x.library.id === 13), 'project.json: format, settings, tools with their library entries');
+    ok(pj.format === 'rotary-cam-project' && pj.job.index.angle_list === '90, 270' && pj.tools.some((x) => x.library && x.library.id === 13)   /* 0.13.0: one entry per tool (finishing and Indexed share T3) */, 'project.json: format, settings, tools with their library entries');
     ok(execFileSync('unzip', ['-p', proj, 'program.nc'], { maxBuffer: 1 << 30 }).toString() === before.gcode, 'program.nc is the G-code');
 
     // ---- change things, then open the project again
@@ -156,12 +158,12 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.setInputFiles('#rcam-root input[type=file]', proj);
     await page.waitForFunction(() => !window.RotaryCam.__state.busy && /Opened the project/.test((document.querySelector('#rcam-root .rc-toasts').innerText + ' ' + document.querySelector('#rcam-root .rc-msgs').innerText)), null, { timeout: 120000 });
     await page.waitForTimeout(600);
-    const after = await page.evaluate(() => { const S = window.RotaryCam.__state; return { job: JSON.stringify(S.job), gcode: S.program && S.program.gcode, tris: S.raw.length, name: S.fileName, sim: !document.querySelector('[data-tab=sim]').disabled, paths: S.program && S.program.paths.finish.length }; });
+    const after = await page.evaluate(() => { const S = window.RotaryCam.__state; return { job: JSON.stringify(S.job), gcode: S.program && S.program.gcode, tris: S.raw.length, name: S.fileName, sim: !document.querySelector('[data-tab=sim]').disabled, paths: S.program && S.program.paths.find((q) => q.slot === 'finish').data.length }; });
     m = await msgs();
     console.log(ms(), '   opened:', m.slice(0, 220));
     const diff = (a, b, pre = '') => { const out = []; const ka = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]); ka.forEach((k) => { const x = a && a[k], y = b && b[k]; if (x && y && typeof x === 'object' && typeof y === 'object') out.push(...diff(x, y, pre + k + '.')); else if (JSON.stringify(x) !== JSON.stringify(y)) out.push(pre + k + ': ' + JSON.stringify(x) + ' -> ' + JSON.stringify(y)); }); return out; };
     if (after.job !== before.job) console.log(ms(), '   settings that differ:', diff(JSON.parse(before.job), JSON.parse(after.job)));
-    ok(after.job === before.job && after.tris === before.tris && after.name === before.name, 'opening the .rcam brings back the part and every setting');
+    ok(!diff(JSON.parse(before.job), JSON.parse(after.job)).length && after.tris === before.tris && after.name === before.name, 'opening the .rcam brings back the part and every setting');
     ok(after.gcode === before.gcode && after.paths > 0 && after.sim && /ready to simulate or load/.test(m), 'and the G-code and toolpaths, ready to simulate without calculating again');
     ok(!(await page.$eval('#rcam-root .rc-load', (b) => b.disabled)), 'Load into ncSender is ready');
     await page.click('#rcam-root .rc-op[data-op=finish]'); await page.waitForTimeout(400);

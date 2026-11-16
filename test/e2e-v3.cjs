@@ -4,9 +4,10 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
-const PORT = 8779;
+const PORT = Number(process.argv.includes('--port') ? process.argv[process.argv.indexOf('--port') + 1] : 8779);
 fs.mkdirSync(outDir, { recursive: true });
 
 (async () => {
@@ -22,7 +23,7 @@ fs.mkdirSync(outDir, { recursive: true });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   const S = () => page.evaluate(() => { const s = window.RotaryCam.__state; return { units: s.units, model: s.job.model, stock: s.job.stock, problems: s.problems, file: s.fileName, mesh: !!s.mesh, min: s.mesh && s.mesh.min, program: !!s.program, op: s.ui.op, busy: s.busy }; });
   const shot = (n) => page.screenshot({ path: path.join(outDir, n + '.png') });
-  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side details'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
+  const open = async () => { await page.click('#open'); await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.__state && window.RotaryCam.__state.tools.length > 0 && document.querySelector('#rcam-root .rc-side .rc-grp'), null, { timeout: 30000 }); await page.waitForTimeout(700); };
   const t = Date.now(), ms = () => ((Date.now() - t) / 1000).toFixed(1) + 's';
   const ok = (cond, what) => console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what);
   try {
@@ -77,9 +78,9 @@ fs.mkdirSync(outDir, { recursive: true });
     // op pills
     await page.click('#rcam-root .rc-op[data-op=rough]');
     ok((await S()).op === 'rough', 'Roughing pill selects roughing');
-    ok(await page.$eval('#rcam-root details[data-sec=rough]', (d) => d.open), 'Roughing pill opens the roughing settings');
+    ok(await page.evaluate(() => { const S = window.RotaryCam.__state, o = document.querySelector('#rcam-root .rc-strat.open'); return !!o && S.job.rough === window.RotaryCamCore.curSetup(S.job).list.find((x) => x.id === S.ui.strat); }), 'Roughing pill opens the roughing settings');
     await page.selectOption('#rc-rough-tool', '11');
-    await page.evaluate(() => { document.querySelector('#rcam-root details[data-sec=finish]').open = true; });
+    await H.openStrat(page, 'finish');
     await page.selectOption('#rc-finish-tool', '13');
     await page.click('#rcam-root .rc-op[data-op=rough]');
     await shot('4-rough-tool');

@@ -4,6 +4,7 @@
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const fs = require('fs'), path = require('path');
+const H = require('./ui-helpers.cjs');
 const [part, outDir] = process.argv.slice(2);
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const PORT = Number(arg('--port', 8827));
@@ -21,7 +22,7 @@ fs.mkdirSync(outDir, { recursive: true });
   let fails = 0;
   const ok = (cond, what) => { if (!cond) fails++; console.log(ms(), (cond ? 'PASS ' : 'FAIL ') + what); };
   const dark = process.argv.includes('--dark') ? '#dark' : '';
-  const openSec = (s) => page.evaluate((s) => { document.querySelector(`#rcam-root details[data-sec=${s}]`).open = true; }, s);
+  const openSec = async (s) => { if (['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(s)) return H.openStrat(page, s); await H.openGroups(page); await page.evaluate((s) => { document.querySelector(`#rcam-root details[data-sec=${s}]`).open = true; }, s); };
   try {
     await page.goto('about:blank');
     await page.goto(`http://localhost:${PORT}/${dark}`);
@@ -54,7 +55,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // ---- Parting: One cut only, and the tailstock end first
     await openSec('parting');
-    await page.check('#rcam-root details[data-sec=parting] summary input[type=checkbox]');
+    await H.openStrat(page, 'parting');
     await page.waitForTimeout(300);
     const note0 = await page.$eval('#rcam-root [data-note=parting]', (n) => n.textContent);
     ok(/tailstock end tenon.*, then the chuck end tenon/.test(note0) && /chuck end last/.test(note0) && / over /.test(note0), 'Parting says the tailstock end is cut first, the chuck end last: ' + note0.slice(0, 110));
@@ -66,10 +67,10 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click('#rcam-root .rc-gen');
     let sawLines = '';
     for (let i = 0; i < 600 && !sawLines; i++) {
-      sawLines = await page.evaluate(() => { const b = document.querySelector('#rcam-root .rc-status'); const s = window.RotaryCam.__state; return /Finishing lines/.test((b && b.textContent) || s.busy || '') ? ((b && b.textContent) || s.busy) : (s.program || s.problems.length ? 'done' : ''); });
+      sawLines = await page.evaluate(() => { const b = document.querySelector('#rcam-root .rc-status'); const s = window.RotaryCam.__state; return /Finishing lines|lines along the part/.test((b && b.textContent) || s.busy || '') ? ((b && b.textContent) || s.busy) : (s.program || s.problems.length ? 'done' : ''); });
       if (!sawLines) await page.waitForTimeout(100);
     }
-    ok(/Finishing lines/.test(sawLines), 'Generate shows the lines being calculated: ' + sawLines.replace(/\s+/g, ' ').slice(0, 80));
+    ok(/Finishing lines|lines along the part/.test(sawLines), 'Generate shows the lines being calculated (0.13.0: Finishing: lines along the part): ' + sawLines.replace(/\s+/g, ' ').slice(0, 80));
     await page.waitForFunction(() => window.RotaryCam.__state.program || (!window.RotaryCam.__state.busy && window.RotaryCam.__state.problems.length), null, { timeout: 900000, polling: 1000 });
     const probs = await page.evaluate(() => window.RotaryCam.__state.problems);
     ok(!probs.length, 'generated' + (probs.length ? ': ' + probs[0] : ''));
