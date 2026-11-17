@@ -407,7 +407,10 @@ wrong mirrors anything asymmetric.
    nut reaches and right beside the part, down to just what the nut needs (with a 45°
    chamfer back up to the full stock), so the tools reach the end of the part. It's only
    cut where a nut would otherwise be held up, and never thinner than the tenon; the rest
-   stays full size. Rapids
+   stays full size. At the tailstock end the band may run past **Keep away from the
+   tailstock**, up to the end of the stock, when it stays well outside the live centre (that
+   keep-away is for the centre, which is narrow): the holder checks still keep the tool and
+   nut off the centre and the tailstock body. Rapids
    travel high enough for the holder too. Indexed checks every pass against what's
    actually left (and the uncut stock past it), picks its angles where the nut and spindle
    fit, and says how much only a longer stickout would reach.
