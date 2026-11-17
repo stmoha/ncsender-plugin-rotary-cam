@@ -27,7 +27,7 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   const R = core.stockMaxRadius(j), clr = core.clearOf(j), lv = j.rough.leave;
   ok(!!b, 'a 22 mm stickout and 40 mm square stock: a band beside the tailstock end of the part');
   if (b) {
-    ok(near(b.r, 8 + 22 - clr - lv - 0.5, 0.05), `turned to R${b.r.toFixed(2)}: the nut (22 mm up) clears it with the tip on the part's end (R8), the roughing leave and 0.5 mm allowed for`);
+    ok(near(b.r, 5 + 22 - clr - lv - 0.5, 0.05), `turned to R${b.r.toFixed(2)}: the nut (22 mm up) clears it with the tip down on the tenon (R5, lower than the part's end, R8), the roughing leave and 0.5 mm allowed for`);
     ok(b.r < R && b.r > 20, `only the corners come off: R${b.r.toFixed(2)} against R${R.toFixed(2)} at the corners and 20 at the flats`);
     const reach = j.rig.nut.dia / 2 + clr;
     ok(near(b.x1 - b.x0, reach, 0.01) && near(b.xc - b.x1, R - b.r, 0.01), `as wide as the nut reaches (${(b.x1 - b.x0).toFixed(1)} mm), then a 45° chamfer back up to the full stock`);
@@ -44,8 +44,9 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
 {
   const j = job({ rough: { stickout: 45 }, finish: { stickout: 45 }, parting: { stickout: 45 }, corners: { stickout: 45 } });
   ok(!core.workMesh(j, part).bands.length, 'long enough stickouts: no band, the job is as before');
-  ok(!core.workMesh(job(), cyl(18)).bands.length, 'a part that stays thick (R18) to its end: the nut never gets near the stock, no band');
-  const t = core.workMesh(job(), thinEnd).bands, tb = t.find((q) => q.side === 'tailstock');
+  ok(!core.workMesh(job({ tenons: { chuck: { dia: 36 } } }), cyl(18)).bands.length, 'a part that stays thick (R18) to its ends, on fat tenons (R18): the nut never gets near the stock, no band');
+  ok(core.workMesh(job(), cyl(18)).bands.length > 0, 'the same part on thin tenons (R5): the tools work down onto them at the ends, so it gets a band');
+  const t = core.workMesh(job({ tenons: { ends: 'tailstock', same: false, tailstock: { dia: 10, depth: 0 } } }), thinEnd).bands, tb = t.find((q) => q.side === 'tailstock');
   ok(tb && !t.find((q) => q.side === 'chuck') && near(tb.r, 4 + 22 - 2 - 0.5 - 0.5, 0.05), `thick with a thin tailstock end: a band at that end only, sized for the thin end (R${tb && tb.r.toFixed(2)}), none at the thick chuck end`);
 }
 {
