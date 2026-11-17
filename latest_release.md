@@ -1,8 +1,8 @@
-## Rotary CAM 0.15.0 (beta)
+## Rotary CAM 0.14.1 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.15.0**
+**New in 0.14.1**
 - **Relief beside an end of the part.** Past roughing, the stock stays full size up to the tailstock (and the chuck) so the part is held stiffly while it's carved. With thick stock and a part that's thin near an end, the collet nut of a tool working on that end could hit that stock's corners, so the tool had to stay up off the part there. Now roughing turns a short band of that stock, right beside the part and as wide as the nut reaches, down to just what the nut needs, with a 45° chamfer back up to the full stock. At the tailstock end it can run on past *Keep away from the tailstock* to the end of the stock, as long as it stays well outside the live centre. Only where a nut would be held up; the rest stays full size.
 - **A finishing pass that can't reach the part is now a red Danger:** *The part won't come out as drawn between X… and X…*, with how much is left and what to change. The program still runs, but **Load into ncSender**, **Save to File Manager** and **Download** ask again while a Danger shows.
 - Roughing no longer cuts air over the part where Corners already took the corners off.
