@@ -36,3 +36,4 @@ jobs:
           node test/finish2-test.js
           node test/setups-test.js
           node test/zones-test.js
+          node test/relief-test.js

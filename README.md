@@ -393,9 +393,21 @@ wrong mirrors anything asymmetric.
    live centre and tailstock, and keeps the nut and spindle off the part, its tenons and
    the stock past what roughing cut, by **Keep the holder clear by** (2 mm). Where an
    operation would have to go lower than that allows, it stays up instead and says so,
-   with the stickout that would let it reach (*Finishing stays up to 10 mm off what it
-   would cut between X14 and X20: any lower and the collet nut would hit the chuck. Give
-   the tool at least 38 mm stickout, or move the part further from the jaws*). Rapids
+   with the stickout that would let it reach. For a finishing pass (Finishing, Indexed)
+   that means the part won't come out as drawn there, so it's a red **Danger** (*The part
+   won't come out as drawn between X14 and X20: Finishing can't get down to it there and
+   leaves up to 10 mm uncut, because any lower and the collet nut would hit the chuck… give
+   the tool at least 38 mm stickout, or move the part further from the jaws*), and **Load
+   into ncSender**, **Save to File Manager** and **Download** ask again before going ahead;
+   roughing staying up is a yellow check, since finishing follows it.
+   **Relief beside an end of the part:** past roughing the stock stays full size up to the
+   chuck or the tailstock, so the part is held stiffly while it's carved. When the part is
+   thin near one end and the stock is thick, the nut of a tool working on that end can reach
+   over that stock and hit its corners. Then roughing turns a band of it, as wide as the
+   nut reaches and right beside the part, down to just what the nut needs (with a 45°
+   chamfer back up to the full stock), so the tools reach the end of the part. It's only
+   cut where a nut would otherwise be held up, and never thinner than the tenon; the rest
+   stays full size. Rapids
    travel high enough for the holder too. Indexed checks every pass against what's
    actually left (and the uncut stock past it), picks its angles where the nut and spindle
    fit, and says how much only a longer stickout would reach.
@@ -624,6 +636,7 @@ node test/probe-test.js                                    # Probe the chuck aga
 node test/e2e-v26.cjs out/                                 # the Probe the chuck dialog end to end, through the harness's /api/probe/start
 node test/setups-test.js                                   # setups: old jobs become one, any order gives the same moves, rest roughing, two setups
 node test/zones-test.js                                    # keep-out zones: Rotary CAM's two, the program check, routes round other zones
+node test/relief-test.js                                   # relief beside an end of the part: when, how deep, roughing over it, the nut checks
 node test/finish2-test.js                                  # rest finishing: a flat end mill after a tapered ball takes most of what it left, nothing cut into the part
 node test/e2e-v12.cjs test/chin_test.step out/            # listed angles by default; 4 workers = 1 worker, move for move
 node test/ztravel-test.js                                  # programs kept inside the Z travel; Generate off when the stock can't be cleared; dust collection on/off

@@ -60,7 +60,7 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   // a big collet nut on a short stickout: it, not the part, stops the tool short of the hole's
   // bottom, and both messages say so
   const H = await run(null, { rig: { nut: { dia: 60, len: 25 } }, finish: { stickout: 18, tool_length: 12 } });
-  const hm = H.warns.find((w) => /^Finishing stays up to/.test(w)) || '', bm = H.warns.find((w) => /past the rotary axis between/.test(w)) || '';
+  const hm = H.warns.find((w) => /^!!The part won\u2019t come out as drawn .*: Finishing can\u2019t get down to it/.test(w)) || '', bm = H.warns.find((w) => /past the rotary axis between/.test(w)) || '';
   ok(/the collet nut( or spindle)?, not the shape of the part, that sets how deep the tool goes there/.test(hm) && /need the tip [\d.]+ mm past the axis, and the collet nut( or spindle)? lets it get (only [\d.]+ mm|no further than the axis)/.test(hm) && /fit a smaller collet nut/.test(hm), 'held up by the nut: the finishing message says the nut sets the depth, how deep the middle needs and how deep it gets: ' + hm);
   ok(!bm || /keeps it up: see the stickout message for finishing/.test(bm), 'and the past-the-axis notice points at it: ' + bm);
 

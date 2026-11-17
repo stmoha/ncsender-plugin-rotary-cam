@@ -6,10 +6,14 @@ let fails = 0;
 const ok = (c, what) => { if (!c) fails++; console.log((c ? 'PASS ' : 'FAIL ') + what); };
 const near = (a, b, t = 1e-6) => Math.abs(a - b) <= t;
 
-// a plain round part, R8 from X30 to X150, in 40 mm square stock (corners 28.3 from the axis)
-const part = (() => {
-  const tris = core.cylinderTris(30, 150, 8, 64), mb = { min: [30, -8, -8], max: [150, 8, 8], rmax: 8, ends: { lo: true, hi: true }, tris, solid: tris };
-  return mb;
+// a round part from X30 to X150 in 40 mm square stock (corners 28.3 from the axis): R8 all the
+// way, or thick (R16) with a thin (R4) last 20 mm at the tailstock end
+const cyl = (r) => { const tris = core.cylinderTris(30, 150, r, 64); return { min: [30, -r, -r], max: [150, r, r], rmax: r, ends: { lo: true, hi: true }, tris, solid: tris }; };
+const part = cyl(8);
+const thinEnd = (() => {
+  const a = core.cylinderTris(30, 130, 16, 64), b = core.cylinderTris(130, 150, 4, 64), tris = new Float32Array(a.length + b.length);
+  tris.set(a, 0); tris.set(b, a.length);
+  return { min: [30, -16, -16], max: [150, 16, 16], rmax: 16, ends: { lo: true, hi: true }, tris, solid: tris };
 })();
 const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, {
   stock: { shape: 'square', width: 40, height: 40, clamp: 12 }, tailstock_x: 230, chuck_clearance: 5, tailstock_clearance: 8,
@@ -23,8 +27,8 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   const R = core.stockMaxRadius(j), clr = core.clearOf(j), lv = j.rough.leave;
   ok(!!b, 'a 22 mm stickout and 40 mm square stock: a band beside the tailstock end of the part');
   if (b) {
-    ok(near(b.r, 22 - clr - lv), `turned to R${b.r.toFixed(2)}: the nut (22 mm up) clears it with the tip at the axis, the roughing leave allowed for`);
-    ok(b.r < R && b.r > 19, `little more than the corners comes off: R${b.r.toFixed(2)} against R${R.toFixed(2)} at the corners and 20 at the flats`);
+    ok(near(b.r, 8 + 22 - clr - lv - 0.5, 0.05), `turned to R${b.r.toFixed(2)}: the nut (22 mm up) clears it with the tip on the part's end (R8), the roughing leave and 0.5 mm allowed for`);
+    ok(b.r < R && b.r > 20, `only the corners come off: R${b.r.toFixed(2)} against R${R.toFixed(2)} at the corners and 20 at the flats`);
     const reach = j.rig.nut.dia / 2 + clr;
     ok(near(b.x1 - b.x0, reach, 0.01) && near(b.xc - b.x1, R - b.r, 0.01), `as wide as the nut reaches (${(b.x1 - b.x0).toFixed(1)} mm), then a 45° chamfer back up to the full stock`);
     const p = core.plan(j, wm), rR = j.rough.tool_dia / 2;
@@ -32,7 +36,7 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
     // the finishing nut's floor at the end of the part: before (no band), the full stock
     const jOff = job({ rough: { relief: false } }), pOff = core.plan(jOff, core.workMesh(jOff, part));
     const at = (pp, x) => core.holdAt(pp.hold.finish, x);
-    ok(at(pOff, 150) > 4 && at(p, 150) <= 0.01, `the finishing nut at the end of the part: kept ${at(pOff, 150).toFixed(2)} mm above the axis without the band, free with it (${at(p, 150).toFixed(2)})`);
+    ok(at(pOff, 150) > 8 && at(p, 150) < 8, `the finishing nut at the end of the part (R8): keeps the tip ${at(pOff, 150).toFixed(2)} mm above the axis without the band, so off the part; with it ${at(p, 150).toFixed(2)}, below the part`);
     ok(!core.workMesh(jOff, part).bands.length, 'Relief off: no band');
     ok(core.workMesh(j, part).count > core.workMesh(jOff, part).count, 'the band and chamfer are a surface roughing drops onto');
   }
@@ -40,9 +44,12 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
 {
   const j = job({ rough: { stickout: 45 }, finish: { stickout: 45 }, parting: { stickout: 45 }, corners: { stickout: 45 } });
   ok(!core.workMesh(j, part).bands.length, 'long enough stickouts: no band, the job is as before');
+  ok(!core.workMesh(job(), cyl(18)).bands.length, 'a part that stays thick (R18) to its end: the nut never gets near the stock, no band');
+  const t = core.workMesh(job(), thinEnd).bands, tb = t.find((q) => q.side === 'tailstock');
+  ok(tb && !t.find((q) => q.side === 'chuck') && near(tb.r, 4 + 22 - 2 - 0.5 - 0.5, 0.05), `thick with a thin tailstock end: a band at that end only, sized for the thin end (R${tb && tb.r.toFixed(2)}), none at the thick chuck end`);
 }
 {
-  const j = job({ tenons: { same: false, tailstock: { dia: 34, depth: 0 } }, rough: { stickout: 15 }, finish: { stickout: 15 }, parting: { stickout: 15 } });
+  const j = job({ tenons: { same: false, tailstock: { dia: 34, depth: 0 } }, rough: { stickout: 10 }, finish: { stickout: 10 }, parting: { stickout: 10 } });
   const b = core.workMesh(j, part).bands.find((q) => q.side === 'tailstock');
   ok(b && near(b.r, 17), `never thinner than the tenon: a 34 mm tenon keeps the band at R${b && b.r.toFixed(2)}`);
 }
