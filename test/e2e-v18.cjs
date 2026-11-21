@@ -55,7 +55,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const readme = docLabels('README.md'), manual = docLabels('MANUAL.md');
     ok(readme.length === 5 && JSON.stringify(readme) === JSON.stringify(s && s.labels) && JSON.stringify(manual) === JSON.stringify(readme), 'the same five points as README.md and MANUAL.md: ' + (s && s.labels.join(' / ')));
     ok(s && /\/blob\/main\/MANUAL\.md$/.test(s.manual), 'and a link to the manual for anyone new: ' + (s && s.manual));
-    ok(s && /Whoever presses Cycle Start owns what happens next/.test(s.text) && /MIT License/.test(s.text) && /Sienci Labs/.test(s.text), 'the words are all there');
+    ok(s && /Whoever presses Cycle Start owns what happens next/.test(s.text) && /GNU General Public License v3/.test(s.text) && /Sienci Labs/.test(s.text), 'the words are all there');
     await page.screenshot({ path: path.join(outDir, 'fineprint-first-open.png') });
     // ---- Close Rotary CAM: closes without accepting
     const closed0 = await page.evaluate(() => window.__closed);

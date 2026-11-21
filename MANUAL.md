@@ -17,7 +17,7 @@ Rotary CAM is **beta software**. A hobbyist wrote it for his own machine and sha
 
 - **You're the machinist.** Rotary CAM is a tool, not a supervisor. Check every program before you run it: simulate it, read the warnings, and air-cut the first one on any new setup. Check that zero is on the axis, A turns the way the plugin thinks, and nothing is in the cutter's way.
 - **Safety is on you.** Use solid workholding and eye and hearing protection, keep a hand near the E-stop, and don't leave a running machine alone.
-- **No warranty, none at all.** It's provided "as is" under the MIT License, without warranty of any kind, including that it works or suits your purpose. It has bugs; some have been found the exciting way, and some are surely still waiting.
+- **No warranty, none at all.** It's provided "as is" under the GNU General Public License v3 (GPL-3.0), without warranty of any kind, including that it works or suits your purpose. It has bugs; some have been found the exciting way, and some are surely still waiting.
 - **No liability.** The author and contributors aren't liable for any damage, loss or injury from using it: to your machine, tooling, stock, shop, wallet or self. Whoever presses Cycle Start owns what happens next.
 - **Not official.** It's an independent plugin, not made, endorsed or supported by ncSender, Sienci Labs or your machine's maker.
 

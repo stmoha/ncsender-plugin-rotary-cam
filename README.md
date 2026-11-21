@@ -27,7 +27,7 @@ Rotary CAM is **beta software**. A hobbyist wrote it for his own machine and sha
 
 - **You're the machinist.** Rotary CAM is a tool, not a supervisor. Check every program before you run it: simulate it, read the warnings, and air-cut the first one on any new setup. Check that zero is on the axis, A turns the way the plugin thinks, and nothing is in the cutter's way.
 - **Safety is on you.** Use solid workholding and eye and hearing protection, keep a hand near the E-stop, and don't leave a running machine alone.
-- **No warranty, none at all.** It's provided "as is" under the MIT License, without warranty of any kind, including that it works or suits your purpose. It has bugs; some have been found the exciting way, and some are surely still waiting.
+- **No warranty, none at all.** It's provided "as is" under the GNU General Public License v3 (GPL-3.0), without warranty of any kind, including that it works or suits your purpose. It has bugs; some have been found the exciting way, and some are surely still waiting.
 - **No liability.** The author and contributors aren't liable for any damage, loss or injury from using it: to your machine, tooling, stock, shop, wallet or self. Whoever presses Cycle Start owns what happens next.
 - **Not official.** It's an independent plugin, not made, endorsed or supported by ncSender, Sienci Labs or your machine's maker.
 
@@ -85,6 +85,11 @@ wrong mirrors anything asymmetric.
    it opens it shows the fine print (above) until you click **I understand**; click **beta**
    next to the name to read it again. **Open…** (or drop) a `.stl`, `.step` or `.stp`
    part, or a Rotary CAM project (`.rcam`, below).
+
+   Settings show in ncSender's units. A length or feed can be typed in either unit, or
+   as a sum: `1/4"`, `6.35mm`, `1-1/2 in`, `100ipm`, `8mm*2`. A plain number is
+   in the units shown. Up and Down step it by 1 (Shift 10, Alt 0.1, Ctrl 0.001). A field
+   that can't be read turns red and says why when you point at it.
 2. **Place the part** with the buttons on the 3D view:
    - **Turning axis X / Y / Z:** which model axis lies along the rotary. A new file starts
      on its longest side.
@@ -567,6 +572,9 @@ desktop browser connected to ncSender is much faster than a Raspberry Pi kiosk s
   outermost gap, with faces only between rays that both have stock and walls where it ends,
   so a part open down the middle shows open. The gouge check and what's left for Indexed
   count the gaps too.
+- Fields that take units (`1/4"`, `6mm`, `100ipm`):
+  [ncsender-unit-input](https://github.com/tmuka/ncsender-unit-input) by Tony Muka
+  (t0n3), GPL-3.0, in `lib/unit-input.js`.
 - STEP reading: [occt-import-js](https://github.com/kovacsv/occt-import-js) (Open
   CASCADE, LGPL-2.1).
 
@@ -660,6 +668,7 @@ node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the 
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
+node test/e2e-v31.cjs out/                                 # lengths and feeds take units and sums (1/4", 6mm, 100ipm, 8mm*2), metric and inch, and in Probe the chuck
 node test/e2e-v30.cjs out/                                 # Tool Library stickout and flute length both ways; Pro keep-out zones kept, followed, left off, moved, checked
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs
 node test/e2e-v16.cjs test/chin_test.step out/            # one Z travel message, the spindle tool's stickout, one stickout per tool, stock length + clamping, live centre length, fading ends, colours
@@ -675,3 +684,13 @@ python3 test/index_check.py out.nc out.nc.left.json job.json   # how much of wha
 node test/sim-node.js out.nc placed.stl job.json         # the simulator's checks in Node
 python3 test/dense_check.py out.nc part.stl job.json     # every finishing move, at three points along it
 ```
+
+## License
+
+Copyright (c) 2026 Stefan (cast architecture), plugin authored with Claude (Anthropic).
+
+Rotary CAM is free software under the [GNU General Public License v3](LICENSE)
+(GPL-3.0): you can use, change and share it, and what you share built on it has to be
+GPL-3.0 too, with its source. Releases up to 0.14.1 came out under the MIT License and
+stay under it. The parts it includes keep their own licences (in `licenses/`, and
+ncsender-unit-input's GPL-3.0).
