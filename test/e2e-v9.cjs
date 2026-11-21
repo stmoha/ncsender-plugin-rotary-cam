@@ -112,7 +112,7 @@ fs.mkdirSync(outDir, { recursive: true });
     let rep = await page.evaluate(() => window.RotaryCam.__state.simReport);
     console.log(ms(), '   simulation:', JSON.stringify(rep.holder), 'rapids', rep.rapids, 'gouges', rep.gouges);
     ok(rep.holder && rep.holder.count === 0 && rep.rapids === 0 && rep.gouges === 0 && /collet nut and spindle clear/.test(await msgs()), 'simulation: the collet nut and spindle stay clear of the stock and the rotary');
-    await page.$eval('#rcam-root .rc-simpos', (el) => { el.value = 30; el.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.$eval('#rcam-root .rc-simpos', (el) => { el.value = 300; el.dispatchEvent(new Event('input', { bubbles: true })); });
     await page.waitForTimeout(700);
     await page.click('[data-view=front]'); await page.waitForTimeout(500);
     await shot('3-sim-holder');

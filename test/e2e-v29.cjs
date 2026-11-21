@@ -118,7 +118,7 @@ fs.mkdirSync(outDir, { recursive: true });
     });
     ok(sim.g.count === 0 && sim.steps.slice(0, 3).join() === '1,2,3', `Simulate: nothing cut into the part (${sim.g.count} cells), steps ${sim.steps.join(',')}`);
     await page.click('#rcam-root [data-tab=sim]'); await page.waitForTimeout(1500);
-    await page.evaluate(() => { const p = document.querySelector('#rcam-root .rc-simpos'); p.value = '700'; p.dispatchEvent(new Event('input', { bubbles: true })); });
+    await page.evaluate(() => { const p = document.querySelector('#rcam-root .rc-simpos'); p.value = '7000'; p.dispatchEvent(new Event('input', { bubbles: true })); });
     await page.waitForSelector('#rcam-root .rc-simline b', { timeout: 60000 });
     const line = await page.$eval('#rcam-root .rc-simline b', (b) => b.textContent);
     ok(/^(Roughing|Finishing [12]|Indexed)$/.test(line), 'Simulate names the strategy: ' + line);

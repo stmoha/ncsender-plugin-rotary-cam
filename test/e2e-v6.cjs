@@ -32,7 +32,7 @@ fs.mkdirSync(outDir, { recursive: true });
   const openSec = async (sec) => { if (OPK.includes(sec)) return H.openStrat(page, sec); await H.openGroups(page); await page.evaluate((s) => { const d = document.querySelector('#rcam-root details[data-sec=' + s + ']'); if (d) d.open = true; }, sec); };
   const rows = (sec) => page.$$eval(['corners', 'rough', 'finish', 'finish2', 'index', 'parting'].includes(sec) ? '#rcam-root .rc-strat.open .rc-row label' : `#rcam-root details[data-sec=${sec}] .rc-row label`, (els) => els.map((e) => e.textContent.replace('?', '').trim()));
   const typeIn = async (sel, v) => { await page.fill(sel, String(v)); await page.dispatchEvent(sel, 'change'); await page.waitForTimeout(250); };
-  const seek = async (frac) => { await page.$eval('#rcam-root .rc-simpos', (el, f) => { el.value = Math.round(f * 1000); el.dispatchEvent(new Event('input', { bubbles: true })); }, frac); await page.waitForTimeout(900); };
+  const seek = async (frac) => { await page.$eval('#rcam-root .rc-simpos', (el, f) => { el.value = Math.round(f * 10000); el.dispatchEvent(new Event('input', { bubbles: true })); }, frac); await page.waitForTimeout(900); };
   try {
     await page.goto(`http://localhost:${PORT}/${process.argv.includes('--dark') ? '#dark' : ''}`);
     await open();

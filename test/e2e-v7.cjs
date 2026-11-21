@@ -74,7 +74,7 @@ fs.mkdirSync(outDir, { recursive: true });
     console.log(ms(), '   simulation report:', JSON.stringify(rep));
     ok(rep && rep.rapids === 0 && rep.gouges === 0 && rep.tenon.count === 0, 'simulation: no rapids into stock, nothing below the part, tenons whole');
     const tf = await page.evaluate(() => { const P = window.RotaryCam.sim.prog; let a = 0, b = 0; for (let k = 0; k < P.count; k++) if (P.ops[P.op[k]] && P.ops[P.op[k]].name === 'finish') { if (!a) a = (k ? P.t[k - 1] : 0) / P.total; b = P.t[k] / P.total; } return [a, b]; });
-    await page.$eval('#rcam-root .rc-simpos', (el, v) => { el.value = Math.round(v * 1000); el.dispatchEvent(new Event('input', { bubbles: true })); }, (tf[0] + tf[1]) / 2);
+    await page.$eval('#rcam-root .rc-simpos', (el, v) => { el.value = Math.round(v * 10000); el.dispatchEvent(new Event('input', { bubbles: true })); }, (tf[0] + tf[1]) / 2);
     await page.waitForTimeout(900);
     await shot('3-sim-tapered-finishing');
     const dump = await page.evaluate(() => { const s = window.RotaryCam.__state; return { tris: Array.from(s.mesh.tris), job: s.job, gcode: s.program.gcode, tenons: window.RotaryCamCore.tenonList(s.job, s.mesh) }; });
