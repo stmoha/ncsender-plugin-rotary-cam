@@ -146,5 +146,39 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   ok(w && /Or change the tenons: .*make the chuck end tenon Ø24\.0 mm/.test(w), 'the Parting check says so: ' + (w || '').replace(/^.*Or change/, 'Or change'));
   ok(!lifts(pj(40)).p.partingFix, 'a long enough stickout: nothing to suggest');
 }
+// ---- the stock ending just past where roughing stops (0.15.1): the band beside the tailstock
+// end is narrower than a pass, but it was what the nut caught, a sliver of full stock at the very
+// end, so finishing stayed up off the last of the part (a candlestick's thin end, 5.8 mm)
+{
+  const thin = (() => {
+    const a = core.cylinderTris(30, 180, 16, 64), b = core.cylinderTris(180, 200, 5, 64), tris = new Float32Array(a.length + b.length);
+    tris.set(a, 0); tris.set(b, a.length);
+    return { min: [30, -16, -16], max: [200, 16, 16], rmax: 16, ends: { lo: true, hi: true }, tris, solid: tris };
+  })();
+  const sj = (T) => core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, {
+    stock: { shape: 'square', width: 40, height: 40, clamp: 12 }, tailstock_x: T, chuck_clearance: 3.175, tailstock_clearance: 0,
+    model: { part_start_x: 30 }, tenons: { enabled: true, ends: 'both', same: false, chuck: { dia: 10, depth: 0, len: null }, tailstock: { dia: 6, depth: 0, len: 12.7 } },
+    rig: { x0_ahead: 7.9375 }, corners: { enabled: false }, parting: { enabled: true, stickout: 22 },
+    rough: { stickout: 22 }, finish: { stickout: 22, shape: 'ball', tool_dia: 3.175 }
+  }), {}));
+  const j = sj(206.67), wm = core.workMesh(j, thin), b = wm.bands.find((q) => q.side === 'tailstock'), p = core.plan(j, wm), rR = j.rough.tool_dia / 2;
+  ok(b && near(b.x1, 206.67) && near(b.xc, 206.67) && b.x1 - b.x0 < j.rough.tool_dia, `roughing would stop ${b ? (b.x1 - b.x0).toFixed(2) : '?'} mm short of the end of the stock: that sliver still gets a band, run off the end (R${b && b.r.toFixed(1)})`);
+  ok(near(p.roughX[p.roughX.length - 1] + rR, 206.67 + 0.5, 0.01), 'roughing’s last pass runs 0.5 mm past the end of the stock');
+  // (what the material lets the nut down to: on this small rig the spindle's own floor over the
+  // tailstock body is R5)
+  const matAt = (h, x) => h.mat[Math.round((x - h.x0) / h.dx)];
+  ok(matAt(p.hold.finish, 199) < 5 && matAt(p.hold.parting, p.parting.ends.find((e) => e.side === 'tailstock').cols[0]) < 3,
+    `finishing gets down to the thin end (R5) right to the end of the part (the stock lets the nut take the tip down to R${matAt(p.hold.finish, 199).toFixed(2)}; it was 8.28, the full stock's corners at the very end), and Parting to the tenon (R3)`);
+  // roughing that reaches the end of the stock anyway (no keep-away there): its 0.5 mm grid
+  // no longer stops up to a step short of it
+  const j2 = sj(205), p2 = core.plan(j2, core.workMesh(j2, thin));
+  ok(near(p2.roughX[p2.roughX.length - 1] + rR, 205, 1e-6) && matAt(p2.hold.finish, 199) < 5, `roughing’s range reaching the end of the stock: the last pass is right at it (to X${(p2.roughX[p2.roughX.length - 1] + rR).toFixed(3)}), no sliver`);
+  // a check names each place it happened, not one stretch from one end of the part to the other
+  const fx = (v) => v.toFixed(0) + ' mm';
+  ok(core.limitWhere({ x0: 22, x1: 287, spans: [{ x0: 270, x1: 287, lift: 5.8 }, { x0: 22.2, x1: 22.5, lift: 0.4 }] }, fx) === 'near X22 mm and between X270 mm and X287 mm', 'a check’s place: ' + core.limitWhere({ x0: 22, x1: 287, spans: [{ x0: 270, x1: 287, lift: 5.8 }, { x0: 22.2, x1: 22.5, lift: 0.4 }] }, fx));
+  ok(core.limitWhere({ x0: 20, x1: 60, spans: [{ x0: 20, x1: 30, lift: 1 }, { x0: 45, x1: 60, lift: 0.02 }, { x0: 35, x1: 44, lift: 1 }] }, fx) === 'between X20 mm and X60 mm', 'stretches that have grown together are one');
+  ok(core.limitWhere({ x0: 20, x1: 290, spans: [{ x0: 20, x1: 30, lift: 1 }, { x0: 290, x1: 290, lift: 0.02 }] }, fx) === 'between X20 mm and X30 mm', 'a spot that barely stayed up isn’t named');
+  ok(core.limitWhere({ x0: 20, x1: 30 }, fx) === 'between X20 mm and X30 mm', 'limits saved before 0.15.1 (no stretches): as before');
+}
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exitCode = fails ? 1 : 0;

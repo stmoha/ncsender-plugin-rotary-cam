@@ -426,7 +426,10 @@ wrong mirrors anything asymmetric.
    to the cutter's edge), at the tailstock to the end of the stock, past **Keep away from the
    tailstock**, when the tip stays well above the live centre (the holder's clearance over a
    quarter of its cone): the holder checks still keep the tool and nut off the centre and the
-   tailstock body; a pass that runs off the end of the stock goes 0.5 mm past it. The room
+   tailstock body; a pass that runs off the end of the stock goes 0.5 mm past it. Even a band
+   narrower than a pass is cut when it runs off the end: otherwise roughing's last pass would
+   stop a hair short and leave a wafer of full stock there for the nut. Roughing that reaches
+   the end of the stock anyway puts its last pass right on it. The room
    counts every tool working at that end, Parting all along the tenon. When Parting still
    has to stay up off a tenon, its check suggests what would let it get down (a thicker or
    shorter tenon, or Part starts at X), each tried by planning again with it first.
