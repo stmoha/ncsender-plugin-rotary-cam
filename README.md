@@ -331,7 +331,12 @@ wrong mirrors anything asymmetric.
    setting. The tool is drawn in a colour for each part of the run (the start, the chuck
    body, the jaw face), the steps have the same colours, and pointing at a step makes its
    part stand out. It also says in plain numbers how far it moves
-   in X before it comes down to the jaw. In portrait the picture comes first. Each touch goes through ncSender's probe
+   in X before it comes down to the jaw. **Speed between touches** sets how fast it moves
+   between touches (ncSender's own probe speed when empty), and moves that don't need
+   looking at in between go together, so it doesn't stop between them. A has its own jog
+   step in degrees, with where A is now beside Zero A. On ncSender Pro each keep-out zone
+   has a switch in the dialog, so you can jog over the chuck; the ones switched off there
+   go back on when it closes. In portrait the picture comes first. Each touch goes through ncSender's probe
    runner (fast, back off, slow, at ncSender's own feeds), and the work offset is set with
    `G10 L20` where it touched, in mm and back to the units the controller was in. **Half
    turn** (on by default) does the sides and the top again with A turned 180° and averages

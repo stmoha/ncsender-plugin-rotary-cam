@@ -106,6 +106,13 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
 - Relief beside an end of the part (`reliefBands` in cam-core): bands go in the work mesh
   roughing drops onto and in the holders' envelope (`reliefWalls`); roughing starts each
   column at its own stock height (`stockCol` in `genRough`). `test/relief-test.js`.
+- Probe dialog: each `data-part` is redrawn on its own, and a part inside another is compared
+  without it (`partShell`), so a live readout never swaps the jog buttons under the pointer.
+  Probe jobs resolve to where the machine stopped (`afterJob`: one status poll after
+  ncSender's reply), and `chuck-probe.js` puts moves that need no look in between in one job.
+- Checks: a place along the part (X… from the jaw face) becomes a `.rc-xat` span (`markXs`);
+  hovering it calls `viewer.highlight('at:x0,x1', 'Xa|Xb')`. Simulate's red marks come from
+  `simMarks` (rapids, `holderHits`, `sim.cutEvents` from the checkpoints), made once after the check.
 - A finishing pass held up by the holder is a `!!` Danger; Load/Save/Download ask again
   while one shows (`withLatest`).
 - The CI tests are in `.github/workflows/tests.yml`. Before a test ZIP, run them

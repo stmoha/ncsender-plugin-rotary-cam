@@ -926,6 +926,30 @@ export function create(container, opts = {}) {
       m.rotation.x = Math.PI / 2; m.position.set(x, y, (z0 + z1) / 2); m.renderOrder = 29; hlGroup.add(m);
     };
     const k = key.replace(/^(corners|rough|finish|finish2|index|parting)./, 'op.');
+    // at:x0,x1 — a place along the part named in a check (X from the jaw face, mm): a band
+    // round the stock there, and how far it is from the jaw face. text: its label(s), a|b
+    const at = key.match(/^at:(-?[\d.]+),(-?[\d.]+)$/);
+    if (at) {
+      const xa = Math.min(+at[1], +at[2]), xb = Math.max(+at[1], +at[2]), w = Math.max(xb - xa, 1.2), xm = (xa + xb) / 2;
+      const r = R * 1.04 + 0.6, col = new THREE.Color(theme.accent);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 64, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.38, depthTest: false, side: THREE.DoubleSide }));
+      band.rotation.z = Math.PI / 2; band.position.set(xm, 0, 0); band.renderOrder = 29; hlGroup.add(band);
+      for (const x of xb - xa > 0.6 ? [xa, xb] : [xm]) {
+        const pts = []; for (let i = 0; i <= 64; i++) { const t = i / 64 * Math.PI * 2; pts.push(new THREE.Vector3(x, Math.cos(t) * r, Math.sin(t) * r)); }
+        const ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: dimColor(), depthTest: false, transparent: true }));
+        ring.renderOrder = 30; hlGroup.add(ring);
+      }
+      const labs = String(text || '').split('|');
+      // from the jaw face to it (to each end of a stretch), over the top of the stock
+      if (xb - xa > 0.6) {
+        dim([cx, 0, R], [cx, 0, r + 12], [xa, 0, r + 12], [xa, 0, r], labs[0] || '');
+        dim([cx, 0, R], [cx, 0, r + 24], [xb, 0, r + 24], [xb, 0, r], labs[1] || '');
+      } else dim([cx, 0, R], [cx, 0, r + 12], [xm, 0, r + 12], [xm, 0, r], labs[0] || '');
+      const lab = pill('from the jaw face'); lab.scale.multiplyScalar(0.55); lab.center.set(1.05, 0.5); lab.position.set(cx, 0, r + (xb - xa > 0.6 ? 24 : 12)); hlGroup.add(lab);
+      if (refit) keepInView([band]);
+      requestRender();
+      return true;
+    }
     const box = (b, which) => (b ? (targets.push(...(refs[which] || [])), b) : null);
     switch (k) {
       case 'rig.chuck.dia': if (box(ch, 'chuck')) { const x = (ch.x0 + ch.x1) / 2; dim([x, 0, ch.r], [x, -ch.r - 14, ch.r], [x, -ch.r - 14, -ch.r], [x, 0, -ch.r], text); } break;
@@ -1287,6 +1311,8 @@ export function create(container, opts = {}) {
     const hit = ray.intersectObject(idxGroup, true).find((h) => h.object.userData.idxGhost);
     return hit ? hit.object.userData.idx : -1;
   }
+  let cursorNow = '';
+  const setCursor = (c) => { if (c !== cursorNow) { cursorNow = c; renderer.domElement.style.cursor = c; } };
   renderer.domElement.addEventListener('pointerdown', (e) => {
     down = [e.clientX, e.clientY];
     const i = ghostUnder(e);
@@ -1301,12 +1327,14 @@ export function create(container, opts = {}) {
     const g = idx.drag;
     if (!g) {
       const onGhost = idx.ghosts.length && !simOn && ghostUnder(e) >= 0;
-      if (idx.ghosts.length && !simOn && e.buttons === 0) renderer.domElement.style.cursor = onGhost ? (idx.opts.editable ? 'grab' : 'pointer') : '';
-      // a hand over a piece of the setup that a click goes to the setting of
-      if (e.buttons === 0 && !onGhost && opts.onPickSetting && performance.now() - hoverAt > 70) {
-        hoverAt = performance.now();
-        renderer.domElement.style.cursor = settingAt(e) ? 'pointer' : '';
-      }
+      if (e.buttons !== 0) return;
+      // one cursor per move, written only when it changes (Chrome on Linux, full screen, can
+      // lose the cursor altogether when it's switched back and forth on every move)
+      if (onGhost) setCursor(idx.opts.editable ? 'grab' : 'pointer');
+      else if (opts.onPickSetting) {
+        // a hand over a piece of the setup that a click goes to the setting of
+        if (performance.now() - hoverAt > 70) { hoverAt = performance.now(); setCursor(settingAt(e) ? 'pointer' : ''); }
+      } else setCursor('');
       return;
     }
     if (!idx.opts.editable || g.startA === null) return;
@@ -1314,7 +1342,7 @@ export function create(container, opts = {}) {
     const now = angleAt(e);
     if (now === null) return;
     g.moved = true;
-    renderer.domElement.style.cursor = 'grabbing';
+    setCursor('grabbing');
     const step = e.shiftKey ? 1 : 5;
     let a = Math.round((idx.list[g.i].a + ((now - g.startA + 540) % 360 - 180)) / step) * step;
     a = ((a % 360) + 360) % 360;
@@ -1335,7 +1363,7 @@ export function create(container, opts = {}) {
     if (!g) return false;
     idx.drag = null;
     controls.enabled = true;
-    renderer.domElement.style.cursor = '';
+    setCursor('');
     try { renderer.domElement.releasePointerCapture(e.pointerId); } catch (err) {}
     if (g.moved) { idx.list[g.i].a = g.a; if (opts.onIndexDrag) opts.onIndexDrag(g.i, g.a, true); }
     else if (opts.onIndexPick) opts.onIndexPick(g.i);

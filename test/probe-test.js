@@ -32,7 +32,8 @@ function io(M) {
         if (r.alarm) return Promise.reject(new Error('ALARM:' + r.alarm));
         if (r.error) return Promise.reject(new Error(r.error));
       }
-      return Promise.resolve();
+      steps.jobs = (steps.jobs || 0) + 1;
+      return Promise.resolve(M.pos());
     },
     pos() { return Promise.resolve(M.pos()); },
     step(t) { steps.push(t); }

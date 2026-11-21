@@ -270,7 +270,8 @@ nut, a tenon) opens its section and puts you in its setting.
    the further the tip sticks out, the lower it can go, down to the axis. Change it to miss
    a key hole.
 4. **Turn A so a jaw points straight up and press Zero A.** That zeroes A where it is now.
-   The X touch turns A back to 0 to touch the front of that jaw.
+   The X touch turns A back to 0 to touch the front of that jaw. A has its own jog step in
+   degrees (1, 15, 45 or 90), and the dialog shows where A is now.
 5. Jog the tip over the middle of the chuck body (within about 10 mm), a few mm (up to 20)
    above it, at a smooth spot along the body, clear of the key holes: the top and the sides
    are touched there.
@@ -293,6 +294,14 @@ nut, a tenon) opens its section and puts you in its setting.
    first distance plus half the tip plus the gap, comes down, then feels back toward the
    jaw (up to the gap plus 20 mm). If it comes down on the jaw instead, it stops and says
    to set the distance bigger.
+   **Speed between touches**: how fast it moves out to the sides, down beside the chuck,
+   out to the jaw face and down in front of it. Those moves stop the moment the tool
+   touches anything, but take a little distance to stop, so slower is gentler on a pin or
+   probe if it hits something. Empty, it's ncSender's own probe speed. The touches stay
+   slow.
+   With ncSender Pro, each keep-out zone has a switch in the dialog: ncSender won't jog
+   into a zone that's on, so switch the headstock zone off to jog over the chuck. The ones
+   you switch off there go back on when you close the dialog.
 7. With **Connection test** on, touch the probe (or the clip to the chuck): the light goes
    green and **Start Probe** wakes up.
 8. **Start Probe.** Each step shows as it runs; **Stop** (or the red stop in the jog pad)
