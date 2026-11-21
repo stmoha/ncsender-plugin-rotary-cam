@@ -96,8 +96,11 @@ fs.mkdirSync(outDir, { recursive: true });
     await openSec('finish'); await typeIn('#rc-finish-pitch', D(0.5));
     let g = await generate();
     console.log(ms(), '   warnings:', JSON.stringify(g.warnings).slice(0, 600));
-    const fw = g.warnings.find((w) => /^Finishing stays up to .* collet nut( or spindle)? would hit the chuck/.test(w));
-    ok(!!fw && g.warnings.some((w) => /^Roughing stays up to .* collet nut( or spindle)? would hit the chuck/.test(w)), 'roughing and finishing stay up off the part near the chuck, and say the collet nut would hit it');
+    // (since 0.14.1 finishing held up off the part is a Danger; since 0.15.1 "too close to",
+    // nearer than Keep the holder clear by)
+    const hitChuck = /collet nut( or spindle)? would (hit|come too close to) the chuck/;
+    const fw = g.warnings.find((w) => /^(!!The part won’t come out as drawn .*: )?Finishing (stays up|can’t get down)/.test(w) && hitChuck.test(w));
+    ok(!!fw && g.warnings.some((w) => /^Roughing stays up/.test(w) && hitChuck.test(w)), 'roughing and finishing stay up off the part near the chuck, and say the collet nut would come too close to it');
     const need = Number((fw || '').match(/at least ([\d.]+)(?: mm|″| in) stickout/)[1]);
     ok(need > 22 / U, `and how much stickout fixes it (${need} ${metric ? 'mm' : 'in'})`);
     const L = g.gcode.split('\n'), m6 = L.findIndex((l) => /^M6 T3/.test(l));

@@ -179,6 +179,45 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   ok(core.limitWhere({ x0: 20, x1: 60, spans: [{ x0: 20, x1: 30, lift: 1 }, { x0: 45, x1: 60, lift: 0.02 }, { x0: 35, x1: 44, lift: 1 }] }, fx) === 'between X20 mm and X60 mm', 'stretches that have grown together are one');
   ok(core.limitWhere({ x0: 20, x1: 290, spans: [{ x0: 20, x1: 30, lift: 1 }, { x0: 290, x1: 290, lift: 0.02 }] }, fx) === 'between X20 mm and X30 mm', 'a spot that barely stayed up isn’t named');
   ok(core.limitWhere({ x0: 20, x1: 30 }, fx) === 'between X20 mm and X30 mm', 'limits saved before 0.15.1 (no stretches): as before');
+  // what the nut comes too close to, by name: with the relief off, the stock left full size at
+  // the tailstock end holds finishing up over the thin end
+  const jr = core.prepareJob(core.deepMerge(sj(206.67), { rough: { relief: false } })), hr = core.plan(jr, core.workMesh(jr, thin)).hold.finish;
+  const whyAt = (h, x) => h.why[Math.round((x - h.x0) / h.dx)];
+  ok(whyAt(hr, 199) === 'collet nut:tail stock' && whyAt(core.plan(j, wm).hold.finish, 100) === 'collet nut:part', `the floor says what it's for: ${whyAt(hr, 199)} over the thin end with the relief off, ${whyAt(core.plan(j, wm).hold.finish, 100)} over the middle`);
+}
+// ---- finishing held up only where its ball rolls off the end of the part onto the tenon
+// (0.15.1): the passes over the part cut that edge anyway, so nothing's left on the part and
+// there's no Danger. Held up over the part itself, it's what it leaves there.
+{
+  const j = core.prepareJob(core.deepMerge(core.DEFAULTS, { finish: { shape: 'ball', tool_dia: 6.35 }, angle_step_deg: 1 }));
+  const r = 3.175, p = { partLo: 30, partHi: 100 }, pts = [];
+  // a round part R10 from X30, a tenon R5 before it: the ball as low as it goes at each X
+  const want = (x) => (x >= 30 ? 10 : x > 30 - r ? 10 - (r - Math.sqrt(r * r - (30 - x) ** 2)) : 5);
+  for (const a of [0, 1, 2]) for (let x = 20; x <= 100 + 1e-9; x += 0.5) pts.push([x, want(x), a]);
+  const lowEnd = pts.map((q) => (q[0] < 30 ? 9.5 : -Infinity));
+  const off = core.heldOnPart(j, 'finish', p, pts, lowEnd), offMax = Math.max(...Object.values(off));
+  ok(Object.keys(off).length > 0 && offMax < 0.01, `held up to 9.5 before the part's end (X30) only: ${Object.keys(off).length} positions held up to ${(9.5 - 5).toFixed(1)} mm, ${offMax.toFixed(3)} mm left on the part`);
+  const mid = pts.map((q) => (q[0] >= 40 && q[0] <= 50 ? 10.4 : -Infinity));
+  const on = core.heldOnPart(j, 'finish', p, pts, mid), onMax = Math.max(...Object.values(on));
+  ok(near(onMax, 0.4, 0.01), `held 0.4 mm up over the part (X40 to X50): ${onMax.toFixed(3)} mm left on it`);
+}
+// ---- a check with more than one place names each, with its own cause and fix (0.15.1)
+{
+  const cyl16 = (() => { const tris = core.cylinderTris(30, 150, 16, 64); return { min: [30, -16, -16], max: [150, 16, 16], rmax: 16, ends: { lo: true, hi: true }, tris, solid: tris }; })();
+  const j = core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, {
+    stock: { shape: 'square', width: 40, height: 40, clamp: 12 }, tailstock_x: 160, chuck_clearance: 3.175, tailstock_clearance: 0,
+    model: { part_start_x: 30 }, tenons: { enabled: true, ends: 'both', same: false, chuck: { dia: 10, depth: 0, len: null }, tailstock: { dia: 6, depth: 0, len: 12.7 } },
+    rig: { x0_ahead: 7.9375 }, corners: { enabled: false }, parting: { enabled: true, stickout: 20 },
+    rough: { stickout: 22 }, finish: { stickout: 22, shape: 'ball', tool_dia: 3.175 }
+  }), {}));
+  const p = core.plan(j, core.workMesh(j, cyl16));
+  const maps = { roughZ: Array.from({ length: p.nAng }, () => new Float64Array(p.roughX.length).fill(16)), finZ: Array.from({ length: p.nAng }, () => new Float64Array(p.finNrev + 2).fill(16)) };
+  const warns = [];
+  core.buildProgram(j, p, maps, 'cyl', () => {}, (m) => warns.push(m));
+  const w = warns.find((m) => /^Parting can’t cut the tenon/.test(m)) || '';
+  ok(/all the way down in 2 places/.test(w) && /Between X2\d mm and X2\d mm, up to [\d.]+ mm: the spindle would come too close to the chuck; to fix that, .*?move the part further from the jaws\./.test(w) &&
+    /Between X15\d mm and X15\d mm, up to [\d.]+ mm: the spindle would come too close to the tailstock; to fix that, .*?give it more room before the tailstock\./.test(w) && /Too close means nearer than Keep the holder clear by \(2\.0 mm/.test(w),
+    'Parting held up at both ends: each place with how much, what comes too close to what, and its own fix: ' + w.slice(0, 420));
 }
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exitCode = fails ? 1 : 0;

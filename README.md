@@ -404,14 +404,20 @@ wrong mirrors anything asymmetric.
    Every operation keeps the whole tool, the nut and the spindle off the chuck, headstock,
    live centre and tailstock, and keeps the nut and spindle off the part, its tenons and
    the stock past what roughing cut, by **Keep the holder clear by** (2 mm). Where an
-   operation would have to go lower than that allows, it stays up instead and says so,
-   with the stickout that would let it reach. For a finishing pass (Finishing, Indexed)
-   that means the part won't come out as drawn there, so it's a red **Danger** (*The part
-   won't come out as drawn between X14 and X20: Finishing can't get down to it there and
-   leaves up to 10 mm uncut, because any lower and the collet nut would hit the chuck… give
-   the tool at least 38 mm stickout, or move the part further from the jaws*), and **Load
-   into ncSender**, **Save to File Manager** and **Download** ask again before going ahead;
-   roughing staying up is a yellow check, since finishing follows it.
+   operation would have to go lower than that allows, it stays up instead and says so:
+   each place it happens, how much, what would come too close to what (the cutter, collet
+   nut or spindle; the chuck, live centre, the part, a tenon, the stock left full size beside
+   the jaws or at the tailstock end), and what would fix it there (more stickout, a smaller
+   collet nut, the part further from the jaws, more room before the tailstock). For a
+   finishing pass (Finishing, Rest finishing) that leaves material on the part, it's a red
+   **Danger** (*The part won't come out as drawn between X14 and X20: Finishing can't get
+   down to it there and leaves up to 10 mm uncut. Any lower and the collet nut would come
+   too close to the chuck… give the tool at least 38 mm stickout, or move the part further
+   from the jaws*), and **Load into ncSender**, **Save to File Manager** and **Download**
+   ask again before going ahead. It counts only what's left on the part (more than 0.1 mm):
+   a ball held up where it rolls off the end of the part onto a tenon leaves nothing there,
+   since the passes over the part cut that edge anyway. Roughing staying up is a yellow
+   check, since finishing follows it.
    **Relief beside an end of the part:** past roughing the stock stays full size up to the
    chuck or the tailstock, so the part is held stiffly while it's carved. When the part is
    thin near one end and the stock is thick, the nut of a tool working on that end can reach
