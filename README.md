@@ -421,7 +421,11 @@ wrong mirrors anything asymmetric.
    to the cutter's edge), at the tailstock to the end of the stock, past **Keep away from the
    tailstock**, when the tip stays well above the live centre (the holder's clearance over a
    quarter of its cone): the holder checks still keep the tool and nut off the centre and the
-   tailstock body. Roughing › **Make room for the collet nut at the ends** turns it all off.
+   tailstock body; a pass that runs off the end of the stock goes 0.5 mm past it. The room
+   counts every tool working at that end, Parting all along the tenon. When Parting still
+   has to stay up off a tenon, its check suggests what would let it get down (a thicker or
+   shorter tenon, or Part starts at X), each tried by planning again with it first.
+   Roughing › **Make room for the collet nut at the ends** turns it all off.
    When a cut comes within 1/4″ of the jaw face, a check says to make sure the jaws don't
    stick out past the face X was set from (on many chucks they stand proud of the body). If
    they do, put how far in **Jaws stick out past X's face** (Rotary & spindle, Chuck): the

@@ -30,7 +30,8 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
     ok(near(b.r, 5 + 22 - clr - lv - 0.5, 0.05), `turned to R${b.r.toFixed(2)}: the nut (22 mm up) clears it with the tip down on the tenon (R5, lower than the part's end, R8), the roughing leave and 0.5 mm allowed for`);
     ok(b.r < R && b.r > 20, `only the corners come off: R${b.r.toFixed(2)} against R${R.toFixed(2)} at the corners and 20 at the flats`);
     const reach = j.rig.nut.dia / 2 + clr;
-    ok(near(b.x1 - b.x0, reach, 0.01) && near(b.xc - b.x1, R - b.r, 0.01), `as wide as the nut reaches (${(b.x1 - b.x0).toFixed(1)} mm), then a 45° chamfer back up to the full stock`);
+    const te = core.tenonList(j, part).find((q) => q.side === 'tailstock');
+    ok(near(b.x1 - Math.max(b.x0, te.x1), reach, 0.01) && near(b.xc - b.x1, R - b.r, 0.01), `as far as the nut reaches past where Parting works, the far end of the tenon (X${te.x1.toFixed(1)}): to X${b.x1.toFixed(1)}, then a 45° chamfer back up to the full stock`);
     const p = core.plan(j, wm), rR = j.rough.tool_dia / 2;
     ok(p.roughX[p.roughX.length - 1] + rR >= b.xc - j.rough.x_grid - 1e-6, `roughing reaches over the band and its chamfer (to X${(p.roughX[p.roughX.length - 1] + rR).toFixed(1)})`);
     // the finishing nut's floor at the end of the part: before (no band), the full stock
@@ -90,7 +91,12 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
     const js = job({ chuck_clearance: 3.175, tailstock_x: 190, corners: { enabled: true, stickout: 22 } }), ts = core.workMesh(js, thinBoth).bands.find((q) => q.side === 'tailstock');
     ok(ts && ts.r >= core.tailTipClear(js) && near(ts.x1, 190) && near(ts.xc, 190), `stock ending 40 mm past the part: the band (R${ts && ts.r.toFixed(1)}, well above the live centre) runs on to the end of the stock, no ring of full stock left for the nut to catch`);
     const pS = core.plan(js, core.workMesh(js, thinBoth)), rS = js.rough.tool_dia / 2;
-    ok(near(pS.roughX[pS.roughX.length - 1] + rS, 190, 0.01), 'roughing’s last pass is right at the end of the stock');
+    ok(near(pS.roughX[pS.roughX.length - 1] + rS, 190.5, 0.01), 'roughing’s last pass runs 0.5 mm past the end of the stock: not even a sliver left there for a nut to catch');
+    const wS = core.workMesh(js, thinBoth), cS = core.plan(js, wS).corners, cpS = js.corners.tool_dia / 2;
+    ok(near(cS.hi + cpS, 190.5, 0.01), 'and so does Corners');
+    let ring = 0;
+    for (let k = 0; k < wS.tris.length; k += 3) if (wS.tris[k] > 189.9 && Math.hypot(wS.tris[k + 1], wS.tris[k + 2]) > ts.r + 0.01) ring++;
+    ok(ring === 0, 'a band run to the end of the stock has no flat ring standing up at its end for roughing’s last pass to catch on (0.15.0 left the outer 3 mm full size there)');
     const jlow = job({ chuck_clearance: 3.175, tailstock_x: 190, rig: { centre: { dia: 200 } } }), tl = core.workMesh(jlow, thinBoth).bands.find((q) => q.side === 'tailstock');
     ok(tl && tl.xc <= 190 - jlow.tailstock_clearance + 1e-6, `a band too low to stay clear of a (huge) live centre keeps the keep-away from the tailstock (to X${tl && tl.xc.toFixed(1)})`);
   }
@@ -113,6 +119,32 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   ok(warns.some((m) => /^The cutter comes within .*jaws don’t stick out/.test(m)), 'a Check says to make sure the jaws don’t stick out past the face X was set from');
   const jOff = job({ chuck_clearance: 3.175, corners: { enabled: true, stickout: 22 }, rough: { relief: false } }), pOff = core.plan(jOff, core.workMesh(jOff, thinBoth));
   ok(!pOff.bands.length && pOff.corners.hi < cp.hi - 10, 'Make room for the nut off: no band, and the corners stay over the part');
+}
+// ---- Parting held up where more room can't help (0.15.1): the check says which tenon sizes
+// would let it cut the tenon to size, each one checked by planning again with it
+{
+  const pj = (so, over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DEFAULTS, {
+    stock: { shape: 'square', width: 40, height: 40, clamp: 12 }, tailstock_x: 200, chuck_clearance: 3.175, tailstock_clearance: 8,
+    model: { part_start_x: 30 }, tenons: { enabled: true, ends: 'both', same: false, chuck: { dia: 10, depth: 0, len: null }, tailstock: { dia: 10, depth: 0, len: null } },
+    rig: { x0_ahead: 7.9375 }, corners: { enabled: false }, parting: { enabled: true, stickout: so },
+    rough: { stickout: 22 }, finish: { stickout: 22, shape: 'ball', tool_dia: 3.175 }
+  }), over));
+  const lifts = (j) => { const p = core.plan(j, core.workMesh(j, cyl(16))); return { p, L: Object.fromEntries(p.parting.ends.map((e) => [e.side, Math.max(...e.cols.map((x) => core.holdAt(p.hold.parting, x) - e.r))])) }; };
+  const j = pj(20), { p, L } = lifts(j);
+  const f = (p.partingFix || []).find((q) => q.side === 'chuck' && q.k === 'dia');
+  ok(L.chuck > 1 && f, `a 20 mm parting stickout is held up ${L.chuck.toFixed(1)} mm at the chuck end tenon: it suggests a Ø${f && f.v} mm tenon`);
+  if (f) {
+    const L2 = lifts(pj(20, { tenons: { chuck: { dia: f.v } } })).L;
+    ok(L2.chuck <= 0.02, `planned again with that tenon, Parting gets down to it (${L2.chuck.toFixed(2)} mm)`);
+    const L3 = lifts(pj(20, { tenons: { chuck: { dia: f.v - 1 } } })).L;
+    ok(L3.chuck > 0.02, 'and 1 mm thinner doesn’t: it’s the nearest that does');
+  }
+  const warns = [];
+  const maps = { roughZ: Array.from({ length: p.nAng }, () => new Float64Array(p.roughX.length).fill(16)), finZ: Array.from({ length: p.nAng }, () => new Float64Array(p.finNrev + 2).fill(16)) };
+  core.buildProgram(j, p, maps, 'cyl', () => {}, (m) => warns.push(m));
+  const w = warns.find((m) => /^Parting can’t cut the tenon/.test(m));
+  ok(w && /Or change the tenons: .*make the chuck end tenon Ø24\.0 mm/.test(w), 'the Parting check says so: ' + (w || '').replace(/^.*Or change/, 'Or change'));
+  ok(!lifts(pj(40)).p.partingFix, 'a long enough stickout: nothing to suggest');
 }
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exitCode = fails ? 1 : 0;
