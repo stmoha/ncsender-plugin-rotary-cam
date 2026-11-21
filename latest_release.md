@@ -1,14 +1,16 @@
-## Rotary CAM 0.15.0 (beta)
+## Rotary CAM 0.15.1 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.15.0**
-- **Type sizes and feeds in any unit.** Every length and feed takes inches or millimetres, whatever ncSender is set to: `1/4"`, `1-1/2 in`, `6.35mm`, `100ipm`, `25mm/s`. Sums work too, like `8mm*2` or `1in+4mm`. A plain number is in the units shown, as before. Press Tab or Enter and the field shows the number it became. Works in the settings and in Probe the chuck. It's t0n3's [ncsender-unit-input](https://github.com/tmuka/ncsender-unit-input), so fields read the same way as in his plugins.
-- **Up and Down step a length or feed** by 1 (Shift 10, Alt 0.1, Ctrl 0.001).
-- **Text that can't be read turns the field red**; point at it to see why. The setting keeps its old value until you fix it. A comma before exactly three digits (`1,000`) is refused, as it could be a thousands separator; `32,5` reads as 32.5.
-- **Rotary CAM is now GPL-3.0** (it was MIT), so it can include t0n3's library. Free to use, change and share as before; what you share built on it has to stay open too. Releases up to 0.14.1 stay MIT.
+**New in 0.15.1**
+- **Closer to the chuck and the tailstock.** Roughing and Corners can now come within 1/8″ of the jaws (Keep away from the jaws, measured to the cutter’s edge; the cutter’s centre still never goes past X0, so with X0 5/16″ out a 1/4″ bit stops 3/16″ from the jaws). At the tailstock they can run to the end of the stock when the tip stays well above the live centre.
+- **More room for the collet nut beside the ends of the part.** Where the nut would hit the stock beside an end, the stock there comes down only as far as the nut needs. On square stock Corners now faces the corners off there too, which is often all the nut needs. No ring of full stock is left too narrow to matter for the nut to catch.
+- **A switch for it:** Roughing › *Make room for the collet nut at the ends* (on by default).
+- **Jaws that stick out.** A check reminds you to make sure the jaws don’t stick out past the face X was set from whenever a cut comes within 1/4″ of it. If they do, put how far in Rotary & spindle › *Jaws stick out past X’s face*: the cuts and collision checks then keep off the jaws themselves.
+- New jobs start at 1/8″ for Keep away from the jaws. A job you already have keeps its own setting: set it to 1/8″ to get the closer cuts. Air-cut the first program near the jaws.
 
 **Since 0.2.0**
+- 0.15.0: lengths and feeds in any unit (1/4", 100ipm, sums), Up and Down step them, red for text that can't be read; Rotary CAM is GPL-3.0
 - 0.14.1: relief beside an end of the part, so the collet nut can reach; a finishing pass that can't reach the part is a red Danger; no air cuts over corners Corners already took off
 
 - 0.14.0: stickout and flute length kept in ncSender's Tool Library; Rotary CAM's own keep-out zones in ncSender Pro; X0 5/16″ in front of the jaws; headstock and tailstock edges taken from the spindle; the program checked against every keep-out zone; setups, Full or Rest and more than one setup per part (from 0.13.0, which didn't come out on its own)

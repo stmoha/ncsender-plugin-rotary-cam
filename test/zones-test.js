@@ -100,7 +100,9 @@ const jobAhead = (over = {}) => core.prepareJob(core.deepMerge(core.DEFAULTS, ov
   ok(near(h.x1, A - 0.1), `the headstock zone reaches to 0.1 mm short of X0 (${h.x1.toFixed(4)} mm from the jaw face): a jog stops a 1/2" bit's edge ${(h.x1 - 6.35).toFixed(2)} mm off the jaws`);
   const zs = core.zonesFor(j, zero, 'x');
   ok(near(zs[0].maxX, -300.1), `in machine terms it ends 0.1 mm short of G54 X (${zs[0].maxX})`);
-  ok(near(core.chuckKeep(j), A + 0.1) && near(core.chuckKeep(jobAhead({ chuck_clearance: 12 })), 12), 'Keep away from the jaws is at least X0 + 0.1 mm (more stays more)');
+  ok(near(core.chuckLo(j, 3.175), A) && near(core.chuckLo(j, 6.35), 3.175 + 6.35) && near(core.chuckLo(jobAhead({ chuck_clearance: 12 }), 3.175), 15.175),
+    'no tool centre goes past X0 toward the chuck (the zone checks the centre); a wide tool’s edge, or a bigger Keep away from the jaws, stays further');
+  ok(near(core.chuckKeep(j), A - j.rough.tool_dia / 2), `so a 1/4" roughing cutter’s edge comes ${core.chuckKeep(j).toFixed(2)} mm from the jaws, not X0 + 0.1 mm`);
   const mb = { min: [15, -10, -10], max: [85, 10, 10], rmax: 14, ends: { lo: true, hi: true }, tris: new Float32Array(0), solid: new Float32Array(0) };
   const p = core.plan(j, core.workMesh(j, mb));
   const maps = { roughZ: Array.from({ length: p.nAng }, () => new Float64Array(p.roughX.length).fill(10)), finZ: Array.from({ length: p.nAng }, () => new Float64Array(p.finNrev + 2).fill(10)) };

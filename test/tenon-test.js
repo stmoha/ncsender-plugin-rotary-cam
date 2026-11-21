@@ -27,7 +27,7 @@ job = fresh({ tenons: { ends: 'chuck', chuck: { len: 15 } } });
 ok(core.tenonLen(job, 'tailstock') === 0, 'no tailstock tenon: no length there');
 job = fresh({ tenons: { chuck: { len: 40 } } });
 rr = core.roughRange(job, { min: mb.min, max: mb.max, ends: { lo: true, hi: true } });
-ok(near(rr[0], 0 + 5 + 3.175), 'a tenon longer than the room stops at the jaws’ keep-away');
+ok(near(rr[0], 0 + 3.175 + 3.175), 'a tenon longer than the room stops at the jaws’ keep-away (1/8" to the cutter edge)');
 
 // scale to fit leaves the tenon lengths
 job = fresh({ stock: { dia: 80 } });
@@ -39,7 +39,7 @@ ok(f.endBy === 'tenon' && near(f.end, 245 - 8 - 30) && !f.startMoved && near(f.s
 ok(near(f.scale, Math.floor((207 - 25 - 30) / 100 * 1000) / 1000), 'scale ' + f.scale + ' = (207 - 25 - 30) / 100');
 job = fresh({ stock: { dia: 60 }, model: { part_start_x: 2 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
 f = core.fitScale(job, raw);
-ok(f.startMoved && near(f.start, 5), 'Part starts at X inside the keep-away (2 of 5 mm): moved out to X5');
+ok(f.startMoved && near(f.start, 3.175), 'Part starts at X inside the keep-away (2 of 3.175 mm): moved out to X3.175');
 job = fresh({ stock: { dia: 60 }, model: { part_start_x: 50 }, tenons: { same: false, chuck: { len: 30 }, tailstock: { len: 30 } } });
 f = core.fitScale(job, raw);
 ok(!f.startMoved && near(f.start, 50), 'a part already further out stays where it is');

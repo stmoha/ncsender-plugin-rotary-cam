@@ -383,6 +383,10 @@ Then zero (or measure) Z with the first tool, as above.
 - [ ] Zero: X0 5/16″ in front of the jaw face (or what Work zero in front of the jaws
       says), Y0 Z0 on the axis. Jog to X0 Y0 and lower Z near the stock's top to check by
       eye: the tip should be 5/16″ in front of the jaws.
+- [ ] The jaws don't stick out past the face X was measured from. Roughing and Corners can
+      come within 1/8″ of it (Keep away from the jaws). If they stand proud of the chuck
+      body and you zeroed on the body, put how far in Rotary & spindle › Jaws stick out past
+      X's face.
 - [ ] If you probed the chuck: its body diameter measured with calipers (not the jaws), A
       zeroed with a jaw straight up, a pin (or a bit turned when it asked), and the first run
       watched with a hand on Stop.
@@ -419,7 +423,7 @@ Then zero (or measure) Z with the first tool, as above.
 | Grbl alarm partway through, on A | Soft limits with A travel (`$133`) smaller than the program's A | Soft limits off for the job, or raise `$133` |
 | Collet nut or spindle near the chuck or tailstock | Stickout too short for where it has to reach | The message says how much stickout would reach; or move the part further from the jaws |
 | Red **The part won't come out as drawn** | A finishing tool's collet nut or spindle would hit something before the tip reaches the part there | Do what it says (more stickout, a smaller collet nut, more room) before running it, or accept that spot is left thick. Load and Save ask again while it shows |
-| A short band of the stock beside an end of the part is turned round | The part is thin near that end and the stock thick: the band lets the collet nut past (Relief beside an end of the part, README) | Nothing: the rest of that stock stays full size |
+| A short band of the stock beside an end of the part is turned round (on square stock, its corners faced off) | The part is thin near that end and the stock thick: the band lets the collet nut past (Relief beside an end of the part, README) | Nothing: the rest of that stock stays full size. To leave it alone, untick Roughing › Make room for the collet nut at the ends |
 | The dust boot hits the rotary | The lowered boot isn't in the collision checks | Turn dust collection off (Machine), or make room |
 | Generate seems stuck | Indexed with a tapered ball is slow (it goes through OpenCAMLib): minutes per angle on a detailed part | The status clock keeps ticking every second while it works; **Cancel** stops it at once. If the clock stops, the page itself is stuck: reload it (settings and the part come back) |
 | Generate takes a long time | Indexed with *Pick the angles for me* tries every 15° first | List your own angles; the progress bar shows which step and how long is left |

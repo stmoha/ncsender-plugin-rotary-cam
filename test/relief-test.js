@@ -64,5 +64,55 @@ const job = (over = {}) => core.prepareJob(core.deepMerge(core.deepMerge(core.DE
   const cs = p.corners.startR;
   ok(lv.some((v) => near(v, cs, 0.002)) && lv.filter((v) => v > cs + 0.01).length >= 1, `roughing steps the band's corners down to the faced stock (R${cs.toFixed(2)}), then on as before: ${lv.map((v) => v.toFixed(1)).join(', ')}`);
 }
+// ---- closer to the ends (0.15.1): 1/8" from the jaws to the cutter's edge, on to the end of
+// the stock at the tailstock when the tip stays well above the live centre, and the corners
+// faced beside the part as far as the band runs, no deeper than it
+{
+  const j = job({ chuck_clearance: 3.175, corners: { enabled: true, stickout: 22 } });
+  const rR = j.rough.tool_dia / 2;
+  ok(near(core.chuckLo(j, rR) - rR, 3.175), 'X0 on the jaw face: roughing’s cutter edge may come to 1/8" from the jaws');
+  const ja = job({ chuck_clearance: 3.175, rig: { x0_ahead: 7.9375 } });
+  ok(near(core.chuckLo(ja, rR), 7.9375), `X0 5/16" in front of the jaws: the centre stops at X0 (the keep-out zone checks the centre), so a 1/4" cutter’s edge comes ${(core.chuckLo(ja, rR) - rR).toFixed(2)} mm from the jaws`);
+  const jo = job({ chuck_clearance: 3.175, rig: { chuck: { jaws_out: 2 } } });
+  ok(near(core.chuckLo(jo, rR) - rR, 5.175), 'jaws sticking out 2 mm past the face: the cutter stays 1/8" off them');
+  ok(core.fixtures(jo).find((f) => f.name === 'chuck').x1 === 2, 'and the chuck’s collision shape reaches out to them');
+
+  // both ends thin (R4) on thin tenons, short tools: bands at both ends
+  const thinBoth = (() => {
+    const a = core.cylinderTris(30, 50, 4, 64), m = core.cylinderTris(50, 130, 16, 64), b = core.cylinderTris(130, 150, 4, 64), tris = new Float32Array(a.length + m.length + b.length);
+    tris.set(a, 0); tris.set(m, a.length); tris.set(b, a.length + m.length);
+    return { min: [30, -16, -16], max: [150, 16, 16], rmax: 16, ends: { lo: true, hi: true }, tris, solid: tris };
+  })();
+  const wm = core.workMesh(j, thinBoth), tb = wm.bands.find((q) => q.side === 'tailstock'), cb = wm.bands.find((q) => q.side === 'chuck');
+  ok(tb && cb, 'thin at both ends: a band at each');
+  if (tb) ok(tb.xc < j.tailstock_x - 30, `plenty of stock past it (to X${j.tailstock_x}): the band stops where the nut stops reaching, with a chamfer (X${tb.xc.toFixed(1)}), the rest stays full size`);
+  {
+    const js = job({ chuck_clearance: 3.175, tailstock_x: 190, corners: { enabled: true, stickout: 22 } }), ts = core.workMesh(js, thinBoth).bands.find((q) => q.side === 'tailstock');
+    ok(ts && ts.r >= core.tailTipClear(js) && near(ts.x1, 190) && near(ts.xc, 190), `stock ending 40 mm past the part: the band (R${ts && ts.r.toFixed(1)}, well above the live centre) runs on to the end of the stock, no ring of full stock left for the nut to catch`);
+    const pS = core.plan(js, core.workMesh(js, thinBoth)), rS = js.rough.tool_dia / 2;
+    ok(near(pS.roughX[pS.roughX.length - 1] + rS, 190, 0.01), 'roughing’s last pass is right at the end of the stock');
+    const jlow = job({ chuck_clearance: 3.175, tailstock_x: 190, rig: { centre: { dia: 200 } } }), tl = core.workMesh(jlow, thinBoth).bands.find((q) => q.side === 'tailstock');
+    ok(tl && tl.xc <= 190 - jlow.tailstock_clearance + 1e-6, `a band too low to stay clear of a (huge) live centre keeps the keep-away from the tailstock (to X${tl && tl.xc.toFixed(1)})`);
+  }
+  if (cb) ok(cb.x0 >= 3.175 - 1e-6, `the chuck band stays 1/8" off the jaws (from X${Math.min(cb.x0, cb.xc).toFixed(2)})`);
+  const p = core.plan(j, wm), cp = p.corners, cr = j.corners.tool_dia / 2;
+  ok(cp && cp.hi + cr > 150 + 20 && cp.lo - cr < 30 - 10, `the corners come off beside the part too (cutter from X${(cp.lo - cr).toFixed(1)} to X${(cp.hi + cr).toFixed(1)}; the part is X30 to X150)`);
+  ok(cp.lo - cr >= core.chuckLo(j, cr) - cr - 1e-6, 'never closer to the jaws than the keep-away');
+  if (tb) {
+    const f = core.cornerFloor(cp, tb.x0 + 10, cr, j.corners.leave);
+    ok(near(f, tb.r + j.corners.leave), `over the band the corners go no deeper than it (R${f.toFixed(2)})`);
+    ok(core.cornerFloor(cp, 90, cr, j.corners.leave) === -Infinity, 'over the part the corner’s own depth decides');
+  }
+  // the program: no corners or roughing move closer than 1/8" to the jaws, a word about the jaws
+  const maps = { roughZ: Array.from({ length: p.nAng }, () => new Float64Array(p.roughX.length).fill(4)), finZ: Array.from({ length: p.nAng }, () => new Float64Array(p.finNrev + 2).fill(4)) };
+  const warns = [];
+  const prog = core.buildProgram(j, p, maps, 'cyl', () => {}, (m) => warns.push(m));
+  const xs = prog.gcode.split('\n').filter((l) => /^G[01] /.test(l)).map((l) => l.match(/X(-?[\d.]+)/)).filter(Boolean).map((m) => Number(m[1]));
+  const minX = Math.min(...xs);
+  ok(minX - Math.max(cr, rR) >= 3.175 - 0.01, `no cut closer than 1/8" to the jaws (closest centre X${minX.toFixed(3)})`);
+  ok(warns.some((m) => /^The cutter comes within .*jaws don’t stick out/.test(m)), 'a Check says to make sure the jaws don’t stick out past the face X was set from');
+  const jOff = job({ chuck_clearance: 3.175, corners: { enabled: true, stickout: 22 }, rough: { relief: false } }), pOff = core.plan(jOff, core.workMesh(jOff, thinBoth));
+  ok(!pOff.bands.length && pOff.corners.hi < cp.hi - 10, 'Make room for the nut off: no band, and the corners stay over the part');
+}
 console.log(fails ? fails + ' FAILED' : 'ALL PASS');
 process.exitCode = fails ? 1 : 0;
