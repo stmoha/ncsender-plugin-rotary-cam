@@ -8,6 +8,7 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - **Fixed: Parting's collet nut running into the stock at the tailstock end.** When the cleared stock ran right to the end of the stock, roughing left the last 1/8″ there full size, and Parting's nut hit it (Simulate said so). Roughing and Corners now run just past the end. The room cleared for the nut also covers Parting's cuts all along the tenon, not just beside the part.
 - **When Parting still can't get down to a tenon**, its check suggests tenon sizes that would let it, each one tried first (*make the chuck end tenon Ø1.750″*, or a shorter tenon).
 - **A switch for it:** Roughing › *Make room for the collet nut at the ends* (on by default).
+- **ncSender Pro's 3D view draws the stock at its real size.** The program says the stock's diameter in a line ncSender reads (for square stock the side: set ncSender's 3D view to Square stock).
 - **Jaws that stick out.** A check reminds you to make sure the jaws don’t stick out past the face X was set from whenever a cut comes within 1/4″ of it. If they do, put how far in Rotary & spindle › *Jaws stick out past X’s face*: the cuts and collision checks then keep off the jaws themselves.
 - New jobs start at 1/8″ for Keep away from the jaws. A job you already have keeps its own setting: set it to 1/8″ to get the closer cuts. Air-cut the first program near the jaws.
 
