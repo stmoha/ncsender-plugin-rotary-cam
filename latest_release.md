@@ -1,14 +1,16 @@
-## Rotary CAM 0.14.1 (beta)
+## Rotary CAM 0.15.0 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.14.1**
-- **Relief beside an end of the part.** Past roughing, the stock stays full size up to the tailstock (and the chuck) so the part is held stiffly while it's carved. With thick stock and a part that's thin near an end, the collet nut of a tool working on that end could hit that stock's corners, so the tool had to stay up off the part there. Now roughing turns a short band of that stock, right beside the part and as wide as the nut reaches, down to just what the nut needs, with a 45° chamfer back up to the full stock. At the tailstock end it can run on past *Keep away from the tailstock* to the end of the stock, as long as it stays well outside the live centre. Only where a nut would be held up; the rest stays full size.
-- **A finishing pass that can't reach the part is now a red Danger:** *The part won't come out as drawn between X… and X…*, with how much is left and what to change. The program still runs, but **Load into ncSender**, **Save to File Manager** and **Download** ask again while a Danger shows.
-- Roughing no longer cuts air over the part where Corners already took the corners off.
-- Air-cut the first program: roughing can change near the ends of the part.
+**New in 0.15.0**
+- **Type sizes and feeds in any unit.** Every length and feed takes inches or millimetres, whatever ncSender is set to: `1/4"`, `1-1/2 in`, `6.35mm`, `100ipm`, `25mm/s`. Sums work too, like `8mm*2` or `1in+4mm`. A plain number is in the units shown, as before. Press Tab or Enter and the field shows the number it became. Works in the settings and in Probe the chuck. It's t0n3's [ncsender-unit-input](https://github.com/tmuka/ncsender-unit-input), so fields read the same way as in his plugins.
+- **Up and Down step a length or feed** by 1 (Shift 10, Alt 0.1, Ctrl 0.001).
+- **Text that can't be read turns the field red**; point at it to see why. The setting keeps its old value until you fix it. A comma before exactly three digits (`1,000`) is refused, as it could be a thousands separator; `32,5` reads as 32.5.
+- **Rotary CAM is now GPL-3.0** (it was MIT), so it can include t0n3's library. Free to use, change and share as before; what you share built on it has to stay open too. Releases up to 0.14.1 stay MIT.
 
 **Since 0.2.0**
+- 0.14.1: relief beside an end of the part, so the collet nut can reach; a finishing pass that can't reach the part is a red Danger; no air cuts over corners Corners already took off
+
 - 0.14.0: stickout and flute length kept in ncSender's Tool Library; Rotary CAM's own keep-out zones in ncSender Pro; X0 5/16″ in front of the jaws; headstock and tailstock edges taken from the spindle; the program checked against every keep-out zone; setups, Full or Rest and more than one setup per part (from 0.13.0, which didn't come out on its own)
 - 0.12.0: Probe the chuck for the work zero; finishing along the grain; the same job on another computer; Simulate shows a finished part as finished; Parting does the tailstock end first, or one cut only
 - 0.11.6: cutting past the rotary axis only where it’s needed; finishing and Indexed take any end mill; stepovers as a length or a %; Simulate shows parts open down the middle; Size the stock to fit the part
