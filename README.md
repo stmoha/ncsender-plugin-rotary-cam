@@ -526,8 +526,12 @@ A `.rcam` is an ordinary ZIP archive; rename it `.zip` to look inside:
 | `program.nc` | the G-code, when it's been generated |
 | `result.json`, `result.bin` | the toolpaths, previews and Indexed leftovers behind that G-code (typed arrays in the `.bin`) |
 
-Save project uses the browser's Save dialog where it has one (ncSender on this computer),
-otherwise it downloads the file.
+Save project opens your computer's Save As box, so you choose the folder and the name (it
+starts in the folder you saved to last). Browsers show that box only to a page on the same
+computer or at an https address, and only Chrome and Edge do: open ncSender from another
+computer at a plain address like `http://192.168.1.50:8090` and it's a download instead. To choose
+the folder and name there too, turn on *Ask where to save each file* in the browser's download
+settings (Chrome: Settings › Downloads).
 
 Every setting has a tooltip (hover it, or the **?** beside it).
 
@@ -697,6 +701,7 @@ node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the 
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
+node test/e2e-v34.cjs test/horn.stl out/                   # Save project: the Save As box at the click, written where chosen, closed = nothing, a download when refused
 node test/e2e-v31.cjs out/                                 # lengths and feeds take units and sums (1/4", 6mm, 100ipm, 8mm*2), metric and inch, and in Probe the chuck
 node test/e2e-v30.cjs out/                                 # Tool Library stickout and flute length both ways; Pro keep-out zones kept, followed, left off, moved, checked
 node test/e2e-v18.cjs out/                                # the fine print: on first open until accepted, from the beta badge, same words as the docs

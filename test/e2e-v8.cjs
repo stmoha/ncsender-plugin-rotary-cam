@@ -146,7 +146,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const listing = execFileSync('unzip', ['-l', proj]).toString();
     console.log(ms(), '   project:', path.basename(proj), (size / 1e6).toFixed(2), 'MB');
     ok(/\.rcam$/.test(proj) && ['project.json', 'part.stl', 'program.nc', 'result.json', 'result.bin'].every((n) => listing.includes(n)) && /source\/.*\.step/i.test(listing), 'Save project downloads a .rcam with the part, the STEP it came from, settings, G-code and toolpaths');
-    ok(/Saved .*\.rcam/.test(await msgs()), 'the message says where it went');
+    ok(/saved .*\.rcam/i.test(await msgs()), 'the message says where it went');
     const pj = JSON.parse(execFileSync('unzip', ['-p', proj, 'project.json'], { maxBuffer: 1 << 26 }).toString());
     ok(pj.format === 'rotary-cam-project' && pj.job.index.angle_list === '90, 270' && pj.tools.some((x) => x.library && x.library.id === 13)   /* 0.13.0: one entry per tool (finishing and Indexed share T3) */, 'project.json: format, settings, tools with their library entries');
     ok(execFileSync('unzip', ['-p', proj, 'program.nc'], { maxBuffer: 1 << 30 }).toString() === before.gcode, 'program.nc is the G-code');

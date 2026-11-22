@@ -1,20 +1,12 @@
-## Rotary CAM 0.15.1 (beta)
+## Rotary CAM 0.15.2 (beta)
 
 Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and finish it around the A axis, clean up what the rotary passes can't reach with indexed passes, simulate it against the stock, and load the G-code straight into ncSender. Install it from ncSender › Settings › Plugins, or with the ZIP below (Install Plugin); updates show there as *Update available*. New to it? Read the [manual](https://github.com/stmoha/ncsender-plugin-rotary-cam/blob/main/MANUAL.md) before the first carve, and air-cut the first program on a new setup.
 
-**New in 0.15.1**
-- **Closer to the chuck and the tailstock.** Roughing and Corners can come within 1/8″ of the jaws (Keep away from the jaws, measured to the cutter’s edge; the cutter’s centre still never goes past X0). At the tailstock they run to the end of the stock when the tip stays well above the live centre. New jobs start at 1/8″; a job you already have keeps its own setting. Air-cut the first program near the jaws.
-- **Room for the collet nut beside the ends of the part.** Where the nut would hit the stock beside an end, roughing takes that stock down only as far as the nut needs, and on square stock Corners faces the corners off there too. Switch: Roughing › *Make room for the collet nut at the ends* (on by default).
-- **Fixed at the tailstock end:** roughing could leave a thin ring of full-size stock at the end, which Parting’s collet nut ran into and which held finishing up off the last of the part. Roughing now runs just past the end of the stock.
-- **Checks say where, what and how to fix it.** When a tool has to stay up, its check names each place on its own (*near X0.81″*), how much, what would come too close to what (*the collet nut would come too close to the stock left full size beside the jaws*) and what would fix that spot. Hover over a place and the 3D view rings the stock there.
-- **No false Danger at the ends of the part.** Finishing’s red *The part won’t come out as drawn* now counts only what’s actually left on the part.
-- **When Parting can’t get down to a tenon**, its check suggests tenon sizes that would let it.
-- **ncSender Pro’s 3D view draws the stock at its real size** (for square stock, set its 3D view to Square stock).
-- **Simulate:** a strip under the timeline marks each pass (hover for its name and times, click to go to its start). Problems (rapids into the stock, the holder hitting something, cuts into the part or a tenon) show as red marks, and **Stop at problems** pauses at each one. Dragging the timeline no longer seems to hang. The line readout also shows A within one turn (0 to 360°), to line the stock up with the model.
-- **Probe the chuck** runs with fewer pauses and has its own **Speed between touches**, a jog step for A in degrees, and on ncSender Pro a switch for each keep-out zone so you can jog over the chuck.
-- **Jaws that stick out:** when a cut comes within 1/4″ of the jaws, a check reminds you to make sure they don’t stick out past the face X was set from. If they do, set Rotary & spindle › *Jaws stick out past X’s face* and the cuts keep off them.
+**New in 0.15.2**
+- **Save project asks where to save.** It opens your computer's Save As box, so you choose the folder and the name, and it starts in the folder you used last. (Before, the box came up only after the project was packed, by which time the browser no longer counted the click, so it was nearly always a download.) Browsers show that box only to a page on the same computer or at an https address, and only Chrome and Edge do: with ncSender opened from another computer at a plain address like `http://192.168.1.50:8090`, it's still a download. To choose the folder and name there too, turn on *Ask where to save each file* in the browser's download settings; the first download says so.
 
 **Since 0.2.0**
+- 0.15.1: roughing and Corners within 1/8″ of the jaws and to the end of the stock; room for the collet nut beside the ends; checks say where, what and how to fix it; Simulate marks each pass and stops at problems; probing with fewer pauses
 - 0.15.0: lengths and feeds in any unit (1/4", 100ipm, sums), Up and Down step them, red for text that can't be read; Rotary CAM is GPL-3.0
 - 0.14.1: relief beside an end of the part, so the collet nut can reach; a finishing pass that can't reach the part is a red Danger; no air cuts over corners Corners already took off
 
