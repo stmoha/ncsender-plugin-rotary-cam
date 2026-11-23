@@ -101,7 +101,8 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
   `own` is only for tools typed in. Never write TLO, diameter or number.
 - Keep-out zones (ncSender Pro, `/api/app-info` edition `pro`): ours are the ids in
   `core.ZONE_IDS`, in `settings.keepout.zones` (machine mm), written with PATCH of the whole
-  list (`syncZones`), placed from `job.keepout.at`. Other zones go in `rig.tc.zones` for the
+  list (`syncZones`), placed from `job.keepout.at`. They follow G54 within 1 mm; further, they stay
+  and the panel and the Keep-out Danger offer Move the zones (`zonePlan`, `S.zoneMoved`). Other zones go in `rig.tc.zones` for the
   routes and `core.programZoneHits`. Harness: `POST /__test/pro { pro, zones }`; `test/e2e-v30.cjs`.
 - Relief beside an end of the part (`reliefBands` in cam-core): bands go in the work mesh
   roughing drops onto and in the holders' envelope (`reliefWalls`); roughing starts each

@@ -151,6 +151,25 @@ fs.mkdirSync(outDir, { recursive: true });
     await mv.click();
     ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-100.1)) < 1e-6), 'Move the zones to the rotary: they’re placed from the new work zero');
     ok(await until(async () => !(await page.isVisible(sel('[data-act=movezones]')))), 'and the button goes away');
+    // 0.15.2: zeroed again within 1 mm (probing again, say): the zones follow by themselves, or
+    // X0 could land inside the headstock zone, which stops 0.1 mm short of it
+    await H('/__test/machine', { machine: { g54: '-100.500,-50.000,-80.000,0.000', WCO: '-100.500,-50.000,-80.000' } });
+    await page.click(sel('[data-act=readmachine]'));
+    ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-100.6)) < 1e-6), 'zeroed again 0.5 mm toward the chuck: the zones follow by themselves');
+    ok(!(await page.isVisible(sel('[data-act=movezones]'))), 'without asking');
+    // further than that, with a program: the Danger says the zones are where the rotary was,
+    // how far the zero has moved and which way, and moves them from there
+    await H('/__test/machine', { machine: { g54: '-120.500,-50.000,-80.000,0.000', WCO: '-120.500,-50.000,-80.000' } });
+    await page.click(sel('[data-act=readmachine]')); await page.waitForTimeout(1500);
+    await page.evaluate(() => { const S = window.RotaryCam.__state; S.program = { gcode: 'G21 G90\nG0 X0 Y0\nG1 X40 F1000' }; });
+    await type('keepout.margin', 11);
+    const why = await until(async () => { const n = await notes(); return /has moved 20(\.0)? mm toward the chuck/.test(n) ? n : null; });
+    console.log('   ', (why || await notes()).slice(0, 420));
+    ok(why && /Rotary headstock/.test(why) && /X0 is now 12\.\d mm behind the jaw face/.test(why), 'G54 moved 20 mm toward the chuck: the Danger says the zone is where the rotary was, and where X0 is against the jaws');
+    ok(await page.isVisible(sel('.rc-zmove')), 'with Move the zones to the rotary in it');
+    await page.click(sel('.rc-zmove'));
+    ok(await until(async () => Math.abs((await ours()).find((z) => /headstock/.test(z.id)).maxX - (-120.6)) < 1e-6), 'which puts them round the rotary from the new zero');
+    ok(await until(async () => !/Rotary headstock/.test(await notes())), 'and the Danger goes');
 
     // the program is checked against every zone
     await H('/__test/pro', { zones: (await zones()).concat([{ id: 'clamp', name: 'Clamp', kind: 'keepout', enabled: true, minX: -60, minY: -60, maxX: -40, maxY: -40 }]) });
