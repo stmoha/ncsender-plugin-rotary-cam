@@ -357,7 +357,16 @@ wrong mirrors anything asymmetric.
    a round body at its diameter; empty, the cone goes straight into the body), the
    tailstock (body, lock lever and handwheel), the collet nut (diameter, length) and the
    spindle's diameter. In 3D the chuck, headstock, tailstock, live centre body and spindle
-   are silver, the jaws, the live centre's cone and the collet nut dark gray. The chuck end
+   are silver, the jaws, the live centre's cone and the collet nut dark gray.
+   **3D view of the rotary:** when ncSender has a rotary set (its Settings, *4th axis
+   fixture*: the K12-100 4-jaw rotary, the Sienci Vortex or the Vortex 48″), the 3D view
+   draws ncSender's own model of it, the way ncSender does: the tailstock at the end of the
+   stock (the base stretches if it has to), and the jaws opened on the step that keeps them
+   in closest to the chuck. Big stock goes on the outer step instead of opening the inner
+   one out past the chuck into the base. **Simple shapes** draws the rotary from the sizes
+   here instead. Only the drawing changes: the checks and the keep-out zones always go by
+   the sizes here. On ncSender Pro the keep-out zones show as see-through red boxes,
+   where ncSender has them against the work zero now. The chuck end
    or the tailstock end turns see-through when it's between you and the part (looking
    down the axis from either end, say), the way the collet nut and spindle do from the top.
    The headstock and tailstock needn't be centred on the axis: each has a length along X,
@@ -707,6 +716,7 @@ node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the 
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
+node test/e2e-v36.cjs test/horn.stl out/                   # ncSender's model of the rotary: jaws on the closest-in step, tailstock and base follow the stock, Simple shapes, zone boxes
 node test/e2e-v35.cjs test/horn.stl out/                   # Ortho: Front, Top, End straight along an axis and flat; back to perspective at the same size; remembered
 node test/e2e-v34.cjs test/horn.stl out/                   # Save project: the Save As box at the click, written where chosen, closed = nothing, a download when refused
 node test/e2e-v31.cjs out/                                 # lengths and feeds take units and sums (1/4", 6mm, 100ipm, 8mm*2), metric and inch, and in Probe the chuck

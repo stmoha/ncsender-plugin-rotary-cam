@@ -55,9 +55,90 @@ function pillSprite(text, bg, fg, size = 40) {
 
 function disposeTree(obj) {
   obj.traverse((o) => {
-    if (o.geometry) o.geometry.dispose();
+    if (o.geometry && !o.geometry.userData.keep) o.geometry.dispose();   // kept: a model's, drawn again
     if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); });
   });
+}
+
+// ---- ncSender's own models of the rotary (Settings › 4th axis fixture), read from its page:
+// an .ncfx is 'NCFX', the length of a JSON header, the header, then each group's positions
+// (uint16 from `origin` in steps of `scale`), normals (int8) and triangles. Model frame: the
+// chuck body's face at X0, the jaws reaching `jawReach` in front of it, closed on the axis
+// (Y0 Z0), each opening along its `jawDirs` (Y, Z); the tailstock with its centre's point at
+// X0; the base below at -axisHeight. Drawn as ncSender draws it: matcap shading in its colours,
+// with the edges over 40 degrees outlined.
+const NCFX_COLORS = { steel: 0xe6ebf0, gun: 0x7a8698, anod: 0x414f63, black: 0x262d37, teal: 0x1abc9c, dark: 0x30363f };
+let matcapTex = null;
+function matcap() {
+  if (matcapTex) return matcapTex;
+  const s = 256, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1a1e24'; g.fillRect(0, 0, s, s);
+  const a = g.createRadialGradient(s * 0.36, s * 0.3, 0, s * 0.5, s * 0.5, s * 0.62);
+  a.addColorStop(0, '#ffffff'); a.addColorStop(0.18, '#dfe5ec'); a.addColorStop(0.5, '#8c97a5'); a.addColorStop(0.82, '#444c57'); a.addColorStop(1, '#1f242b');
+  g.fillStyle = a; g.beginPath(); g.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2); g.fill();
+  const b = g.createRadialGradient(s * 0.74, s * 0.8, 0, s * 0.74, s * 0.8, s * 0.3);
+  b.addColorStop(0, 'rgba(190, 205, 225, 0.45)'); b.addColorStop(1, 'rgba(190, 205, 225, 0)');
+  g.fillStyle = b; g.beginPath(); g.arc(s / 2, s / 2, s / 2, 0, Math.PI * 2); g.fill();
+  matcapTex = new THREE.CanvasTexture(c);
+  matcapTex.colorSpace = THREE.SRGBColorSpace;
+  return matcapTex;
+}
+export function parseNcfx(buf) {
+  const dv = new DataView(buf);
+  if (dv.byteLength < 8 || dv.getUint32(0, true) !== 0x5846434e) throw new Error('not an ncSender fixture model');
+  const n = dv.getUint32(4, true), h = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, n))), base = 8 + n;
+  const [ox, oy, oz] = h.origin;
+  h.groups = h.groups.map((g) => {
+    const q = new Uint16Array(buf, base + g.pos, g.verts * 3), pos = new Float32Array(g.verts * 3);
+    for (let i = 0; i < pos.length; i += 3) { pos[i] = ox + q[i] * h.scale; pos[i + 1] = oy + q[i + 1] * h.scale; pos[i + 2] = oz + q[i + 2] * h.scale; }
+    const nq = new Int8Array(buf, base + g.nrm, g.verts * 3), nrm = new Float32Array(g.verts * 3);
+    for (let i = 0; i < nrm.length; i++) nrm[i] = nq[i] / 127;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+    geometry.setIndex(new THREE.BufferAttribute((g.index === 'u32' ? new Uint32Array(buf, base + g.idx, g.tris * 3) : new Uint16Array(buf, base + g.idx, g.tris * 3)).slice(), 1));
+    geometry.computeBoundingBox(); geometry.computeBoundingSphere();
+    const edges = new THREE.EdgesGeometry(geometry, 40);
+    geometry.userData.keep = edges.userData.keep = true;
+    const dir = h.jawDirs && h.jawDirs[g.role];
+    return { role: g.role, mat: g.mat, geometry, edges, dir, steps: dir ? jawSteps(geometry, dir, 0, h.jawReach || 20) : null };
+  });
+  return h;
+}
+// A jaw's gripping faces, closed: along X from x0 to x1 (in front of the chuck body), how
+// near the axis the jaw comes (its distance along `dir`); each step of a stepped jaw is a
+// stretch at one distance: [{ r, x0, x1 }], nearest first
+function jawSteps(geo, dir, x0, x1) {
+  const p = geo.attributes.position.array, ix = geo.index.array, prof = [];
+  for (let x = x0 + 0.25; x < x1; x += 0.5) {
+    let m = Infinity;
+    for (let t = 0; t < ix.length; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const a = ix[t + e] * 3, b = ix[t + (e + 1) % 3] * 3, xa = p[a], xb = p[b];
+        if ((xa - x) * (xb - x) > 0 || xa === xb) continue;
+        const f = (x - xa) / (xb - xa), y = p[a + 1] + f * (p[b + 1] - p[a + 1]), z = p[a + 2] + f * (p[b + 2] - p[a + 2]);
+        m = Math.min(m, y * dir[0] + z * dir[1]);
+      }
+    }
+    if (isFinite(m)) prof.push([x, m]);
+  }
+  const steps = [];
+  for (const [x, m] of prof) {
+    const s = steps[steps.length - 1];
+    if (s && Math.abs(m - s.last) < 0.3) { s.x1 = x + 0.25; s.r = Math.min(s.r, m); s.last = m; } else steps.push({ r: m, x0: x - 0.25, x1: x + 0.25, last: m });
+  }
+  return steps.filter((s) => s.x1 - s.x0 >= 1.5).map(({ r, x0, x1 }) => ({ r: Math.max(0, r), x0, x1 })).sort((a, b) => a.r - b.r);
+}
+// how far a jaw opens to hold stock `R` from the axis: on the step furthest out that still
+// reaches it, so the jaws stay in close to the chuck (rather than opening its innermost step
+// out past the chuck, into the base)
+export function jawOpen(steps, R) {
+  if (!steps || !steps.length) return { open: Math.max(0, R), step: null };
+  const fit = steps.filter((s) => s.r <= R + 0.01);
+  const s = fit.length ? fit[fit.length - 1] : steps[0];
+  return { open: Math.max(0, R - s.r), step: s };
 }
 
 // cylinder along +X from x0 to x1
@@ -127,6 +208,7 @@ export function create(container, opts = {}) {
   reach.shadow.bias = -0.0004;
   partGroup.add(reach); partGroup.add(reach.target);
   let setup = null, bounds = null;
+  let fixture = null, fxInfo = {}, modelNow = null;   // ncSender’s model of the rotary (setFixture)
 
   const mats = {};
   function makeMats() {
@@ -236,7 +318,7 @@ export function create(container, opts = {}) {
     if (!sides) return;
     const pts = target ? samplePoints(target) : [];
     for (const side of ['head', 'tail']) {
-      const objs = sides[side].filter((o) => o.isMesh && o.visible !== false);
+      const objs = sides.proxy ? sides.proxy[side] : sides[side].filter((o) => o.isMesh && o.visible !== false);
       let f = 0;
       if (pts.length && objs.length) {
         let hid = 0;
@@ -262,9 +344,10 @@ export function create(container, opts = {}) {
   let sides = null;
   function setOpacity(m, op) {
     if (!m || m === mats.hl) return;
-    const tr = op < 0.995;
+    // (a material see-through of its own, like the model’s edges: `base` times the fade)
+    const base = m.userData.base, o = base != null ? base * op : op, tr = base != null || o < 0.995;
     if (m.transparent !== tr) { m.transparent = tr; m.depthWrite = !tr; m.needsUpdate = true; }
-    m.opacity = tr ? op : 1;
+    m.opacity = tr ? o : 1;
   }
   // points through the part (or the stock): along it, on the axis and out toward its sides
   const samp = [];
@@ -305,7 +388,8 @@ export function create(container, opts = {}) {
     disposeTree(stockGroup); stockGroup.clear();
     disposeTree(jawGroup); jawGroup.clear();
     setup = s;
-    refs = { chuck: [], head: [], centre: [], tail: [], stock: [], keepChuck: [], keepTail: [], origin: [] };
+    refs = { chuck: [], head: [], centre: [], tail: [], stock: [], keepChuck: [], keepTail: [], origin: [], zones: [], track: [] };
+    modelNow = null;
     // the chuck end and the tailstock end each fade when they hide the part, so each piece
     // gets its own material (the housings and the jaws share theirs otherwise)
     sides = { head: [], tail: [], opacity: { head: 1, tail: 1 } };
@@ -316,15 +400,17 @@ export function create(container, opts = {}) {
     // the rotary at its real size (Rotary & spindle settings)
     const ch = F('chuck') || { x0: x0 - 48, x1: x0, r: Math.max(R * 1.5 + 6, 30) };
     const chuckR = ch.r, jawLen = Math.min(14, (ch.x1 - ch.x0) / 3), bodyLen = ch.x1 - ch.x0 - jawLen;
+    // ncSender's model of the rotary in place of the simple shapes (Rotary & spindle › 3D view)
+    const mdl = fixture && s.look !== 'simple' ? buildModel(s, add) : null;
     // silver like the headstock and tailstock (matt: metallic faces look dark); the jaws, the
     // live centre's cone and the collet nut are the darker metal
-    add('chuck', xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, own('head', mats.housing), 64));
+    if (!mdl) add('chuck', xCylinder(chuckR * 0.97, chuckR * 0.97, ch.x0, ch.x1 - jawLen, own('head', mats.housing), 64));
     const jawMat = own('head', mats.metalDark);
     // the jaws, from the stock out to the chuck's full diameter. Four (the default) sit on the
     // flats of square stock, at Y and Z with A at 0; three are 120 deg apart. They turn with A.
     const four = !(s.rig && s.rig.chuck && String(s.rig.chuck.jaws) === '3');
     const half = s.stockShape === 'round' || !s.stockHalf ? [R, R] : s.stockHalf;
-    for (let k = 0; k < (four ? 4 : 3); k++) {
+    for (let k = 0; !mdl && k < (four ? 4 : 3); k++) {
       const a = four ? k * 90 * DEG : k * 120 * DEG + 90 * DEG;
       // how far out the stock's face is in this direction, and how wide that face is
       const jawR = four ? (k % 2 ? half[1] : half[0]) : (s.stockShape === 'round' ? R : Math.min(R, Math.max(half[0], half[1])));
@@ -345,15 +431,15 @@ export function create(container, opts = {}) {
       machine.add(edges); sides[side].push(edges);
     };
     const hd = F('headstock');
-    if (hd) box('head', hd, 'head');
+    if (hd && !mdl) box('head', hd, 'head');
     const xt = s.tailX, ce = F('live centre') || { x0: xt, x1: xt + Math.max(14, R * 0.8), r: Math.max(6, R * 0.45) };
     const coneL = ce.x1 - ce.x0, coneR = ce.r;
-    add('centre', xCylinder(0.01, coneR, ce.x0, ce.x1, own('tail', mats.metalDark), 32));
+    if (!mdl) add('centre', xCylinder(0.01, coneR, ce.x0, ce.x1, own('tail', mats.metalDark), 32));
     // behind the cone, its round body back to the tailstock (silver, like the housings)
     const cb = fx.find((f) => f.name === 'live centre' && f.part === 'body');
-    if (cb) add('centre', xCylinder(cb.r, cb.r, cb.x0, cb.x1, own('tail', mats.housing), 48));
+    if (cb && !mdl) add('centre', xCylinder(cb.r, cb.r, cb.x0, cb.x1, own('tail', mats.housing), 48));
     const tl = F('tailstock');
-    if (tl) box('tail', tl, 'tail');
+    if (tl && !mdl) box('tail', tl, 'tail');
     // stock: turns with the part
     const sx0 = x0 - (s.clamp > 0 ? s.clamp : 0), sx1 = xt;     // into the jaws by the clamping distance
     if (s.stockShape === 'round') {
@@ -370,6 +456,23 @@ export function create(container, opts = {}) {
       box.renderOrder = 2;
       stockGroup.add(box); refs.stock.push(box); box.userData.setting = 'stock';
       stockGroup.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), mats.stockEdge));
+    }
+    // the keep-out zones as ncSender has them (Pro): see-through boxes from the table up, over
+    // whatever the rotary is drawn with. The zones are in X and Y only (any height).
+    const zs = s.zones || [];
+    if (zs.length) {
+      const lo = mdl ? mdl.floor : -Math.max(chuckR, hd ? hd.top : 0, tl ? tl.top : 0) - 10;
+      const hi = Math.max(mdl ? mdl.top : Math.max(chuckR, hd ? hd.top : 0, tl ? tl.top : 0), R) + 20;
+      for (const z of zs) {
+        if (!(z.x1 > z.x0 && z.y1 > z.y0)) continue;
+        const g = new THREE.BoxGeometry(z.x1 - z.x0, z.y1 - z.y0, hi - lo);
+        g.translate((z.x0 + z.x1) / 2, (z.y0 + z.y1) / 2, (hi + lo) / 2);
+        const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xd64545, transparent: true, opacity: theme.dark ? 0.09 : 0.07, depthWrite: false, side: THREE.DoubleSide }));
+        m.renderOrder = 3; m.userData.zone = z.name || 'zone';
+        add('zones', m);
+        const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: 0xd64545, transparent: true, opacity: 0.6, depthWrite: false }));
+        e.renderOrder = 3; machine.add(e);
+      }
     }
     const kR = R + 1.5;
     if (s.chuckClear > 0) add('keepChuck', xCylinder(kR, kR, x0, x0 + s.chuckClear, mats.keep, 48, true));
@@ -418,18 +521,101 @@ export function create(container, opts = {}) {
     org.add(ol);
     org.userData.origin = true;
     machine.add(org); refs.origin.push(org);
-    const ls = Math.max(6, chuckR * 0.16);
+    const ls = Math.max(6, (mdl ? mdl.chuckR : chuckR) * 0.16);
     const lc = textSprite('chuck', theme.muted, 28);
-    lc.position.set(ch.x0 + bodyLen / 2, 0, chuckR + 9);
+    if (mdl) lc.position.set(mdl.chuckMid, 0, mdl.chuckR + 9); else lc.position.set(ch.x0 + bodyLen / 2, 0, chuckR + 9);
     lc.scale.set(ls * lc.userData.aspect, ls, 1);
     machine.add(lc);
     const lt = textSprite('tailstock', theme.muted, 28);
-    lt.position.set(tl ? (tl.x0 + tl.x1) / 2 : xt + coneL + 50, 0, (tl ? tl.top : chuckR * 0.75) + 9);
+    if (mdl) lt.position.set(mdl.tailMid, 0, mdl.tailTop + 9);
+    else lt.position.set(tl ? (tl.x0 + tl.x1) / 2 : xt + coneL + 50, 0, (tl ? tl.top : chuckR * 0.75) + 9);
     lt.scale.set(ls * lt.userData.aspect, ls, 1);
     machine.add(lt);
     buildTool();
     if (hl.key) { try { applyHighlight(false); } catch (e) { clearHighlight(); hl.key = null; } }
     requestRender();
+  }
+
+  // ---- ncSender's model of the rotary (setFixture), placed for this setup: the front of the
+  // jaws at the jaw face (s.chuckX), the tailstock with its centre's point at s.tailX, the
+  // base under both (longer when the tailstock is further out than it reaches). The chuck
+  // body and the jaws turn with A; each jaw opens on the step that keeps it in closest
+  // (jawOpen). Pieces are clicked to their settings and fade like the simple shapes.
+  function setFixture(buf, info) {
+    try { fixture = buf ? parseNcfx(buf) : null; } catch (e) { fixture = null; }
+    fxInfo = info || {};
+    if (setup) buildMachine(setup);
+    return !!fixture;
+  }
+  function stretched(g, split, by) {
+    g.cache = g.cache || new Map();
+    const k = by.toFixed(1);
+    if (g.cache.has(k)) return g.cache.get(k);
+    if (g.cache.size > 3) { g.cache.forEach((q) => { q.dispose(); q.userData.edges.dispose(); }); g.cache.clear(); }
+    const geo = g.geometry.clone(), p = geo.attributes.position.array;
+    for (let i = 0; i < p.length; i += 3) if (p[i] > split) p[i] += by;
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    geo.userData.edges = new THREE.EdgesGeometry(geo, 40);
+    geo.userData.keep = geo.userData.edges.userData.keep = true;
+    g.cache.set(k, geo);
+    return geo;
+  }
+  function buildModel(s, add) {
+    const h = fixture, ox = s.chuckX - (h.jawReach || 0), R = s.stockR;
+    const half = s.stockShape === 'round' || !s.stockHalf ? [R, R] : s.stockHalf;
+    const faceMat = (mat, side) => { const m = new THREE.MeshMatcapMaterial({ matcap: matcap(), color: NCFX_COLORS[mat] != null ? NCFX_COLORS[mat] : NCFX_COLORS.gun }); m.userData.fadeSide = side; return m; };
+    const edgeMat = (side) => { const m = new THREE.LineBasicMaterial({ color: theme.dark ? 0xb4c6dc : 0x1e2a32, transparent: true, opacity: theme.dark ? 0.22 : 0.3, depthWrite: false }); m.userData.base = m.opacity; m.userData.fadeSide = side; return m; };
+    const tailG = h.groups.find((g) => g.role === 'tail'), tailBack = tailG ? tailG.geometry.boundingBox.max.x : 0;
+    const ext = Math.max(fxInfo.extend || 0, h.track ? (s.tailX - ox) + tailBack + 15 - h.track[1] : 0, 0);
+    // the jaws square to the stock's flats at A0 (on Y and Z), whichever way the model has them
+    const j0 = h.groups.find((g) => g.dir), th0 = j0 ? Math.atan2(j0.dir[1], j0.dir[0]) : 0;
+    const turn = Math.round(th0 / (Math.PI / 2)) * (Math.PI / 2) - th0;
+    const chuckG = new THREE.Group(); chuckG.rotation.x = turn; chuckG.position.x = ox; jawGroup.add(chuckG);
+    const info = { name: h.name, jaws: [], floor: -(h.axisHeight || 60), top: 0, chuckR: 0, chuckMid: s.chuckX, tailMid: s.tailX, tailTop: 0, tailAt: s.tailX, ext, turn };
+    const headBox = new THREE.Box3(), tailBox = new THREE.Box3();
+    for (const g of h.groups) {
+      const side = g.role === 'tail' ? 'tail' : g.role === 'track' || g.role === 'trackEnd' ? null : 'head';
+      let geo = g.geometry, edges = g.edges;
+      if (g.role === 'track' && ext > 0.05 && h.trackSplit != null) { geo = stretched(g, h.trackSplit, ext); edges = geo.userData.edges; }
+      const mesh = new THREE.Mesh(geo, faceMat(g.mat, side)), lines = new THREE.LineSegments(edges, edgeMat(side));
+      mesh.add(lines);
+      const bb = geo.boundingBox;
+      if (g.role === 'tail') {
+        mesh.position.x = s.tailX;
+        add('tail', mesh); refs.centre.push(mesh);
+        info.tailMid = s.tailX + (bb.min.x + bb.max.x) / 2; info.tailTop = bb.max.z;
+        tailBox.copy(bb).translate(mesh.position);
+      } else if (g.role === 'fixed') {
+        mesh.position.x = ox; add('head', mesh);
+        headBox.union(bb.clone().translate(mesh.position));
+      } else if (g.role === 'track' || g.role === 'trackEnd') {
+        mesh.position.x = ox + (g.role === 'trackEnd' ? ext : 0);
+        mesh.userData.setting = 'rig.look'; machine.add(mesh); refs.track.push(mesh);
+      } else {
+        // the chuck body and the jaws: turn with A
+        if (g.dir) {
+          const c = Math.cos(turn), sn = Math.sin(turn), dy = g.dir[0] * c - g.dir[1] * sn, dz = g.dir[0] * sn + g.dir[1] * c;
+          const Rk = Math.abs(dy) >= Math.abs(dz) ? half[0] : half[1], o = jawOpen(g.steps, Rk);
+          mesh.position.set(0, o.open * g.dir[0], o.open * g.dir[1]);
+          info.jaws.push({ role: g.role, holds: Rk, step: o.step ? o.step.r : null, open: o.open, outer: o.open + Math.max(bb.min.y * g.dir[0], bb.max.y * g.dir[0]) + Math.max(bb.min.z * g.dir[1], bb.max.z * g.dir[1]) });
+          mesh.userData.jaw = true;
+        } else {
+          info.chuckR = Math.max(info.chuckR, Math.max(-bb.min.y, bb.max.y, -bb.min.z, bb.max.z));
+          info.chuckMid = ox + (bb.min.x + bb.max.x) / 2;
+        }
+        mesh.userData.setting = 'rig.chuck.dia';
+        chuckG.add(mesh); refs.chuck.push(mesh); sides.head.push(mesh);
+        headBox.union(bb.clone().translate(new THREE.Vector3(ox, mesh.position.y, mesh.position.z)));
+      }
+      if (side) sides[side].push(lines);
+      info.top = Math.max(info.top, g.role === 'track' ? -Infinity : bb.max.z);
+    }
+    // what the fading looks through: boxes round each end (the meshes themselves are too many
+    // triangles to test every frame)
+    const proxy = (b) => { if (b.isEmpty()) return []; const m = new THREE.Mesh(new THREE.BoxGeometry(...b.getSize(new THREE.Vector3()).toArray())); m.position.copy(b.getCenter(new THREE.Vector3())); m.updateMatrixWorld(true); return [m]; };
+    sides.proxy = { head: proxy(headBox), tail: proxy(tailBox) };
+    modelNow = info;
+    return info;
   }
 
   // the selected operation's tool, tip one retract above the stock
@@ -1456,7 +1642,10 @@ export function create(container, opts = {}) {
   return {
     setTheme(t) { theme = Object.assign(theme, t); makeMats(); if (setup) buildMachine(setup); setTenons(tenonList); if (partMesh) partMesh.material = partMat(); if (idx.list.length) buildIndex(); Object.keys(pathLines).forEach((k) => { pathLines[k].material = mats[k] || mats.finish; }); requestRender(); },
     setSetup(s) { aSign = s.aSign || 1; buildMachine(s); setA(aDeg); },
-    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons, setOrtho,
+    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons, setOrtho, setFixture,
+    // what's drawn for the rotary: ncSender's model (its name, each jaw's step and opening) or
+    // not, and the keep-out zone boxes
+    modelInfo() { return Object.assign({ model: !!modelNow, zones: (refs.zones || []).length }, modelNow ? { name: modelNow.name, jaws: modelNow.jaws, chuckR: modelNow.chuckR, tailAt: modelNow.tailAt, ext: modelNow.ext } : {}); },
     isOrtho() { return camera === ortho; },
     // where a point of the scene (mm) shows in the view, in client pixels
     toScreen(p) {

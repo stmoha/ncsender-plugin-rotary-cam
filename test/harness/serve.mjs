@@ -7,6 +7,7 @@ import { join, resolve, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 const { makeMachine } = createRequire(import.meta.url)('./probe-machine.cjs');
+import { makeFixtureModel } from './fixture-model.mjs';
 
 const PORT = Number(process.argv[2] || 8777);
 const PLUGIN_DIR = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -17,6 +18,11 @@ const saved = new Map();
 let loaded = null;
 let UNITS = 'metric';
 const log = [];
+// ncSender's Settings › 4th axis fixture (rotaryFixture): none until a test sets one
+// (POST /__test/fixture { id }); its model, the way ncSender's page names and serves it
+let FIXTURE = null;
+// (RC_FIXTURE_FILE: a real one of ncSender's .ncfx files instead, to look at by hand)
+const FIXTURE_MODEL = process.env.RC_FIXTURE_FILE ? readFileSync(process.env.RC_FIXTURE_FILE) : makeFixtureModel();
 
 const LIBRARY = [
   { id: 11, toolId: 11, toolNumber: 1, name: '1/4" Flat End Mill', type: 'flat', diameter: 6.35, dimensions: { flute_length: 25 } },
@@ -135,7 +141,10 @@ http.createServer(async (req, res) => {
     if (b.keepout) KEEPOUT = Object.assign({}, KEEPOUT, b.keepout);
     return json(res, { success: true });
   }
-  if (p === '/api/settings') return json(res, Object.assign({ unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } }, EDITION === 'pro' ? { keepout: KEEPOUT } : {}));
+  if (p === '/api/settings') return json(res, Object.assign({ unitsPreference: UNITS, safeZHeight: SAFEZ, tool: { numbering: 'slot' } }, EDITION === 'pro' ? { keepout: KEEPOUT } : {}, FIXTURE ? { rotaryFixture: FIXTURE } : {}));
+  if (p === '/__test/fixture' && req.method === 'POST') { FIXTURE = JSON.parse(await body(req)).id || null; return json(res, { FIXTURE }); }
+  if (p === '/assets/index-test.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end('window.__ncModels = { k12: new URL("k12-TESTk12a.ncfx", document.baseURI).href };'); }
+  if (p === '/assets/k12-TESTk12a.ncfx') { res.writeHead(200, { 'Content-Type': 'application/octet-stream' }); return res.end(FIXTURE_MODEL); }
   if (p === '/__test/pro' && req.method === 'POST') { const b = JSON.parse(await body(req)); if (b.pro !== undefined) EDITION = b.pro ? 'pro' : 'community'; if (b.zones) KEEPOUT.zones = b.zones; return json(res, { EDITION, KEEPOUT }); }
   if (p === '/__test/pro') return json(res, { EDITION, KEEPOUT });
   // Pro: zones switched off for this session (the visualizer's Zones legend)

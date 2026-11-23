@@ -116,5 +116,11 @@ A turns is the job's `a_sign`, set under Machine › Which way A turns.
   `simMarks` (rapids, `holderHits`, `sim.cutEvents` from the checkpoints), made once after the check.
 - A finishing pass held up by the holder is a `!!` Danger; Load/Save/Download ask again
   while one shows (`withLatest`).
+- ncSender's model of the rotary: its Settings `rotaryFixture` (vortex, vortex48, k12) names one
+  of its own `.ncfx` files, found by name in its page's script (`takeFixture`, `ncAsset` in
+  rotary-ui.js) and drawn by `buildModel` in viewer.js (`parseNcfx`, jaws on `jawOpen`'s step).
+  Never copy ncSender's `.ncfx` files into this repo. The harness serves a box stand-in
+  (`test/harness/fixture-model.mjs`, `POST /__test/fixture { id }`); `RC_FIXTURE_FILE=<.ncfx>`
+  serves a real one to look at by hand. `test/e2e-v36.cjs`.
 - The CI tests are in `.github/workflows/tests.yml`. Before a test ZIP, run them
   plus the e2e tests that touch what changed.
