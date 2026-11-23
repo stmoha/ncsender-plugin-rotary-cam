@@ -116,6 +116,12 @@ wrong mirrors anything asymmetric.
      A part too big for the stock offers **Set Stock width / Stock diameter to …** and
      **Scale the part to fit**; stock too short offers **Set Stock length to …**.
    - Settings in the side panel update the 3D view as you type or use the arrow keys.
+   - **Fit part / Front / Top / End / Fit setup** below the view: **Front**, **Top** and **End**
+     look straight along Y, Z and X (End from the tailstock) and turn **Ortho** on: a flat view
+     with no perspective, so things that line up look lined up and nothing shrinks with
+     distance. That's the view for checking where the moves go against the work zero and the
+     machine. Orbiting and zooming keep it flat; click **Ortho** to go back to perspective.
+     It's remembered in this browser.
 3. **Stock & rotary:** round, square or rectangular stock, its **Stock length** (the whole
    piece, the end in the jaws included) and **Clamping distance** (how far it goes into the
    jaws past the jaw face, 1/2" to start), keep-away distances. The live centre is at the
@@ -701,6 +707,7 @@ node test/e2e-v25.cjs test/coil.stl out/                   # Simulate shows the 
 node test/e2e-v27.cjs test/coil.stl out/                   # Finishing along the part, Parting's One cut only (tailstock end first), Simulate draws the part where it's cut to size
 node test/e2e-v28.cjs test/horn.stl test/coil.stl out/     # the same job on another computer: the part and toolpaths follow through ncSender
 node test/e2e-v29.cjs test/slot_test.step out/             # setups: groups, strategies to add, drag and set to rest, Generate, Simulate, a second setup, kept on reopening
+node test/e2e-v35.cjs test/horn.stl out/                   # Ortho: Front, Top, End straight along an axis and flat; back to perspective at the same size; remembered
 node test/e2e-v34.cjs test/horn.stl out/                   # Save project: the Save As box at the click, written where chosen, closed = nothing, a download when refused
 node test/e2e-v31.cjs out/                                 # lengths and feeds take units and sums (1/4", 6mm, 100ipm, 8mm*2), metric and inch, and in Probe the chuck
 node test/e2e-v30.cjs out/                                 # Tool Library stickout and flute length both ways; Pro keep-out zones kept, followed, left off, moved, checked

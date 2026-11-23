@@ -79,9 +79,17 @@ export function create(container, opts = {}) {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(26, 1, 1, 40000);
-  camera.up.set(0, 0, 1);
-  camera.position.set(-150, -600, 300);
+  // two cameras: perspective, and orthographic (no perspective: lines that line up look lined
+  // up, sizes don't shrink with distance). The one in use is `camera`. A view is kept as where
+  // the perspective camera would be (getCamera); the orthographic one shows what's at the
+  // target as big as that would (half its height: the distance times TAN).
+  const persp = new THREE.PerspectiveCamera(26, 1, 1, 40000);
+  persp.up.set(0, 0, 1);
+  persp.position.set(-150, -600, 300);
+  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, -40000, 40000);
+  ortho.up.set(0, 0, 1);
+  const TAN = Math.tan(persp.fov * DEG / 2);
+  let camera = persp;
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.12;
@@ -98,7 +106,7 @@ export function create(container, opts = {}) {
   scene.add(rim);
   const camLight = new THREE.DirectionalLight(0xffffff, 0.7);
   camera.add(camLight); camLight.position.set(0, 0, 1);
-  scene.add(camera);
+  scene.add(persp); scene.add(ortho);
 
   const machine = new THREE.Group(); scene.add(machine);
   const partGroup = new THREE.Group(); scene.add(partGroup);   // turns with A
@@ -166,8 +174,21 @@ export function create(container, opts = {}) {
     if (!alive) return;
     raf = requestAnimationFrame(loop);
     const moved = controls.update();
-    if (needsRender || moved) { needsRender = false; try { fadeHolders(); } catch (e) { /* never stop drawing */ } renderer.render(scene, camera); }
+    if (needsRender || moved) { needsRender = false; try { fadeHolders(); } catch (e) { /* never stop drawing */ } draw(); }
   };
+  // The value pills keep their size on screen (sizeAttenuation off). The orthographic camera
+  // would draw them at their scale in millimetres, so for it they're scaled up, just for the
+  // drawing, to the size they'd have in perspective.
+  const flat = [];
+  function draw() {
+    if (camera !== ortho) { renderer.render(scene, camera); return; }
+    const k = ortho.top / ortho.zoom / TAN;
+    scene.traverseVisible((o) => { if (o.isSprite && o.material.sizeAttenuation === false) { flat.push(o, o.scale.x, o.scale.y); o.scale.x *= k; o.scale.y *= k; } });
+    try { renderer.render(scene, camera); } finally {
+      for (let i = 0; i < flat.length; i += 3) flat[i].scale.set(flat[i + 1], flat[i + 2], 1);
+      flat.length = 0;
+    }
+  }
   loop();
 
   // The collet nut and spindle turn see-through when they hide the part (looking down from
@@ -182,9 +203,13 @@ export function create(container, opts = {}) {
     return [x0, x1, y0, y1];
   }
   const smooth = (a, b, v) => { const t = Math.min(1, Math.max(0, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // the way the camera looks back from (toward the eye); orthographic: sight lines all run along it
+  const back = new THREE.Vector3(), fv3 = new THREE.Vector3();
   function fadeHolders() {
     const target = simOn ? simMesh : (partMesh || (refs.stock && refs.stock[0]));
     scene.updateMatrixWorld(); camera.updateMatrixWorld();
+    const flatView = camera === ortho;
+    camera.getWorldDirection(back).negate();
     for (const t of [tool, simTool]) {
       if (!t) continue;
       const parts = t.children.filter((c) => c.userData.fade);
@@ -197,7 +222,8 @@ export function create(container, opts = {}) {
           const a = screenRect(fadeBox), b = screenRect(fadeT);
           const ix = Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0])), iy = Math.max(0, Math.min(a[3], b[3]) - Math.max(a[2], b[2]));
           const cover = ix * iy / Math.max(1e-9, (b[1] - b[0]) * (b[3] - b[2]));
-          const near = camera.position.distanceTo(fadeBox.getCenter(fv2)) < camera.position.distanceTo(fadeT.getCenter(fv));
+          const near = flatView ? fadeBox.getCenter(fv2).dot(back) > fadeT.getCenter(fv).dot(back)
+            : camera.position.distanceTo(fadeBox.getCenter(fv2)) < camera.position.distanceTo(fadeT.getCenter(fv));
           if (near) f = smooth(0.1, 0.35, cover);
         }
       }
@@ -215,9 +241,14 @@ export function create(container, opts = {}) {
       if (pts.length && objs.length) {
         let hid = 0;
         for (const p of pts) {
-          fv.copy(p).sub(camera.position);
-          const d = fv.length();
-          ray.set(camera.position, fv.normalize()); ray.far = d;
+          if (flatView) {
+            fv3.copy(p).addScaledVector(back, 1e5);
+            ray.set(fv3, fv.copy(back).negate()); ray.far = 1e5;
+          } else {
+            fv.copy(p).sub(camera.position);
+            const d = fv.length();
+            ray.set(camera.position, fv.normalize()); ray.far = d;
+          }
           if (ray.intersectObjects(objs, false).length) hid++;
         }
         f = smooth(0.08, 0.3, hid / pts.length);
@@ -256,7 +287,8 @@ export function create(container, opts = {}) {
     const w = container.clientWidth, h = container.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false);
-    camera.aspect = w / h; camera.updateProjectionMatrix();
+    persp.aspect = w / h; persp.updateProjectionMatrix();
+    ortho.left = -ortho.top * persp.aspect; ortho.right = ortho.top * persp.aspect; ortho.updateProjectionMatrix();
     requestRender();
   }
   const ro = window.ResizeObserver ? new ResizeObserver(resize) : null;
@@ -837,7 +869,7 @@ export function create(container, opts = {}) {
       let ux = (p1.x - p0.x) * sz.x, uy = (p1.y - p0.y) * sz.y;
       const ul = Math.hypot(ux, uy);
       if (ul < 1e-6) { ux = 0; uy = 1; } else { ux /= ul; uy /= ul; }
-      const hPx = (lab.scale.y / Math.tan((cam.fov || 26) * DEG / 2)) * sz.y / 2, wPx = hPx * lab.scale.x / lab.scale.y;
+      const hPx = (cam.isOrthographicCamera ? lab.scale.y * cam.zoom / cam.top : lab.scale.y / Math.tan((cam.fov || 26) * DEG / 2)) * sz.y / 2, wPx = hPx * lab.scale.x / lab.scale.y;
       const s = Math.abs(ux) * wPx / 2 + Math.abs(uy) * hPx / 2 + 5;
       lab.center.set(0.5 - (ux * s) / wPx, 0.5 - (uy * s) / hPx);
     };
@@ -1242,9 +1274,35 @@ export function create(container, opts = {}) {
   function view(name) {
     const whole = name === 'whole';
     const b = frame(whole);
-    // the part view looks from the tailstock side so the chuck doesn't loom in front
-    const dirs = { front: [0, -1, 0.001], top: [0, -0.001, 1], end: [1, -0.25, 0.25], iso: [0.42, -1, 0.6], whole: [-0.3, -1, 0.55] };
+    // the part view looks from the tailstock side so the chuck doesn't loom in front. Front, Top
+    // and End look straight along an axis (Top a hair off, so the controls keep X across)
+    const dirs = { front: [0, -1, 0], top: [0, -1e-5, 1], end: [1, 0, 0], iso: [0.42, -1, 0.6], whole: [-0.3, -1, 0.55] };
     fitBox(b, new THREE.Vector3(...(dirs[name] || dirs.iso)).normalize());
+  }
+  // orthographic (true) or perspective, from where the view is now
+  function setOrtho(on) {
+    on = !!on;
+    if ((camera === ortho) === on) return;
+    const t = controls.target;
+    if (on) {
+      ortho.position.copy(persp.position); ortho.quaternion.copy(persp.quaternion);
+      orthoSize(persp.position.distanceTo(t));
+      camera = ortho;
+    } else {
+      const dist = ortho.top / ortho.zoom / TAN;
+      persp.position.copy(ortho.position).sub(t).normalize().multiplyScalar(dist).add(t);
+      persp.quaternion.copy(ortho.quaternion);
+      camera = persp;
+    }
+    camera.add(camLight);
+    controls.object = camera;
+    controls.update(); requestRender();
+  }
+  // the orthographic view as big as the perspective one from `dist` away is at the target
+  function orthoSize(dist) {
+    const H = Math.max(1e-3, dist * TAN);
+    ortho.zoom = 1; ortho.top = H; ortho.bottom = -H; ortho.left = -H * persp.aspect; ortho.right = H * persp.aspect;
+    ortho.updateProjectionMatrix();
   }
   // fit a box into the view, looking along d
   function fitBox(b, d, centre) {
@@ -1255,18 +1313,26 @@ export function create(container, opts = {}) {
     for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) corners.push(new THREE.Vector3(x, y, z).sub(c));
     let w = 0, h = 0, depth = 0;
     for (const p of corners) { w = Math.max(w, Math.abs(p.dot(right))); h = Math.max(h, Math.abs(p.dot(up))); depth = Math.max(depth, Math.abs(p.dot(d))); }
-    const tanV = Math.tan(camera.fov * DEG / 2), tanH = tanV * camera.aspect;
+    const tanV = TAN, tanH = tanV * persp.aspect;
+    // back far enough that the near side of the box fits too (orthographic: framed the same)
     const dist = Math.max(h / tanV, w / tanH) * 1.12 + depth;
     controls.target.copy(c);
     camera.position.copy(c).addScaledVector(d, dist);
-    camera.updateProjectionMatrix();
+    if (camera === ortho) orthoSize(dist); else camera.updateProjectionMatrix();
     controls.update();
     requestRender();
   }
-  function getCamera() { return { p: camera.position.toArray(), t: controls.target.toArray() }; }
+  // a view as where the perspective camera would be (the orthographic one as big as that)
+  function getCamera() {
+    const t = controls.target;
+    if (camera !== ortho) return { p: persp.position.toArray(), t: t.toArray() };
+    const p = ortho.position.clone().sub(t).normalize().multiplyScalar(ortho.top / ortho.zoom / TAN).add(t);
+    return { p: p.toArray(), t: t.toArray() };
+  }
   function setCamera(v) {
     if (!v || !v.p || !v.t) return;
     camera.position.fromArray(v.p); controls.target.fromArray(v.t);
+    if (camera === ortho) orthoSize(camera.position.distanceTo(controls.target));
     controls.update(); requestRender();
   }
 
@@ -1390,7 +1456,14 @@ export function create(container, opts = {}) {
   return {
     setTheme(t) { theme = Object.assign(theme, t); makeMats(); if (setup) buildMachine(setup); setTenons(tenonList); if (partMesh) partMesh.material = partMat(); if (idx.list.length) buildIndex(); Object.keys(pathLines).forEach((k) => { pathLines[k].material = mats[k] || mats.finish; }); requestRender(); },
     setSetup(s) { aSign = s.aSign || 1; buildMachine(s); setA(aDeg); },
-    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons,
+    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons, setOrtho,
+    isOrtho() { return camera === ortho; },
+    // where a point of the scene (mm) shows in the view, in client pixels
+    toScreen(p) {
+      camera.updateMatrixWorld();
+      const v = new THREE.Vector3(p.x, p.y, p.z).project(camera), r = renderer.domElement.getBoundingClientRect();
+      return { x: r.left + (v.x + 1) / 2 * r.width, y: r.top + (1 - v.y) / 2 * r.height };
+    },
     tenonCount() { return tenonGroup.children.filter((o) => o.isMesh).length; },
     simSet, simUpdate, simMode, simToolAt, simOverlay, simGhost, simPart,
     setIndexAngles, setLeftover, setToolChanges, highlight,
@@ -1432,7 +1505,7 @@ export function create(container, opts = {}) {
     headShade() {
       const h = refs.head && refs.head[0];
       if (!h) return null;
-      renderer.render(scene, camera);
+      draw();
       const b = new THREE.Box3().setFromObject(h), c = b.getCenter(new THREE.Vector3()), p = c.clone().project(camera);
       const gl = renderer.getContext(), w = gl.drawingBufferWidth, hh = gl.drawingBufferHeight;
       const px = Math.round((p.x + 1) / 2 * w), py = Math.round((p.y + 1) / 2 * hh), out = new Uint8Array(4);
@@ -1461,7 +1534,7 @@ export function create(container, opts = {}) {
     },
     overlayCount() { return ovMesh && ovMesh.visible ? ovMesh.count : 0; },
     hasPart() { return !!partMesh; },
-    snapshot() { renderer.render(scene, camera); return renderer.domElement.toDataURL('image/png'); },
+    snapshot() { draw(); return renderer.domElement.toDataURL('image/png'); },
     dispose() {
       if (!alive) return;
       alive = false; cancelAnimationFrame(raf);

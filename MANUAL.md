@@ -241,7 +241,9 @@ the jog controls and the buttons stay put.
 
 The same goes for the main 3D view: pointing at a setting lights its part of the setup, and
 **clicking a part of the setup** (the chuck, the tailstock, the stock, the tool, the collet
-nut, a tenon) opens its section and puts you in its setting.
+nut, a tenon) opens its section and puts you in its setting. **Front**, **Top** and **End**
+under it give flat views (**Ortho**, no perspective) for checking the tool and the moves
+against X0, the axis and the jaws; click **Ortho** to go back to perspective.
 
 1. **Pick what to touch with.**
    - **Pin (with a clip)**, the simplest: a round pin in the collet (a dowel pin or a drill
