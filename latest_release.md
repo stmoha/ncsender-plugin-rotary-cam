@@ -8,6 +8,18 @@ Simultaneous 4th-axis CAM inside ncSender: open an STL or STEP part, rough and f
 - **The keep-out Danger says why.** Rotary CAM's zones in ncSender Pro stay where the rotary was when they were placed, so a work zero set in the wrong place gets caught. When the program hits one because the work zero has moved since, the red *Keep-out* check now says by how much and which way, and where X0 sits against the jaws if the rotary hasn't moved. **Move the zones to the rotary** and **Probe the chuck** are right there. Zeroing again within 1 mm (probing again, say) now moves the zones by itself.
 - **Save project asks where to save.** It opens your computer's Save As box, so you choose the folder and the name, and it starts in the folder you used last. (Before, the box came up only after the project was packed, by which time the browser no longer counted the click, so it was nearly always a download.) Browsers show that box only to a page on the same computer or at an https address, and only Chrome and Edge do: with ncSender opened from another computer at a plain address like `http://192.168.1.50:8090`, it's still a download. To choose the folder and name there too, turn on *Ask where to save each file* in the browser's download settings; the first download says so.
 
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/rotary-model.png" width="700" alt="Rotary CAM in dark mode: a candle stick in 3 inch square stock on ncSender's K12-100 rotary model, the roughing spiral round it, the keep-out zones as see-through red boxes round the headstock and the tailstock, and Rotary and spindle, 3D view of the rotary, set to From ncSender."></p>
+<p align="center"><sub>The rotary as ncSender draws it, with its keep-out zones round it as see-through boxes.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/jaws-closed-in.png" width="700" alt="Close on the chuck from the tailstock side: the four jaws hold the 3 inch square stock on their outer step, staying in close to the chuck; Zones switched off in the legend under the view."></p>
+<p align="center"><sub>The jaws open on the step that keeps them in closest to the chuck.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/ortho-front.png" width="700" alt="Front view with Ortho on: a flat elevation of the roughing passes, square to the axis, with the work zero and the edges of the headstock and tailstock zones."></p>
+<p align="center"><sub>Front, Top and End give flat elevations, to line the moves up against X0 and the machine.</sub></p>
+
+<p align="center"><img src="https://raw.githubusercontent.com/stmoha/ncsender-plugin-rotary-cam/main/docs/images/keepout-moved.png" width="700" alt="The red Keep-out check: the work zero has moved 0.961 inch toward the chuck since the zones were placed, with buttons to move the zones to the rotary or probe the chuck, and the headstock zone reaching past X0 in the Front view."></p>
+<p align="center"><sub>When the work zero has moved since the zones were placed, the Keep-out check says how far and offers to move them.</sub></p>
+
 **Since 0.2.0**
 - 0.15.1: roughing and Corners within 1/8″ of the jaws and to the end of the stock; room for the collet nut beside the ends; checks say where, what and how to fix it; Simulate marks each pass and stops at problems; probing with fewer pauses
 - 0.15.0: lengths and feeds in any unit (1/4", 100ipm, sums), Up and Down step them, red for text that can't be read; Rotary CAM is GPL-3.0
