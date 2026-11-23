@@ -315,7 +315,7 @@ export function create(container, opts = {}) {
     }
     // the chuck end and the tailstock end: how much of the part they hide, sighting along
     // lines from the eye to points through it (looking down the axis from the end, say)
-    if (!sides) return;
+    if (!sides || !show.rotary) return;
     const pts = target ? samplePoints(target) : [];
     for (const side of ['head', 'tail']) {
       const objs = sides.proxy ? sides.proxy[side] : sides[side].filter((o) => o.isMesh && o.visible !== false);
@@ -381,6 +381,16 @@ export function create(container, opts = {}) {
   // ---------------- machine
   // what each part of the rotary was drawn with, for highlighting the one a setting is about
   let refs = {};
+  // what's shown: the rotary (chuck, jaws, headstock, tailstock, base) and the keep-out zones,
+  // each piece tagged when it's drawn (setShow)
+  let show = { rotary: true, zones: true };
+  const ROTARY = { chuck: 1, head: 1, centre: 1, tail: 1 };
+  function tag(o, what) { if (what) o.userData.shows = what; return o; }
+  function applyShow() {
+    for (const o of machine.children.concat(jawGroup.children)) if (o.userData.shows) o.visible = show[o.userData.shows] !== false;
+    requestRender();
+  }
+  function setShow(v) { show = Object.assign({}, show, v || {}); applyShow(); }
   // which setting each piece of the machine is drawn from
   const SETTING = { chuck: 'rig.chuck.dia', head: 'rig.head.len', centre: 'rig.centre.dia', tail: 'rig.tail.len', keepChuck: 'chuck_clearance', keepTail: 'tailstock_clearance' };
   function buildMachine(s) {
@@ -394,7 +404,7 @@ export function create(container, opts = {}) {
     // gets its own material (the housings and the jaws share theirs otherwise)
     sides = { head: [], tail: [], opacity: { head: 1, tail: 1 } };
     const own = (side, m) => { const c = m.clone(); c.userData.fadeSide = side; return c; };
-    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); if (SETTING[key]) o.userData.setting = SETTING[key]; const sd = key === 'chuck' || key === 'head' ? 'head' : key === 'centre' || key === 'tail' ? 'tail' : null; if (sd && o.isMesh) sides[sd].push(o); return o; };
+    const add = (key, o) => { (refs[key] = refs[key] || []).push(o); machine.add(o); tag(o, key === 'zones' ? 'zones' : ROTARY[key] ? 'rotary' : null); if (SETTING[key]) o.userData.setting = SETTING[key]; const sd = key === 'chuck' || key === 'head' ? 'head' : key === 'centre' || key === 'tail' ? 'tail' : null; if (sd && o.isMesh) sides[sd].push(o); return o; };
     const R = s.stockR, x0 = s.chuckX, fx = s.fixtures || [];
     const F = (name) => fx.find((f) => f.name === name);
     // the rotary at its real size (Rotary & spindle settings)
@@ -420,7 +430,7 @@ export function create(container, opts = {}) {
       jaw.position.set(ch.x1 - jawLen / 2, Math.cos(a) * (jawR + h / 2), Math.sin(a) * (jawR + h / 2));
       jaw.rotation.x = a - 90 * DEG;
       jaw.userData.jaw = true; jaw.userData.setting = 'rig.chuck.jaws';
-      refs.chuck.push(jaw); jawGroup.add(jaw); sides.head.push(jaw);
+      refs.chuck.push(jaw); jawGroup.add(tag(jaw, 'rotary')); sides.head.push(jaw);
     }
     // a box on the table, reaching y0 (toward you, -Y) to y1 (away, +Y) and up to `top`
     const box = (key, f, side) => {
@@ -428,7 +438,7 @@ export function create(container, opts = {}) {
       g.translate((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2, (f.top + lo) / 2);
       add(key, new THREE.Mesh(g, own(side, mats.housing)));
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(g), own(side, mats.stockEdge));
-      machine.add(edges); sides[side].push(edges);
+      machine.add(tag(edges, 'rotary')); sides[side].push(edges);
     };
     const hd = F('headstock');
     if (hd && !mdl) box('head', hd, 'head');
@@ -471,7 +481,7 @@ export function create(container, opts = {}) {
         m.renderOrder = 3; m.userData.zone = z.name || 'zone';
         add('zones', m);
         const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color: 0xd64545, transparent: true, opacity: 0.6, depthWrite: false }));
-        e.renderOrder = 3; machine.add(e);
+        e.renderOrder = 3; machine.add(tag(e, 'zones'));
       }
     }
     const kR = R + 1.5;
@@ -525,12 +535,13 @@ export function create(container, opts = {}) {
     const lc = textSprite('chuck', theme.muted, 28);
     if (mdl) lc.position.set(mdl.chuckMid, 0, mdl.chuckR + 9); else lc.position.set(ch.x0 + bodyLen / 2, 0, chuckR + 9);
     lc.scale.set(ls * lc.userData.aspect, ls, 1);
-    machine.add(lc);
+    machine.add(tag(lc, 'rotary'));
     const lt = textSprite('tailstock', theme.muted, 28);
     if (mdl) lt.position.set(mdl.tailMid, 0, mdl.tailTop + 9);
     else lt.position.set(tl ? (tl.x0 + tl.x1) / 2 : xt + coneL + 50, 0, (tl ? tl.top : chuckR * 0.75) + 9);
     lt.scale.set(ls * lt.userData.aspect, ls, 1);
-    machine.add(lt);
+    machine.add(tag(lt, 'rotary'));
+    applyShow();
     buildTool();
     if (hl.key) { try { applyHighlight(false); } catch (e) { clearHighlight(); hl.key = null; } }
     requestRender();
@@ -570,7 +581,7 @@ export function create(container, opts = {}) {
     // the jaws square to the stock's flats at A0 (on Y and Z), whichever way the model has them
     const j0 = h.groups.find((g) => g.dir), th0 = j0 ? Math.atan2(j0.dir[1], j0.dir[0]) : 0;
     const turn = Math.round(th0 / (Math.PI / 2)) * (Math.PI / 2) - th0;
-    const chuckG = new THREE.Group(); chuckG.rotation.x = turn; chuckG.position.x = ox; jawGroup.add(chuckG);
+    const chuckG = new THREE.Group(); chuckG.rotation.x = turn; chuckG.position.x = ox; jawGroup.add(tag(chuckG, 'rotary'));
     const info = { name: h.name, jaws: [], floor: -(h.axisHeight || 60), top: 0, chuckR: 0, chuckMid: s.chuckX, tailMid: s.tailX, tailTop: 0, tailAt: s.tailX, ext, turn };
     const headBox = new THREE.Box3(), tailBox = new THREE.Box3();
     for (const g of h.groups) {
@@ -590,7 +601,7 @@ export function create(container, opts = {}) {
         headBox.union(bb.clone().translate(mesh.position));
       } else if (g.role === 'track' || g.role === 'trackEnd') {
         mesh.position.x = ox + (g.role === 'trackEnd' ? ext : 0);
-        mesh.userData.setting = 'rig.look'; machine.add(mesh); refs.track.push(mesh);
+        mesh.userData.setting = 'rig.look'; machine.add(tag(mesh, 'rotary')); refs.track.push(mesh);
       } else {
         // the chuck body and the jaws: turn with A
         if (g.dir) {
@@ -1642,7 +1653,9 @@ export function create(container, opts = {}) {
   return {
     setTheme(t) { theme = Object.assign(theme, t); makeMats(); if (setup) buildMachine(setup); setTenons(tenonList); if (partMesh) partMesh.material = partMat(); if (idx.list.length) buildIndex(); Object.keys(pathLines).forEach((k) => { pathLines[k].material = mats[k] || mats.finish; }); requestRender(); },
     setSetup(s) { aSign = s.aSign || 1; buildMachine(s); setA(aDeg); },
-    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons, setOrtho, setFixture,
+    setPart, setPartBad, setToolpath, setOp, setA, view, getCamera, setCamera, setTenons, setOrtho, setFixture, setShow,
+    // how many pieces of the rotary and of the zones are drawn and showing
+    shown() { const n = { rotary: 0, rotaryOn: 0, zones: 0, zonesOn: 0 }; for (const o of machine.children.concat(jawGroup.children)) { const w = o.userData.shows; if (!w) continue; n[w]++; if (o.visible) n[w + 'On']++; } return n; },
     // what's drawn for the rotary: ncSender's model (its name, each jaw's step and opening) or
     // not, and the keep-out zone boxes
     modelInfo() { return Object.assign({ model: !!modelNow, zones: (refs.zones || []).length }, modelNow ? { name: modelNow.name, jaws: modelNow.jaws, chuckR: modelNow.chuckR, tailAt: modelNow.tailAt, ext: modelNow.ext } : {}); },

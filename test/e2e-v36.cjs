@@ -79,6 +79,26 @@ fs.mkdirSync(outDir, { recursive: true });
     await page.click('[data-view=whole]'); await page.waitForTimeout(700);
     await shot('3-model-zones');
 
+    // the legend's toggles: the rotary and the zones, each on its own
+    const shown = () => page.evaluate(() => window.RotaryCam.viewer.shown());
+    const btnOn = (k) => page.$eval(`#rcam-root [data-show=${k}]`, (b) => !b.hidden && b.classList.contains('on'));
+    ok(await btnOn('rotary') && await btnOn('zones'), 'the legend has Rotary and Zones, both on');
+    await page.click('#rcam-root [data-show=rotary]'); await page.waitForTimeout(300);
+    let sh = await shown();
+    ok(sh.rotary > 5 && sh.rotaryOn === 0 && sh.zonesOn === sh.zones && !(await btnOn('rotary')), `Rotary off: the ${sh.rotary} pieces of the rotary hide, the zones stay`);
+    await shot('3b-rotary-hidden');
+    await page.click('#rcam-root [data-show=zones]'); await page.waitForTimeout(300);
+    sh = await shown();
+    ok(sh.zones > 0 && sh.zonesOn === 0, `Zones off: the ${sh.zones} pieces of the zones hide`);
+    await typeIn('#rc-tailstock_x', 260);
+    sh = await shown();
+    ok(sh.rotaryOn === 0 && sh.zonesOn === 0, 'a setting changed (the rotary drawn again): still hidden');
+    await page.click('#rcam-root [data-show=rotary]'); await page.click('#rcam-root [data-show=zones]'); await page.waitForTimeout(300);
+    sh = await shown();
+    ok(sh.rotaryOn === sh.rotary && sh.zonesOn === sh.zones && await btnOn('rotary') && await btnOn('zones'), 'both on again');
+    await page.click('#rcam-root [data-show=zones]'); await page.waitForTimeout(200);
+    ok(await page.evaluate(() => JSON.parse(localStorage.getItem('rcam.show')).zones === false), 'remembered in this browser (Zones left off)');
+
     // the choice under Rotary & spindle
     await UH.openGroups(page); await openSec('rig');
     const field = await page.$('#rc-rig-look');
@@ -102,16 +122,21 @@ fs.mkdirSync(outDir, { recursive: true });
     await until(async () => (await info()).model, 15);
     await page.click('[data-view=iso]'); await page.waitForTimeout(800);
     ok((await info()).model, 'opened again (dark): drawn with the model straight away');
+    sh = await shown();
+    ok(sh.zonesOn === 0 && sh.rotaryOn === sh.rotary && !(await btnOn('zones')), 'with the zones still off, as left');
+    await page.click('#rcam-root [data-show=zones]'); await page.waitForTimeout(300);
     await shot('5-model-dark');
 
     // ncSender with no fixture set: the simple shapes, and no choice to make
     await H('/__test/fixture', { id: null });
+    await H('/__test/pro', { pro: false });
     await page.goto('about:blank');
     await page.goto(`http://localhost:${PORT}/`);
     await page.click('#open');
     await page.waitForFunction(() => window.RotaryCam && window.RotaryCam.viewer, null, { timeout: 60000 });
     await page.waitForTimeout(1500);
     ok(!(await info()).model, 'ncSender with no 4th axis fixture set: the simple shapes');
+    ok(await page.$eval('#rcam-root [data-show=zones]', (b) => b.hidden) && await btnOn('rotary'), 'no keep-out zones (not Pro): no Zones button; Rotary still there');
   } catch (e) {
     fails++; console.log(ms(), 'FAIL threw: ' + (e && e.stack || e));
   }

@@ -104,7 +104,7 @@ fs.mkdirSync(outDir, { recursive: true });
     const r = await page.evaluate(() => { const S = window.RotaryCam.__state; return { probs: S.problems, ops: S.program ? S.program.gcode.split('\n').filter((l) => /^\(OP /.test(l)).map((l) => l.split(' ')[1]) : [], paths: S.program ? S.program.paths.map((p) => p.title + ':' + (p.data.length / 4)) : [] }; });
     ok(!r.probs.length && /^rough,finish,finish2(,index)?$/.test(r.ops.join()), 'Generate: ' + (r.probs[0] || r.ops.join(', ')));
     ok(r.paths.length === 4 && /^Finishing 2:[1-9]/.test(r.paths[2]), 'each strategy its own toolpath: ' + r.paths.join(', '));
-    const btns = await page.$$eval('#rcam-root .rc-op', (bs) => bs.map((b) => b.textContent));
+    const btns = await page.$$eval('#rcam-root .rc-ops .rc-op', (bs) => bs.map((b) => b.textContent));
     ok(btns.join() === 'Roughing,Finishing 1,Finishing 2,Indexed', 'a button on the view for each: ' + btns.join(', '));
     const said = (await notes()).find((m) => /^Finishing 2/.test(m));
     ok(!!said && /stretch/.test(said), 'a message says where Finishing 2 cuts: ' + (said || '').slice(0, 120));
